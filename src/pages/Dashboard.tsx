@@ -3,9 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Spinner } from '@/components/ui/spinner'
-import { MONTHS, hasValidReportMeta, isFinalizedStatus, type Report, loadAllReports, getCachedReportsForYear } from '@/lib/supabase'
-import { getRoleColorClasses, getUserRoles, useAuth, USERS_SYNC_STORAGE_KEY, type UserRole } from '@/lib/auth'
+import { hasValidReportMeta, isFinalizedStatus, type Report, loadAllReports, getCachedReportsForYear } from '@/lib/supabase'
+import { getRoleColorClasses, getUserRoles, useAuth } from '@/lib/auth'
 import {
   FilePlus,
   FileText,
@@ -15,13 +14,6 @@ import {
   TrendingUp,
   Info,
 } from 'lucide-react'
-
-function getTodayDateString(date = new Date()): string {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
 
 function isCreatedToday(createdAt: string, referenceDate = new Date()): boolean {
   if (!createdAt) return false
@@ -40,9 +32,8 @@ export default function Dashboard() {
   const navigate = useNavigate()
   const [currentDay, setCurrentDay] = React.useState(new Date())
   const currentYear = currentDay.getFullYear()
-  const todayDate = getTodayDateString(currentDay)
   const initialReports = getCachedReportsForYear(currentYear)
-  const [loading, setLoading] = React.useState(initialReports.length === 0)
+  const [_loading, setLoading] = React.useState(initialReports.length === 0)
   const [reports, setReports] = React.useState<Report[]>(initialReports)
   const reportsRef = React.useRef<Report[]>(initialReports)
 
@@ -108,13 +99,6 @@ export default function Dashboard() {
 
   const todayReports = React.useMemo(
     () => reports.filter(r => hasValidReportMeta(r) && isCreatedToday(r.created_at, currentDay)),
-    [reports, currentDay]
-  )
-
-  const currentMonthReports = React.useMemo(
-    () => reports.filter(
-      r => hasValidReportMeta(r) && r.year === currentDay.getFullYear() && r.month === MONTHS[currentDay.getMonth()]
-    ),
     [reports, currentDay]
   )
 

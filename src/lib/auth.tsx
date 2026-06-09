@@ -46,7 +46,6 @@ const getDefaultApiBase = () => {
   if (typeof window === 'undefined') return 'http://localhost:3000'
   const hostname = window.location.hostname
   const protocol = window.location.protocol
-  const port = window.location.port ? `:${window.location.port}` : ''
   
   if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1') {
     return `${protocol}//${hostname}:3000`
@@ -1076,7 +1075,7 @@ export function useAuth() {
         throw new Error('AuthProvider no disponible')
       },
       updateCurrentUserRole: async () => undefined,
-      updateCurrentUserProfile: () => undefined,
+      updateCurrentUserProfile: async () => {},
       signOut: async () => {},
     } satisfies AuthContextValue
   }
