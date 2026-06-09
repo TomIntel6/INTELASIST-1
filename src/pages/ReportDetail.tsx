@@ -1,0 +1,451 @@
+import * as React from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Spinner } from '@/components/ui/spinner'
+import { Textarea } from '@/components/ui/textarea'
+import { Label } from '@/components/ui/label'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Separator } from '@/components/ui/separator'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Dialog, DialogContent } from '@/components/ui/dialog'
+import { REPORT_STATUSES, type Report, type ReportUpdate, loadReportWithUpdates, addReportUpdate, getCachedReportById } from '@/lib/supabase'
+import { useAuth } from '@/lib/auth'
+import { ArrowLeft, Send, User, Calendar, Car, FileText, Wrench, Image as ImageIcon, ZoomIn } from 'lucide-react'
+
+const STATUS_BADGE: Record<string, string> = {
+  'Caso Finalizado': 'bg-emerald-500/15 text-emerald-700 border-emerald-200',
+  'Seguimiento de caso': 'bg-amber-500/15 text-amber-700 border-amber-200',
+  'Falta de Informacion': 'bg-destructive/15 text-destructive border-destructive/20',
+  'Informativo': 'bg-emerald-500/15 text-emerald-700 border-emerald-200',
+  'Validacion': 'bg-emerald-500/15 text-emerald-700 border-emerald-200',
+  'Cotizacion': 'bg-blue-500/15 text-blue-700 border-blue-200',
+}
+
+function getInitials(name: string) {
+  return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '?'
+}
+
+function formatDateTimeWithMeridiem(dateString: string) {
+  const date = new Date(dateString)
+  const datePart = date.toLocaleDateString('es', {
+    day: '2-digit', month: 'short', year: 'numeric',
+  })
+  const timePart = date.toLocaleTimeString('en-US', {
+    hour: '2-digit', minute: '2-digit', hour12: true,
+  })
+  return `${datePart} ${timePart}`
+}
+
+function TimeAgo({ date }: { date: string }) {
+  const d = new Date(date)
+  const title = d.toLocaleString('es', {
+    day: '2-digit', month: 'short', year: 'numeric',
+    hour: '2-digit', minute: '2-digit', hour12: true,
+  })
+
+  return (
+    <span title={title}>
+      {formatDateTimeWithMeridiem(date)}
+    </span>
+  )
+}
+
+export default function ReportDetail() {
+  const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
+  const { user } = useAuth()
+
+  const cachedReport = id ? getCachedReportById(id) : null
+  const [report, setReport] = React.useState<Report | null>(cachedReport)
+  const [updates, setUpdates] = React.useState<ReportUpdate[]>(cachedReport?.report_updates ?? [])
+  const [loading, setLoading] = React.useState(cachedReport === null)
+  const [error, setError] = React.useState<string | null>(null)
+
+  const [newStatus, setNewStatus] = React.useState('Seguimiento de caso')
+  const [newComment, setNewComment] = React.useState('')
+  const [submitting, setSubmitting] = React.useState(false)
+  const [submitError, setSubmitError] = React.useState<string | null>(null)
+  const [showImageModal, setShowImageModal] = React.useState(false)
+
+  const fetchData = React.useCallback(async () => {
+    if (!id) return
+
+    try {
+      const currentReport = await loadReportWithUpdates(id)
+      
+      if (!currentReport) {
+        setError('No se pudo cargar el informe. Por favor intenta más tarde o verifica que exista.')
+        setReport(null)
+        setUpdates([])
+      } else {
+        setReport(currentReport)
+        setUpdates(currentReport.report_updates ?? [])
+        setNewStatus(currentReport.status === 'Cotizacion' ? 'Seguimiento de caso' : currentReport.status)
+        setError(null)
+      }
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'Error al cargar el informe.'
+      console.error('Error en fetchData:', errorMsg, err)
+      setError(errorMsg)
+      setReport(null)
+      setUpdates([])
+    } finally {
+      setLoading(false)
+    }
+  }, [id])
+
+  React.useEffect(() => {
+    void fetchData()
+  }, [id, fetchData])
+
+  React.useEffect(() => {
+    if (!report) return
+
+    const intervalId = window.setInterval(() => {
+      void fetchData()
+    }, 15000)
+
+    return () => window.clearInterval(intervalId)
+  }, [report, fetchData])
+
+  const handleAddUpdate = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!newComment.trim()) { setSubmitError('Escribe un comentario.'); return }
+    setSubmitting(true)
+    setSubmitError(null)
+
+    const displayName = user?.user_metadata?.full_name ?? user?.email ?? ''
+
+    try {
+      await addReportUpdate(id!, {
+        status: newStatus,
+        comment: newComment,
+        added_by: user?.id ?? null,
+        added_by_name: displayName,
+        added_by_email: user?.email ?? '',
+      })
+
+      setNewComment('')
+      await fetchData()
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : 'No se pudo agregar la actualización.')
+    }
+
+    setSubmitting(false)
+  }
+
+  if (loading) {
+    return (
+      <div className="flex h-full items-center justify-center p-8">
+        <div className="text-center space-y-3">
+          <Spinner className="size-6 mx-auto" />
+          <p className="text-sm text-muted-foreground">Cargando informe...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error || !report) {
+    return (
+      <div className="p-8 text-center space-y-4">
+        <div className="space-y-2">
+          <p className="text-sm font-medium text-destructive">{error || 'Informe no encontrado.'}</p>
+          <p className="text-xs text-muted-foreground">{error ? 'Verifica tu conexión e intenta de nuevo.' : 'El informe solicitado no existe.'}</p>
+        </div>
+        <div className="flex flex-col sm:flex-row gap-2 justify-center">
+          {error && (
+            <Button variant="outline" size="sm" onClick={() => {
+              setLoading(true)
+              setError(null)
+              void fetchData()
+            }}>
+              Reintentar
+            </Button>
+          )}
+          <Button variant="outline" size="sm" onClick={() => navigate('/informes')}>
+            Volver a informes
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="p-6 max-w-5xl mx-auto space-y-5">
+      {/* Header */}
+      <div className="flex items-start gap-3">
+        <Button variant="ghost" size="icon-sm" onClick={() => navigate(-1)} className="mt-0.5">
+          <ArrowLeft className="size-4" />
+        </Button>
+        <div className="flex-1 min-w-0">
+          <div className="flex flex-wrap items-center gap-3">
+            <h1 className="text-xl font-bold text-foreground truncate">{report.insured_name}</h1>
+            <Badge
+              className={`text-xs border ${STATUS_BADGE[report.status] ?? 'bg-secondary'}`}
+            >
+              {report.status}
+            </Badge>
+          </div>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            {report.month} {report.year} &bull; Placa: <span className="font-mono font-medium text-foreground">{report.plate}</span>
+          </p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        {/* Report info */}
+        <div className="lg:col-span-2 space-y-4">
+          {/* Asegurado + Servicio */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <User className="size-4 text-muted-foreground" />
+                Información del Asegurado
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
+              <InfoRow label="Nombre" value={report.insured_name} />
+              <InfoRow label="Placa" value={<span className="font-mono">{report.plate}</span>} />
+              <InfoRow label="Póliza" value={report.policy} />
+              <InfoRow label="Servicio" value={
+                <Badge variant="outline" className="text-xs">{report.service_type}</Badge>
+              } />
+            </CardContent>
+          </Card>
+
+          {/* Vehículo */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Car className="size-4 text-muted-foreground" />
+                Datos del Vehículo
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
+              <InfoRow label="Marca" value={report.brand} />
+              <InfoRow label="Modelo" value={report.model} />
+              <InfoRow label="Color" value={report.color} />
+              <InfoRow label="Año" value={report.year_vehicle ? String(report.year_vehicle) : '—'} />
+            </CardContent>
+          </Card>
+
+          {/* Observación inicial */}
+          {report.observation_comment && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Wrench className="size-4 text-muted-foreground" />
+                  Observación Inicial
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-foreground leading-relaxed">{report.observation_comment}</p>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Evidencia */}
+          {report.evidence_url && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <ImageIcon className="size-4 text-muted-foreground" />
+                  Evidencia
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <img
+                  src={report.evidence_url}
+                  alt="Evidencia del informe"
+                  className="w-full rounded-lg border border-border/70 object-cover max-h-96 cursor-pointer hover:opacity-90 transition-opacity"
+                  onClick={() => setShowImageModal(true)}
+                />
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="w-full gap-2"
+                  onClick={() => setShowImageModal(true)}
+                >
+                  <ZoomIn className="size-4" />
+                  Ampliar imagen
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Timeline de updates */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <FileText className="size-4 text-muted-foreground" />
+                Historial de Actualizaciones
+                {updates.length > 0 && (
+                  <Badge variant="secondary" className="text-xs ml-1">{updates.length}</Badge>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Creation entry */}
+              <div className="flex gap-3">
+                <Avatar size="sm" className="shrink-0 mt-0.5">
+                  <AvatarFallback className="text-xs">{getInitials(report.created_by_name || report.created_by_email)}</AvatarFallback>
+                </Avatar>
+                <div className="flex-1 min-w-0">
+                  <div className="flex flex-wrap items-center gap-2 mb-1">
+                    <span className="text-sm font-medium">{report.created_by_name || report.created_by_email}</span>
+                    <span className="text-xs text-muted-foreground">creó este informe</span>
+                    <Badge className={`text-xs border ${STATUS_BADGE[report.status] ?? ''}`}>
+                      {report.status}
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    <Calendar className="size-3 inline mr-1" />
+                    <TimeAgo date={report.created_at} />
+                  </p>
+                </div>
+              </div>
+
+              {updates.map((u) => (
+                <React.Fragment key={u.id}>
+                  <Separator />
+                  <div className="flex gap-3">
+                    <Avatar size="sm" className="shrink-0 mt-0.5">
+                      <AvatarFallback className="text-xs">{getInitials(u.added_by_name || u.added_by_email)}</AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2 mb-1">
+                        <span className="text-sm font-medium">{u.added_by_name || u.added_by_email}</span>
+                        <span className="text-xs text-muted-foreground">actualizó</span>
+                        <Badge className={`text-xs border ${STATUS_BADGE[u.status] ?? ''}`}>
+                          {u.status}
+                        </Badge>
+                      </div>
+                      {u.comment && (
+                        <p className="text-sm text-foreground bg-muted/50 rounded-md px-3 py-2 mb-1 leading-relaxed">
+                          {u.comment}
+                        </p>
+                      )}
+                      <p className="text-xs text-muted-foreground">
+                        <Calendar className="size-3 inline mr-1" />
+                        <TimeAgo date={u.created_at} />
+                      </p>
+                    </div>
+                  </div>
+                </React.Fragment>
+              ))}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Right: add update */}
+        <div className="lg:col-span-1 space-y-4">
+          {/* Meta */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">Detalles</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              <div>
+                <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium mb-1">Período</p>
+                <p className="font-medium">{report.month} {report.year}</p>
+              </div>
+              <Separator />
+              <div>
+                <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium mb-1">Creado por</p>
+                <div className="flex items-center gap-2">
+                  <Avatar size="sm">
+                    <AvatarFallback className="text-xs">{getInitials(report.created_by_name || report.created_by_email)}</AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate">{report.created_by_name || '—'}</p>
+                    <p className="text-xs text-muted-foreground truncate">{report.created_by_email}</p>
+                  </div>
+                </div>
+              </div>
+              <Separator />
+              <div>
+                <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium mb-1">Fecha</p>
+                <p className="text-sm"><TimeAgo date={report.created_at} /></p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Add update form */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">Agregar Actualización</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleAddUpdate} className="space-y-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Estado</Label>
+                  <Select value={newStatus} onValueChange={setNewStatus}>
+                    <SelectTrigger className="h-8 text-sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {REPORT_STATUSES.filter(s => s !== 'Cotizacion').map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Comentario <span className="text-destructive">*</span></Label>
+                  <Textarea
+                    value={newComment}
+                    onChange={e => setNewComment(e.target.value)}
+                    placeholder="Describe la actualización del caso..."
+                    className="min-h-[100px] resize-y text-sm"
+                  />
+                </div>
+                {submitError && (
+                  <p className="text-xs text-destructive">{submitError}</p>
+                )}
+                <Button
+                  type="submit"
+                  disabled={submitting}
+                  size="sm"
+                  className="w-full gap-2 bg-destructive hover:bg-destructive/90 text-white"
+                >
+                  {submitting ? <Spinner className="size-3" /> : <Send className="size-3" />}
+                  {submitting ? 'Enviando...' : 'Agregar Actualización'}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      {/* Modal para ampliar imagen */}
+      <Dialog open={showImageModal} onOpenChange={setShowImageModal}>
+        <DialogContent className="max-w-4xl w-full bg-background border-border/50">
+          <div className="relative flex items-center justify-center">
+            {report.evidence_url && (
+              <img
+                src={report.evidence_url}
+                alt="Evidencia ampliada"
+                className="w-full max-h-[80vh] object-contain rounded-lg"
+              />
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  )
+}
+
+function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div>
+      <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium mb-0.5">{label}</p>
+      <div className="text-sm font-medium text-foreground">{value || '—'}</div>
+    </div>
+  )
+}
