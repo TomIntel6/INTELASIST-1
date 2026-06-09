@@ -1,16 +1,14 @@
-import http from 'http'
+import https from 'https'
 
 console.log('🔍 Probando conectividad con el backend...\n')
 
 const testConfigs = [
-  { host: 'localhost', port: 3000, name: 'localhost:3000' },
-  { host: '127.0.0.1', port: 3000, name: '127.0.0.1:3000' },
-  { host: '10.10.1.50', port: 3000, name: '10.10.1.50:3000' },
+  { host: 'intelasist.onrender.com', port: 443, name: 'https://intelasist.onrender.com' },
 ]
 
 async function testConnection(host, port, name) {
   return new Promise((resolve) => {
-    const req = http.request(
+    const req = https.request(
       { hostname: host, port, path: '/auth/login', method: 'POST', timeout: 3000 },
       (res) => {
         req.destroy()
@@ -40,7 +38,7 @@ async function runTests() {
     console.log(`${result.name}: ${result.status}`)
   }
 
-  console.log('\n✓ Si ves "CONECTADO" en 10.10.1.50:3000, el backend está accesible.')
+  console.log('\n✓ Si ves "CONECTADO" en https://intelasist.onrender.com, el backend está accesible.')
   console.log('✗ Si no, el firewall podría estar bloqueando la conexión.')
 }
 

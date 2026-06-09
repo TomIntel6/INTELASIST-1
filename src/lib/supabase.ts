@@ -88,11 +88,7 @@ export interface ReportUpdate {
 
 export const getDefaultApiBase = () => {
   if (import.meta.env.VITE_API_BASE_URL) return import.meta.env.VITE_API_BASE_URL
-  if (typeof window === 'undefined') return 'http://localhost:3000'
-  const hostname = window.location.hostname
-  const protocol = window.location.protocol
-  // Siempre usar el mismo hostname que la página, pero con puerto 3000
-  return `${protocol}//${hostname}:3000`
+  return 'https://intelasist.onrender.com'
 }
 const API_BASE_URL = getDefaultApiBase()
 const REPORTS_CACHE_KEY = 'intelasist-shared-reports-cache-v1'

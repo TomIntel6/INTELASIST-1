@@ -10,13 +10,7 @@ import { ArrowLeft, ShieldAlert, Users } from 'lucide-react'
 
 const getDefaultApiBase = () => {
   if (import.meta.env.VITE_API_BASE_URL) return import.meta.env.VITE_API_BASE_URL
-  if (typeof window === 'undefined') return 'http://localhost:3000'
-  const hostname = window.location.hostname
-  const protocol = window.location.protocol
-  if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1') {
-    return `${protocol}//${hostname}:3000`
-  }
-  return `${protocol}//localhost:3000`
+  return 'https://intelasist.onrender.com'
 }
 const API_BASE_URL = getDefaultApiBase()
 

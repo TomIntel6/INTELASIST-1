@@ -19,29 +19,29 @@ export default defineConfig({
     ],
     proxy: {
       "/auth": {
-        target: "http://localhost:3000",
+        target: "https://intelasist.onrender.com",
         changeOrigin: true,
-        secure: false,
+        secure: true,
       },
       "/usuarios": {
-        target: "http://localhost:3000",
+        target: "https://intelasist.onrender.com",
         changeOrigin: true,
-        secure: false,
+        secure: true,
       },
       "/reportes": {
-        target: "http://localhost:3000",
+        target: "https://intelasist.onrender.com",
         changeOrigin: true,
-        secure: false,
+        secure: true,
       },
       "/upload": {
-        target: "http://localhost:3000",
+        target: "https://intelasist.onrender.com",
         changeOrigin: true,
-        secure: false,
+        secure: true,
       },
       "/uploads": {
-        target: "http://localhost:3000",
+        target: "https://intelasist.onrender.com",
         changeOrigin: true,
-        secure: false,
+        secure: true,
       },
     }
   },

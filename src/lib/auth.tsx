@@ -43,16 +43,7 @@ export const USERS_SYNC_STORAGE_KEY = 'intelasist-users-sync'
 const PRESENCE_TTL_MS = 1000 * 60
 const getDefaultApiBase = () => {
   if (import.meta.env.VITE_API_BASE_URL) return import.meta.env.VITE_API_BASE_URL
-  if (typeof window === 'undefined') return 'http://localhost:3000'
-  const hostname = window.location.hostname
-  const protocol = window.location.protocol
-  
-  if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1') {
-    return `${protocol}//${hostname}:3000`
-  }
-  
-  // For custom hosts like intelasist.local, use the same host with port 3000
-  return `${protocol}//${hostname}:3000`
+  return 'https://intelasist.onrender.com'
 }
 const API_BASE_URL = getDefaultApiBase()
 
@@ -1005,7 +996,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     // Try updating the profile using the configured API base URL.
-    // If that fails due to network issues, retry against localhost as a fallback and include diagnostics in the error message.
     // Prefer updating by numeric id: fetch users and find matching record
     try {
       const registros = await requestJson<Record<string, unknown>[]>(`${API_BASE_URL}/usuarios`)
