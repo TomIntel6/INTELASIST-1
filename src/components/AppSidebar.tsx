@@ -58,6 +58,7 @@ export function AppSidebar() {
 
   // Estados para alertas de intentos fallidos
   const [failedAttempts, setFailedAttempts] = React.useState<Array<{
+    id: string | number
     email: string
     name: string
     attemptCount: number
@@ -184,7 +185,7 @@ export function AppSidebar() {
     loadFailedAttempts()
 
     // Escuchar señal local para recargar inmediatamente cuando se registre un intento
-    const onFailedAttempt = (ev: Event) => {
+    const onFailedAttempt = (_ev: Event) => {
       console.log('🔔 Señal custom failedAttemptRegistered recibida, recargando ahora...')
       // Recargar inmediatamente sin esperar
       loadFailedAttempts()
@@ -231,19 +232,18 @@ export function AppSidebar() {
       reportsCreated: 0,
     }))
 
-    const currentUserEmail = user?.email?.trim().toLowerCase() || ''
     const currentUser = user ? {
-      email: currentUserEmail,
+      email: String(user.email).trim().toLowerCase(),
       fullName: (user.user_metadata?.full_name as string) || user.email,
       role: getUserRole(user),
       roles: getUserRoles(user),
       reportsCreated: 0,
     } : null
 
-    const mergedByEmail = new Map<string, typeof currentUser>()
+    const mergedByEmail = new Map<string, NonNullable<typeof currentUser>>()
 
-    if (currentUserEmail && currentUser) {
-      mergedByEmail.set(currentUserEmail, currentUser)
+    if (currentUser?.email) {
+      mergedByEmail.set(currentUser.email, currentUser)
     }
 
     for (const item of list) {
@@ -278,26 +278,23 @@ export function AppSidebar() {
 
   const handleDeleteAttempt = async (id: number) => {
     try {
-      console.log(`🗑️ Intentando borrar intento con ID: ${id} (type: ${typeof id})`)
+      console.log(`🗑️ Intentando borrar intento con ID: ${id}`)
+
       const API_BASE_URL = getDefaultApiBase()
-      const resp = await fetch(`${API_BASE_URL}/failed-report-attempts/${id}`, { method: 'DELETE', credentials: 'include' })
-      
+      const resp = await fetch(
+        `${API_BASE_URL}/failed-report-attempts/${id}`,
+        { method: 'DELETE', credentials: 'include' }
+      )
+
       if (resp.ok) {
-        const beforeCount = failedAttempts.length
-        const filtered = failedAttempts.filter(a => {
-          const aIdNum = Number(a.id)
-          const idNum = Number(id)
-          return aIdNum !== idNum
-        })
-        const afterCount = filtered.length
-        
-        setFailedAttempts(filtered)
-        console.log(`✅ Intento ${id} borrado. Antes: ${beforeCount}, Después: ${afterCount}`)
+        setFailedAttempts(prev =>
+          prev.filter(a => Number(a.id) !== Number(id))
+        )
       } else {
-        console.error('✗ Error borrando intento:', resp.status, resp.statusText)
+        console.error('Error borrando intento:', resp.status)
       }
     } catch (err) {
-      console.error('✗ Error borrando intento:', err)
+      console.error('Error borrando intento:', err)
     }
   }
 
@@ -575,7 +572,7 @@ export function AppSidebar() {
                   No hay alertas pendientes
                 </p>
               ) : (
-                failedAttempts.map((attempt: any, idx: number) => (
+                failedAttempts.map((attempt: any) => (
                   <div key={`${attempt.id}-${attempt.email}`} className="border border-amber-200 rounded-lg bg-amber-50/50 p-3 space-y-2 flex flex-col">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0 flex-1">
