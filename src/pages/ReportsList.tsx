@@ -28,7 +28,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog'
-import { MONTHS, SERVICE_TYPES, type Report, loadReportsForMonth, deleteReport, getCachedReportsForMonth } from '@/lib/supabase'
+import { MONTHS, type Report, loadReportsForMonth, deleteReport, getCachedReportsForMonth } from '@/lib/supabase'
 import { useAuth, canDeleteReports } from '@/lib/auth'
 import { FilePlus, Download, Search, Eye, Trash2, Shield, AlertCircle, Clock, CheckCircle2, Zap, XCircle, FileText } from 'lucide-react'
 import * as XLSX from 'xlsx'
@@ -42,89 +42,6 @@ const STATUS_BADGE: Record<string, string> = {
   'Cotizacion': 'bg-blue-500/15 text-blue-700 border-blue-200',
 }
 
-function normalizeHeader(value: string) {
-  return value
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '')
-}
-
-function normalizeString(value: unknown) {
-  if (typeof value === 'string') {
-    return value.trim()
-  }
-
-  if (value === null || value === undefined) {
-    return ''
-  }
-
-  return String(value).trim()
-}
-
-function toNullableInt(value: unknown) {
-  if (value === null || value === undefined) {
-    return null
-  }
-
-  const trimmed = normalizeString(value)
-  if (!trimmed) {
-    return null
-  }
-
-  const numeric = Number(trimmed)
-  return Number.isFinite(numeric) ? numeric : null
-}
-
-function resolveMonth(value: unknown, fallback: string) {
-  const normalized = normalizeString(value)
-  if (!normalized) {
-    return fallback
-  }
-
-  const match = MONTHS.find(month => normalizeHeader(month) === normalizeHeader(normalized))
-  return match ?? fallback
-}
-
-function resolveStatus(value: unknown, fallback = 'Seguimiento de caso') {
-  const normalized = normalizeString(value)
-  if (!normalized) {
-    return fallback
-  }
-
-  if (
-    normalized === 'Caso Finalizado' ||
-    normalized === 'Seguimiento de caso' ||
-    normalized === 'Falta de Informacion' ||
-    normalized === 'Informativo' ||
-    normalized === 'Validacion' ||
-    normalized === 'Cotizacion'
-  ) {
-    return normalized
-  }
-
-  return fallback
-}
-
-function getLookupValue(lookup: Record<string, unknown>, keys: string[]) {
-  for (const key of keys) {
-    const value = lookup[key]
-    if (value !== undefined && value !== null && normalizeString(value) !== '') {
-      return normalizeString(value)
-    }
-  }
-
-  return ''
-}
-
-function resolveServiceType(value: unknown) {
-  const normalized = normalizeString(value)
-  if (!normalized) {
-    return ''
-  }
-
-  return SERVICE_TYPES.find(service => normalizeHeader(service) === normalizeHeader(normalized)) ?? ''
-}
 
 export default function ReportsList() {
   const navigate = useNavigate()
