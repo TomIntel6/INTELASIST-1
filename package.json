@@ -4,7 +4,8 @@
   "version": "0.0.1",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "nodemon server.js",
+    "start": "node server.js",
     "build": "tsc -b && vite build",
     "typecheck": "tsc --noEmit",
     "preview": "vite preview"
@@ -51,6 +52,7 @@
     "@vitejs/plugin-react": "^5.2.0",
     "sharp": "^0.34.5",
     "typescript": "~5.9.3",
-    "vite": "^7.3.1"
+    "vite": "^7.3.1",
+    "nodemon": "^3.0.1"
   }
 }
