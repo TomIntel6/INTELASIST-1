@@ -69,13 +69,21 @@ function getSupabaseAdminClient() {
   return supabase
 }
 
-// Configurar CORS para permitir credenciales desde cualquier origen
-app.use(cors({
-  origin: true, // Permite cualquier origen
-  credentials: true, // Permite cookies y credenciales
-}))
+const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || 'https://intelasist-ai.vercel.app'
+const corsOptions = {
+  origin: FRONTEND_ORIGIN,
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  optionsSuccessStatus: 204,
+}
+
 app.use(express.json({ limit: '50mb' }))
 app.use(express.urlencoded({ extended: true, limit: '50mb' }))
+app.use(cors(corsOptions))
+app.options('*', cors())
+
+const authRoutes = express.Router()
 
 const uploadsDir = resolve(process.cwd(), 'uploads')
 mkdirSync(uploadsDir, { recursive: true })
@@ -559,7 +567,7 @@ app.get('/usuarios', async (req, res) => {
   }
 })
 
-app.post('/auth/login', async (req, res) => {
+authRoutes.post('/login', async (req, res) => {
   try {
     const email = typeof req.body?.email === 'string' ? req.body.email.trim() : ''
     const password = typeof req.body?.password === 'string' ? req.body.password : ''
@@ -613,6 +621,8 @@ app.post('/auth/login', async (req, res) => {
     res.status(500).json({ error: 'Error al iniciar sesión.' })
   }
 })
+
+app.use('/auth', authRoutes)
 
 app.post('/usuarios', async (req, res) => {
   try {
@@ -1489,8 +1499,9 @@ async function start() {
   // Inicia la tarea de limpieza de presencia expirada
   startCleanupTask()
 
-  app.listen(3000, '0.0.0.0', () => {
-    console.log('Servidor corriendo en puerto 3000')
+  const PORT = process.env.PORT || 3000
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Servidor corriendo en puerto ${PORT}`)
   })
 }
 
