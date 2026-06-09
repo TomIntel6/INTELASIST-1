@@ -1,12 +1,17 @@
-import pool from './db.js'
+import express from "express"
 
-async function testConnection() {
-  try {
-    const result = await pool.query('SELECT NOW()')
-    console.log(result.rows)
-  } catch (err) {
-    console.error(err)
-  }
-}
+const app = express()
 
-testConnection()
+const PORT = process.env.PORT || 3000
+
+app.use(express.json())
+
+// TEST ROUTE
+app.get("/", (req, res) => {
+  res.send("API running OK")
+})
+
+// IMPORTANTE: mantener servidor vivo
+app.listen(PORT, () => {
+  console.log("Server running on port", PORT)
+})
