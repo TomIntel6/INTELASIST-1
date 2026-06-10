@@ -282,11 +282,9 @@ export default function AgentControl() {
       updateStoredUserRoles(agent.email, normalizedRoles)
       setMessage('Roles actualizados correctamente.')
     } catch (error) {
-      setAgents(prev => prev.map(current => current.email === agent.email
-        ? { ...current, roles: normalizedRoles }
-        : current))
-      updateStoredUserRoles(agent.email, normalizedRoles)
-      setMessage(error instanceof Error ? `Cambio aplicado solo localmente: ${error.message}` : 'Cambio aplicado solo localmente.')
+      setMessage(error instanceof Error
+        ? `No se pudo guardar el rol en el servidor: ${error.message}`
+        : 'No se pudo guardar el rol en el servidor.')
     } finally {
       setUpdatingAgent(null)
     }
