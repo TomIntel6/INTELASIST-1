@@ -154,19 +154,22 @@ export default function ReportsList() {
     'BENEFICIO EN 24H',
     'POLIZA CANCELADA',
     'NO CUBIERTO POR LA POLIZA',
+    'OTROS',
   ]
+
+  const MOTIVO_KEYWORDS = MOTIVO_ORDER.filter(motivo => motivo !== 'OTROS')
 
   const getReportMotivo = (report: Report) => {
     const text = `${report.observation_comment} ${report.service_type}`.toUpperCase()
-    const found = MOTIVO_ORDER.find(motivo => text.includes(motivo))
-    return found ?? ''
+    const found = MOTIVO_KEYWORDS.find(motivo => text.includes(motivo))
+    return found ?? 'OTROS'
   }
 
   const sortReportsByMotivo = (a: Report, b: Report) => {
     const motivoA = getReportMotivo(a)
     const motivoB = getReportMotivo(b)
-    const indexA = motivoA ? MOTIVO_ORDER.indexOf(motivoA) : MOTIVO_ORDER.length
-    const indexB = motivoB ? MOTIVO_ORDER.indexOf(motivoB) : MOTIVO_ORDER.length
+    const indexA = MOTIVO_ORDER.indexOf(motivoA)
+    const indexB = MOTIVO_ORDER.indexOf(motivoB)
 
     if (indexA !== indexB) {
       return indexA - indexB
@@ -226,6 +229,13 @@ export default function ReportsList() {
     ).length
   }
 
+  const countOtherReports = () => {
+    return reports.filter(r => {
+      const text = `${r.observation_comment} ${r.service_type}`.toUpperCase()
+      return MOTIVO_KEYWORDS.every(keyword => !text.includes(keyword))
+    }).length
+  }
+
   const categories = [
     { label: 'SOAT', count: countByKeyword('SOAT'), color: 'bg-blue-500/10 text-blue-700 border-blue-200', icon: Shield, iconColor: 'text-blue-600' },
     { label: 'SALDO MOROSO', count: countByKeyword('SALDO MOROSO'), color: 'bg-red-500/10 text-red-700 border-red-200', icon: AlertCircle, iconColor: 'text-red-600' },
@@ -234,6 +244,7 @@ export default function ReportsList() {
     { label: 'BENEFICIO EN 24H', count: countByKeyword('BENEFICIO EN 24H'), color: 'bg-purple-500/10 text-purple-700 border-purple-200', icon: Zap, iconColor: 'text-purple-600' },
     { label: 'POLIZA CANCELADA', count: countByKeyword('POLIZA CANCELADA'), color: 'bg-gray-500/10 text-gray-700 border-gray-200', icon: XCircle, iconColor: 'text-gray-600' },
     { label: 'NO CUBIERTO POR LA POLIZA', count: countByKeyword('NO CUBIERTO POR LA POLIZA'), color: 'bg-slate-500/10 text-slate-700 border-slate-200', icon: XCircle, iconColor: 'text-slate-600' },
+    { label: 'OTROS', count: countOtherReports(), color: 'bg-neutral-500/10 text-neutral-700 border-neutral-200', icon: FileText, iconColor: 'text-neutral-600' },
   ]
 
   const handleDeleteReport = async (reportId: string) => {

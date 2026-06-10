@@ -29,15 +29,8 @@ export default function NewReport() {
   const currentYear = periodDate.getFullYear()
 
   const COVERAGE_OPTIONS = ['No', 'KC', 'K1', 'K8', 'VA', 'FAB', 'FAP', 'FAV', 'FP', 'FAM', 'FAE', 'CB', 'CP', 'CV'] as const
-  const MOTIVO_OPTIONS = [
-    'SOAT',
-    'SALDO MOROSO',
-    'RENOVACION NO PAGADA',
-    'SERVICIO UTILIZADO',
-    'BENEFICIO EN 24H',
-    'POLIZA CANCELADA',
-    'NO CUBIERTO POR LA POLIZA',
-  ] as const
+  const INFORMATIVE_MOTIVOS = ['SERVICIO UTILIZADO', 'NO CUBIERTO POR LA POLIZA', 'OTROS'] as const
+  const VALIDATION_MOTIVOS = ['SOAT', 'SALDO MOROSO', 'RENOVACION NO PAGADA', 'BENEFICIO EN 24H', 'POLIZA CANCELADA'] as const
 
 const [form, setForm] = React.useState({
     month: MONTHS[currentMonthIdx],
@@ -243,6 +236,16 @@ const [form, setForm] = React.useState({
     setForm(prev => ({ ...prev, [field]: value }))
 
   React.useEffect(() => {
+    if (form.status === 'Informativo' && form.motivo && !INFORMATIVE_MOTIVOS.includes(form.motivo as any)) {
+      set('motivo', '')
+      return
+    }
+
+    if (form.status === 'Validacion' && form.motivo && !VALIDATION_MOTIVOS.includes(form.motivo as any)) {
+      set('motivo', '')
+      return
+    }
+
     if (form.status !== 'Validacion' && form.status !== 'Informativo' && form.motivo) {
       set('motivo', '')
     }
@@ -643,7 +646,7 @@ const [form, setForm] = React.useState({
                     <SelectValue placeholder="Seleccionar motivo" />
                   </SelectTrigger>
                   <SelectContent>
-                    {MOTIVO_OPTIONS.map(option => (
+                    {(form.status === 'Informativo' ? INFORMATIVE_MOTIVOS : VALIDATION_MOTIVOS).map(option => (
                       <SelectItem key={option} value={option}>{option}</SelectItem>
                     ))}
                   </SelectContent>
