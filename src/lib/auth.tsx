@@ -560,7 +560,7 @@ export function getRoleColorClasses(role: UserRole, email?: string) {
 }
 
 export function canDeleteReports(user: LocalUser | null): boolean {
-  return hasAnyRole(user, ['Admin', 'Support'])
+  return hasAnyRole(user, ['Admin', 'Support', 'Gerente'])
 }
 
 export function canViewPasswords(user: LocalUser | null): boolean {
