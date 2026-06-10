@@ -5,6 +5,7 @@ export type ServiceType =
   | 'Cerrajeria Vial'
   | 'Paso de Corriente'
   | 'Cambio de Neumatico'
+  | 'Abasto de Combustible'
 
 export type ReportStatus =
   | 'Seguimiento de caso'
@@ -21,6 +22,7 @@ export const SERVICE_TYPES: ServiceType[] = [
   'Cerrajeria Vial',
   'Paso de Corriente',
   'Cambio de Neumatico',
+  'Abasto de Combustible',
 ]
 
 export const REPORT_STATUSES: ReportStatus[] = [
