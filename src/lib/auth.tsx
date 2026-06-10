@@ -278,7 +278,17 @@ async function removePresenceFromServer(userId: string) {
   }
 
   if (typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function') {
-    navigator.sendBeacon(`${API_BASE_URL}/online-users/offline`, JSON.stringify({ userId }))
+    try {
+      const payloadBlob = new Blob([JSON.stringify({ userId })], {
+        type: 'application/json',
+      })
+      const beaconSent = navigator.sendBeacon(`${API_BASE_URL}/online-users/offline`, payloadBlob)
+      if (!beaconSent) {
+        console.warn('sendBeacon falló al intentar eliminar presencia remota para userId:', userId)
+      }
+    } catch (err) {
+      console.warn('Error en sendBeacon al eliminar presencia remota:', err)
+    }
   }
 }
 
@@ -765,7 +775,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       // Intenta notificar al servidor que el usuario se fue (con sendBeacon como fallback)
-      const offlinePayload = JSON.stringify({ userId: user.id })
+      const offlinePayload = new Blob([JSON.stringify({ userId: user.id })], {
+        type: 'application/json',
+      })
       
       try {
         // Intento 1: Fetch con timeout corto (mejor para conexiones normales)
@@ -779,12 +791,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // Silenciosamente falla si no se puede
         }).finally(() => clearTimeout(timeoutId))
       } catch (err) {
-        // Ignorar errores
+        console.warn('Error intentando notificar offline con fetch:', err)
       }
 
       // Fallback: sendBeacon (funciona incluso en cierre de pestaña)
       if (typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function') {
-        navigator.sendBeacon(`${API_BASE_URL}/online-users/offline`, offlinePayload)
+        try {
+          const beaconSent = navigator.sendBeacon(`${API_BASE_URL}/online-users/offline`, offlinePayload)
+          if (!beaconSent) {
+            console.warn('sendBeacon falló al intentar notificar offline para el usuario:', user.id)
+          }
+        } catch (err) {
+          console.warn('Error al enviar sendBeacon para offline:', err)
+        }
       }
     }
 

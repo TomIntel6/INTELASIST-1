@@ -1447,7 +1447,17 @@ app.post('/online-users', async (req, res) => {
 
 app.post('/online-users/offline', async (req, res) => {
   try {
-    const userId = typeof req.body?.userId === 'string' ? req.body.userId.trim() : ''
+    let body = req.body
+
+    if (typeof body === 'string') {
+      try {
+        body = JSON.parse(body)
+      } catch (parseError) {
+        console.warn('Payload de offline no es JSON válido:', body)
+      }
+    }
+
+    const userId = typeof body?.userId === 'string' ? body.userId.trim() : ''
 
     if (!userId) {
       res.status(400).json({ error: 'Falta el identificador del usuario.' })
