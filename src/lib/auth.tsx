@@ -431,7 +431,12 @@ export function updateStoredUserRoles(email: string, roles: UserRole[]) {
   const users = getOnlineUsers()
   const updatedUsers = users.map(existing =>
     existing.email.toLowerCase() === email.toLowerCase()
-      ? { ...existing, role: nextPrimaryRole, roles: normalizedRoles, lastSeen: Date.now() }
+      ? {
+          ...existing,
+          role: nextPrimaryRole,
+          roles: normalizedRoles,
+          lastSeen: existing.lastSeen ?? Date.now(),
+        }
       : existing
   )
 
