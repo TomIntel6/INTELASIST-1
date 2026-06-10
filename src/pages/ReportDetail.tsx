@@ -44,6 +44,25 @@ function formatDateTimeWithMeridiem(dateString: string) {
   return `${datePart} ${timePart}`
 }
 
+function parseObservationComment(comment: string) {
+  const trimmed = comment.trim()
+  const prefix = 'Motivo:'
+  if (trimmed.startsWith(prefix)) {
+    const [firstLine, ...rest] = trimmed.split(/\r?\n/)
+    const reason = firstLine.slice(prefix.length).trim()
+    const text = rest.join('\n').trim()
+    return {
+      reason: reason || null,
+      text,
+    }
+  }
+
+  return {
+    reason: null,
+    text: trimmed,
+  }
+}
+
 function TimeAgo({ date }: { date: string }) {
   const d = new Date(date)
   const title = d.toLocaleString('es', {
@@ -238,7 +257,7 @@ export default function ReportDetail() {
           </Card>
 
           {/* Observación inicial */}
-          {report.observation_comment && (
+          {(report.observation_comment || report.observation_comment === '') && (
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm flex items-center gap-2">
@@ -246,8 +265,27 @@ export default function ReportDetail() {
                   Observación Inicial
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <p className="text-sm text-foreground leading-relaxed">{report.observation_comment}</p>
+              <CardContent className="space-y-3">
+                {(() => {
+                  const observation = parseObservationComment(report.observation_comment || '')
+                  return (
+                    <>
+                      {observation.reason ? (
+                        <div className="inline-flex flex-wrap items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
+                          <span>Motivo:</span>
+                          <span className="rounded-full bg-primary/20 px-2 py-1 font-semibold text-primary">{observation.reason}</span>
+                        </div>
+                      ) : null}
+                      {observation.text ? (
+                        <p className="whitespace-pre-line text-sm text-foreground leading-relaxed">
+                          {observation.text}
+                        </p>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">No hay observación adicional.</p>
+                      )}
+                    </>
+                  )
+                })()}
               </CardContent>
             </Card>
           )}
@@ -392,7 +430,9 @@ export default function ReportDetail() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {REPORT_STATUSES.filter(s => s !== 'Cotizacion').map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                      {REPORT_STATUSES.filter(s => s !== 'Cotizacion' && s !== 'Falta de Informacion').map(s => (
+                        <SelectItem key={s} value={s}>{s}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
