@@ -792,25 +792,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       notifyOffline()
     }
 
-    const handleVisibilityChange = () => {
-      // Si la pestaña se oculta o se vuelve invisible, notificar offline
-      if (document.hidden) {
-        notifyOffline()
-      }
-    }
-
     const handlePageHide = () => {
       notifyOffline()
     }
 
-    // `unload` está deprecado en navegadores modernos; usamos `beforeunload`, `pagehide` y `visibilitychange`
+    // `unload` está deprecado en navegadores modernos; usamos `beforeunload` y `pagehide`
     window.addEventListener('beforeunload', handleBeforeUnload)
-    window.addEventListener('visibilitychange', handleVisibilityChange)
     window.addEventListener('pagehide', handlePageHide)
 
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload)
-      window.removeEventListener('visibilitychange', handleVisibilityChange)
       window.removeEventListener('pagehide', handlePageHide)
     }
   }, [user?.id])
