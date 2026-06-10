@@ -266,14 +266,20 @@ export default function Dashboard() {
                   { label: 'Beneficio en 24h', keyword: 'BENEFICIO EN 24H', color: 'text-purple-600' },
                   { label: 'Póliza cancelada', keyword: 'POLIZA CANCELADA', color: 'text-slate-600' },
                   { label: 'No cubierto por la póliza', keyword: 'NO CUBIERTO POR LA POLIZA', color: 'text-slate-600' },
+                  { label: 'Otros', keyword: null, color: 'text-neutral-600' },
                 ].map(({ label, keyword, color }) => {
-                  const count = todayReports.filter(r =>
-                    r.observation_comment.toLowerCase().includes(keyword.toLowerCase()) ||
-                    r.service_type.toLowerCase().includes(keyword.toLowerCase())
-                  ).length
+                  const count = keyword
+                    ? todayReports.filter(r =>
+                        r.observation_comment.toLowerCase().includes(keyword.toLowerCase()) ||
+                        r.service_type.toLowerCase().includes(keyword.toLowerCase())
+                      ).length
+                    : todayReports.filter(r => {
+                        const bucketText = `${r.observation_comment} ${r.service_type}`.toUpperCase()
+                        return !['SOAT','SALDO MOROSO','RENOVACION NO PAGADA','SERVICIO UTILIZADO','BENEFICIO EN 24H','POLIZA CANCELADA','NO CUBIERTO POR LA POLIZA'].some(keyword => bucketText.includes(keyword))
+                      }).length
 
                   return (
-                    <div key={keyword} className="rounded-lg border border-border/70 p-4">
+                    <div key={label} className="rounded-lg border border-border/70 p-4">
                       <p className="text-xs uppercase tracking-wide text-muted-foreground">{label}</p>
                       <p className={`mt-2 text-3xl font-bold ${color}`}>{count}</p>
                     </div>
