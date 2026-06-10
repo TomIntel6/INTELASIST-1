@@ -64,17 +64,35 @@ export default function ReportsList() {
   const [exportMode, setExportMode] = React.useState<'full' | 'range' | null>(null)
   const [dayFrom, setDayFrom] = React.useState('1')
   const [dayTo, setDayTo] = React.useState('31')
+  const isMountedRef = React.useRef(true)
+
+  React.useEffect(() => {
+    return () => {
+      isMountedRef.current = false
+    }
+  }, [])
 
   const loadReports = React.useCallback(async (month: string, year: number, showSpinner = true) => {
+    if (!isMountedRef.current) {
+      return []
+    }
     if (showSpinner) {
       setLoading(true)
     }
 
     try {
       const nextReports = await loadReportsForMonth(month, year)
-      setReports(nextReports)
+      if (isMountedRef.current) {
+        setReports(nextReports)
+      }
+      return nextReports
+    } catch (error) {
+      console.error('Error cargando informes:', error)
+      return []
     } finally {
-      setLoading(false)
+      if (isMountedRef.current) {
+        setLoading(false)
+      }
     }
   }, [])
 
@@ -220,7 +238,13 @@ export default function ReportsList() {
 
   const handleDeleteReport = async (reportId: string) => {
     if (!canDeleteReports(user)) {
-      setDeleteError('No tienes permisos para eliminar informes.')
+      if (isMountedRef.current) {
+        setDeleteError('No tienes permisos para eliminar informes.')
+      }
+      return
+    }
+
+    if (!isMountedRef.current) {
       return
     }
 
@@ -229,11 +253,15 @@ export default function ReportsList() {
 
     try {
       await deleteReport(reportId)
-      setDeletingReportId(null)
+      if (isMountedRef.current) {
+        setDeletingReportId(null)
+      }
       await loadReports(selectedMonth, selectedYear)
     } catch (error) {
-      setDeletingReportId(null)
-      setDeleteError(error instanceof Error ? error.message : 'No se pudo eliminar el informe.')
+      if (isMountedRef.current) {
+        setDeletingReportId(null)
+        setDeleteError(error instanceof Error ? error.message : 'No se pudo eliminar el informe.')
+      }
     }
   }
 

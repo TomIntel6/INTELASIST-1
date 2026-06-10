@@ -58,10 +58,17 @@ const [form, setForm] = React.useState({
 
   const latestFormRef = React.useRef(form)
   const failedAttemptRegisteredRef = React.useRef(false)
+  const isMountedRef = React.useRef(true)
 
   React.useEffect(() => {
     latestFormRef.current = form
   }, [form])
+
+  React.useEffect(() => {
+    return () => {
+      isMountedRef.current = false
+    }
+  }, [])
 
   const [evidenceFile, setEvidenceFile] = React.useState<File | null>(null)
   const [evidencePreview, setEvidencePreview] = React.useState<string | null>(null)
@@ -306,6 +313,10 @@ const [form, setForm] = React.useState({
       return
     }
     
+    if (!isMountedRef.current) {
+      return
+    }
+
     setSaving(true)
     setError(null)
 
@@ -320,14 +331,20 @@ const [form, setForm] = React.useState({
     if (evidenceFile) {
       try {
         const uploaded = await uploadEvidenceFile(evidenceFile)
+        if (!isMountedRef.current) {
+          return
+        }
+
         evidencePayload = {
           evidence_url: uploaded.url,
           evidence_filename: uploaded.filename,
           evidence_path: uploaded.path,
         }
       } catch (uploadError) {
-        setSaving(false)
-        setError(uploadError instanceof Error ? uploadError.message : 'No se pudo subir la imagen.')
+        if (isMountedRef.current) {
+          setSaving(false)
+          setError(uploadError instanceof Error ? uploadError.message : 'No se pudo subir la imagen.')
+        }
         return
       }
     }
@@ -366,6 +383,10 @@ const [form, setForm] = React.useState({
     try {
       const createdReport = await createReport(payload)
       
+      if (!isMountedRef.current) {
+        return
+      }
+
       // Validar que el ID existe y es válido
       if (!createdReport?.id || typeof createdReport.id !== 'string' || createdReport.id.trim() === '') {
         throw new Error('El servidor no retornó un ID válido para el informe.')
@@ -374,8 +395,10 @@ const [form, setForm] = React.useState({
       setSaving(false)
       navigate(`/informes/${createdReport.id}`)
     } catch (err) {
-      setSaving(false)
-      setError(err instanceof Error ? err.message : 'No se pudo guardar el informe.')
+      if (isMountedRef.current) {
+        setSaving(false)
+        setError(err instanceof Error ? err.message : 'No se pudo guardar el informe.')
+      }
     }
   }
 
