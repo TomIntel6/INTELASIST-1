@@ -545,7 +545,7 @@ export function hasAnyRole(user: LocalUser | null, allowedRoles: UserRole[]): bo
   return userRoles.some(role => allowedRoles.includes(role))
 }
 
-export function getRoleColorClasses(role: UserRole, email?: string) {
+export function getRoleColorClasses(role: UserRole) {
   switch (role) {
     case 'Support':
       return 'support-animated border-purple-500/80 bg-purple-500/10 text-white dark:text-white font-bold'
