@@ -122,7 +122,7 @@ export default function Dashboard() {
               </p>
               <div className="mt-2 flex flex-wrap items-center gap-2">
                 {userRoles.map(role => (
-                  <Badge key={role} className={`text-xs ${getRoleColorClasses(role, user?.email)}`}>
+                  <Badge key={role} className={`text-xs ${getRoleColorClasses(role)}`}>
                     {role}
                   </Badge>
                 ))}

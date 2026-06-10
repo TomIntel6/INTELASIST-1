@@ -457,7 +457,7 @@ export function AppSidebar() {
                           <Badge
                             key={role}
                             title={`Rol: ${role}`}
-                            className={`text-[8px] px-1 py-0 h-5 flex items-center whitespace-nowrap ${getRoleColorClasses(role, user.email)}`}
+                            className={`text-[8px] px-1 py-0 h-5 flex items-center whitespace-nowrap ${getRoleColorClasses(role)}`}
                           >
                             {role}
                           </Badge>
@@ -494,7 +494,7 @@ export function AppSidebar() {
             <span className="px-2 text-xs text-sidebar-foreground/85 truncate">{user?.email}</span>
             <div className="flex flex-wrap gap-1 px-2 mt-1">
               {userRoles.map(role => (
-                <Badge key={role} className={`text-[10px] ${getRoleColorClasses(role, user?.email)} transition-all duration-150`}>
+                <Badge key={role} className={`text-[10px] ${getRoleColorClasses(role)} transition-all duration-150`}>
                   {role}
                 </Badge>
               ))}
