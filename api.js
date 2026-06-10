@@ -70,8 +70,21 @@ function getSupabaseAdminClient() {
 }
 
 const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || 'https://intelasist-ai.vercel.app'
+const allowedOrigins = [
+  FRONTEND_ORIGIN,
+  'https://intelasist-yps2-64ysydqqy-jose-rodriguez-s-projects1.vercel.app'
+]
+
 const corsOptions = {
-  origin: FRONTEND_ORIGIN,
+  origin(origin, callback) {
+    if (!origin) return callback(null, true)
+
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true)
+    }
+
+    return callback(new Error('Not allowed by CORS'))
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
@@ -81,7 +94,7 @@ const corsOptions = {
 app.use(express.json({ limit: '50mb' }))
 app.use(express.urlencoded({ extended: true, limit: '50mb' }))
 app.use(cors(corsOptions))
-app.options('*', cors())
+app.options('*', cors(corsOptions))
 
 const authRoutes = express.Router()
 
