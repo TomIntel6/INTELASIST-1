@@ -546,11 +546,6 @@ export function hasAnyRole(user: LocalUser | null, allowedRoles: UserRole[]): bo
 }
 
 export function getRoleColorClasses(role: UserRole, email?: string) {
-  // Special color and animation for ycordoba@intelasist.com
-  if (email?.toLowerCase() === 'ycordoba@intelasist.com' && role === 'Agente') {
-    return 'agente-animated-special border-pink-500/80 bg-pink-500/10 text-white dark:text-white font-bold'
-  }
-
   switch (role) {
     case 'Support':
       return 'support-animated border-purple-500/80 bg-purple-500/10 text-white dark:text-white font-bold'
