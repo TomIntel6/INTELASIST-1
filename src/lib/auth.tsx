@@ -765,82 +765,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return
     }
 
-    const notifyOffline = async () => {
-      // Limpia la sesión del localStorage al cerrar la pestaña
-      if (typeof window !== 'undefined') {
-        window.localStorage.removeItem(AUTH_STORAGE_KEY)
-        window.localStorage.removeItem(PRESENCE_STORAGE_KEY)
-        window.localStorage.removeItem(PRESENCE_SYNC_STORAGE_KEY)
-        window.localStorage.removeItem(ROLE_SYNC_STORAGE_KEY)
-      }
-
-      // Intenta notificar al servidor que el usuario se fue (con sendBeacon como fallback)
-      const offlinePayload = new Blob([JSON.stringify({ userId: user.id })], {
-        type: 'application/json',
-      })
-      
-      try {
-        // Intento 1: Fetch con timeout corto (mejor para conexiones normales)
-        const controller = new AbortController()
-        const timeoutId = setTimeout(() => controller.abort(), 2000)
-        
-        fetch(`${API_BASE_URL}/online-users/${encodeURIComponent(user.id)}`, {
-          method: 'DELETE',
-          signal: controller.signal,
-        }).catch(() => {
-          // Silenciosamente falla si no se puede
-        }).finally(() => clearTimeout(timeoutId))
-      } catch (err) {
-        console.warn('Error intentando notificar offline con fetch:', err)
-      }
-
-      // Fallback: sendBeacon (funciona incluso en cierre de pestaña)
-      if (typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function') {
-        try {
-          const beaconSent = navigator.sendBeacon(`${API_BASE_URL}/online-users/offline`, offlinePayload)
-          if (!beaconSent) {
-            console.warn('sendBeacon falló al intentar notificar offline para el usuario:', user.id)
-          }
-        } catch (err) {
-          console.warn('Error al enviar sendBeacon para offline:', err)
-        }
-      }
-    }
-
-    const handleBeforeUnload = () => {
-      notifyOffline()
-    }
-
-    const handlePageHide = () => {
-      notifyOffline()
-    }
-
-    // `unload` está deprecado en navegadores modernos; usamos `beforeunload` y `pagehide`
-    window.addEventListener('beforeunload', handleBeforeUnload)
-    window.addEventListener('pagehide', handlePageHide)
-
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload)
-      window.removeEventListener('pagehide', handlePageHide)
-    }
-  }, [user?.id])
-
-  React.useEffect(() => {
-    if (!user?.id) {
-      return
-    }
-
-    // Sincroniza la presencia cada 20 segundos para mantener al usuario como "Activo"
-    // Pero solo si la pestaña está visible
+    // Sincroniza la presencia cada 20 segundos para mantener al usuario como "Activo".
+    // Incluso si la pestaña está en segundo plano, seguimos renovando la presencia.
     const syncPresence = () => {
-      if (!document.hidden) {
-        upsertOnlineUser(user)
-      }
+      upsertOnlineUser(user)
     }
 
     const presenceInterval = window.setInterval(syncPresence, 20000)
 
-    // Sincroniza inmediatamente cuando la pestaña se vuelve visible
+    // Sincroniza inmediatamente cuando la pestaña se vuelve visible.
     const handleVisibilityChange = () => {
       if (!document.hidden) {
         syncPresence()
