@@ -284,29 +284,53 @@ function normalizeReport(raw: Record<string, unknown>): Report {
 }
 
 async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...(init?.headers ?? {}),
-    },
-    ...init,
-  })
+  try {
+    const response = await fetch(`${API_BASE_URL}${path}`, {
+      headers: {
+        'Content-Type': 'application/json',
+        ...(init?.headers ?? {}),
+      },
+      ...init,
+    })
 
-  const text = await response.text()
-  
-  // Check if response is HTML (error from server)
-  if (text.startsWith('<')) {
-    console.error('Server returned HTML instead of JSON:', text.substring(0, 200))
-    throw new Error(`Error del servidor: ${response.status}. Por favor intenta de nuevo.`)
+    const text = await response.text().catch(() => '')
+    let payload: any = null
+
+    if (text && text.trim().startsWith('{')) {
+      try {
+        payload = JSON.parse(text)
+      } catch {
+        payload = null
+      }
+    }
+
+    if (!response.ok) {
+      const defaultMessage = response.status === 401
+        ? 'Sesión caducada. Por favor inicia sesión nuevamente.'
+        : response.status === 403
+          ? 'No tienes permisos para realizar esta acción.'
+          : response.status === 404
+            ? 'No se encontró el recurso solicitado.'
+            : response.status >= 500
+              ? 'Error en el servidor. Por favor intenta de nuevo más tarde.'
+              : `Error ${response.status}. Por favor intenta de nuevo.`
+
+      const message = payload?.error || payload?.message || defaultMessage
+      throw new Error(String(message))
+    }
+
+    if (text && !payload && response.status !== 204) {
+      console.warn('Respuesta no JSON recibida desde el servidor:', text.substring(0, 200))
+    }
+
+    return payload as T
+  } catch (error) {
+    if (error instanceof Error) {
+      throw error
+    }
+
+    throw new Error('No se pudo conectar con el servidor. Verifica tu conexión e intenta de nuevo.')
   }
-  
-  const payload = text ? JSON.parse(text) : null
-
-  if (!response.ok) {
-    throw new Error(payload?.error ?? `Error ${response.status}`)
-  }
-
-  return payload as T
 }
 
 function normalizeReportPayload(report: Omit<Report, 'id' | 'created_at' | 'updated_at' | 'report_updates'>) {
@@ -416,28 +440,27 @@ export async function uploadEvidenceFile(file: File): Promise<{ filename: string
   const formData = new FormData()
   formData.append('file', file)
 
-  const response = await fetch(`${API_BASE_URL}/upload`, {
-    method: 'POST',
-    body: formData,
-  })
+  try {
+    const response = await fetch(`${API_BASE_URL}/upload`, {
+      method: 'POST',
+      body: formData,
+    })
 
-  if (!response.ok) {
-    const text = await response.text()
-    let message = `Error ${response.status}`
+    const text = await response.text().catch(() => '')
+    const payload = text && text.trim().startsWith('{') ? JSON.parse(text) : null
 
-    try {
-      const payload = JSON.parse(text)
-      if (payload?.error) {
-        message = payload.error
-      }
-    } catch {
-      // ignore invalid JSON
+    if (!response.ok) {
+      const message = payload?.error || payload?.message || `Error ${response.status}`
+      throw new Error(`No se pudo subir la imagen: ${message}`)
     }
 
-    throw new Error(`No se pudo subir la imagen: ${message}`)
+    return payload as { filename: string; path: string; url: string }
+  } catch (error) {
+    if (error instanceof Error) {
+      throw error
+    }
+    throw new Error('No se pudo subir la imagen. Verifica tu conexión e intenta de nuevo.')
   }
-
-  return response.json() as Promise<{ filename: string; path: string; url: string }>
 }
 
 export async function loadReportWithUpdates(id: string): Promise<Report | null> {
