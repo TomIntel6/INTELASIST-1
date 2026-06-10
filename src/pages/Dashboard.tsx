@@ -106,7 +106,7 @@ export default function Dashboard() {
   const totalFinalized = todayReports.filter(r => isFinalizedStatus(r.status)).length
   const totalPending = todayReports.filter(r => r.status === 'Seguimiento de caso').length
   const totalValidacion = todayReports.filter(r => r.status === 'Validacion').length
-  const totalInformativo = todayReports.filter(r => r.status === 'Cotizacion').length
+  const totalInformativo = todayReports.filter(r => r.status === 'Informativo').length
 
   return (
     <div className="p-6">
@@ -230,7 +230,7 @@ export default function Dashboard() {
                     { label: 'Finalizados', count: todayReports.filter(r => isFinalizedStatus(r.status)).length, color: 'text-emerald-600' },
                     { label: 'En seguimiento', count: todayReports.filter(r => r.status === 'Seguimiento de caso').length, color: 'text-amber-600' },
                     { label: 'Validacion', count: todayReports.filter(r => r.status === 'Validacion').length, color: 'text-destructive' },
-                    { label: 'Informativo', count: todayReports.filter(r => r.status === 'Cotizacion').length, color: 'text-sky-600' },
+                    { label: 'Informativo', count: todayReports.filter(r => r.status === 'Informativo').length, color: 'text-sky-600' },
                   ].map(({ label, count, color }) => (
                     <div key={label} className="flex items-center justify-between text-sm">
                       <span className="text-muted-foreground">{label}</span>
