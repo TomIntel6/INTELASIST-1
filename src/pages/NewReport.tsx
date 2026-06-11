@@ -66,6 +66,7 @@ const [form, setForm] = React.useState({
   const [evidenceFile, setEvidenceFile] = React.useState<File | null>(null)
   const [evidencePreview, setEvidencePreview] = React.useState<string | null>(null)
   const fileInputRef = React.useRef<HTMLInputElement | null>(null)
+  const pasteTextareaRef = React.useRef<HTMLTextAreaElement | null>(null)
 
   const setClipboardImage = (blob: Blob) => {
     const reader = new FileReader()
@@ -318,54 +319,6 @@ const [form, setForm] = React.useState({
       setError('No se pudo leer la imagen.')
     }
     reader.readAsDataURL(file)
-  }
-
-  // Handler to open a temporary hidden textarea and capture the next paste event
-  const handlePasteButtonClick = () => {
-    const currentScroll = typeof window !== 'undefined' ? window.scrollY || 0 : 0
-
-    const ta = document.createElement('textarea')
-    ta.style.position = 'fixed'
-    ta.style.left = '50%'
-    ta.style.top = '10px'
-    ta.style.transform = 'translateX(-50%)'
-    ta.style.opacity = '0'
-    ta.style.width = '1px'
-    ta.style.height = '1px'
-    ta.setAttribute('aria-hidden', 'true')
-    document.body.appendChild(ta)
-
-    const onPaste = (e: ClipboardEvent) => {
-      try {
-        e.preventDefault()
-        handleClipboardPaste(e)
-      } catch (err) {
-        console.error('Error handling paste:', err)
-      } finally {
-        cleanup()
-        window.scrollTo(0, currentScroll)
-      }
-    }
-
-    const onBlur = () => {
-      cleanup()
-      window.scrollTo(0, currentScroll)
-    }
-
-    function cleanup() {
-      ta.removeEventListener('paste', onPaste)
-      ta.removeEventListener('blur', onBlur)
-      if (document.body.contains(ta)) document.body.removeChild(ta)
-    }
-
-    ta.addEventListener('paste', onPaste)
-    ta.addEventListener('blur', onBlur)
-    // focus without scrolling
-    try {
-      ta.focus({ preventScroll: true } as FocusOptions)
-    } catch {
-      ta.focus()
-    }
   }
 
   const removeEvidence = () => {
@@ -759,31 +712,40 @@ const [form, setForm] = React.useState({
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base">Evidencia (Imagen)</CardTitle>
-            <CardDescription>Adjunta una foto o imagen de prueba relacionada con el servicio</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-3">
             {!evidencePreview ? (
-              <div
-                onClick={() => fileInputRef.current?.click()}
-                className="border-2 border-dashed border-border/70 rounded-lg p-8 text-center cursor-pointer hover:bg-muted/30 transition-colors"
-              >
-                <Upload className="size-8 mx-auto mb-2 text-muted-foreground" />
-                <p className="text-sm font-medium text-foreground mb-1">Haz clic para seleccionar una imagen</p>
-                <p className="text-xs text-muted-foreground">PNG, JPG, GIF (máximo 5MB)</p>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handleEvidenceChange}
+              <div className="space-y-2">
+                <textarea
+                  ref={pasteTextareaRef}
+                  onPaste={handleClipboardPaste}
+                  placeholder="Pega tu imagen aquí (Ctrl+V)"
+                  className="w-full min-h-[120px] p-3 border border-border/70 rounded-lg bg-muted/30 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                 />
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <Upload className="size-4 mr-1" /> Subir
+                  </Button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleEvidenceChange}
+                  />
+                </div>
               </div>
             ) : (
-              <div className="space-y-3">
-                <div className="relative w-full max-w-md mx-auto">
+              <div className="space-y-2">
+                <div className="relative w-full max-w-sm">
                   <img
                     src={evidencePreview}
-                    alt="Preview de evidencia"
+                    alt="Preview"
                     className="w-full rounded-lg border border-border/70 object-cover max-h-64"
                   />
                   <Button
@@ -796,30 +758,18 @@ const [form, setForm] = React.useState({
                     <X className="size-4" />
                   </Button>
                 </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="w-full"
-                >
-                  Cambiar imagen
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <Upload className="size-4 mr-1" /> Cambiar
+                  </Button>
+                </div>
               </div>
             )}
-            <div className="space-y-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handlePasteButtonClick}
-                className="w-full"
-              >
-                Pegar imagen desde el portapapeles
-              </Button>
-              <p className="text-xs text-muted-foreground">Haz clic en el botón y luego presiona Ctrl+V para pegar la imagen desde el portapapeles.</p>
-            </div>
-            
           </CardContent>
         </Card>
 
