@@ -215,9 +215,7 @@ export default function ReportDetail() {
   }
 
   const observation = parseObservationComment(report.observation_comment || '')
-  const observationCopyText = observation.reason
-    ? `Motivo: ${observation.reason}${observation.text ? `\n\n${observation.text}` : ''}`
-    : observation.text
+  const observationCopyText = observation.text || ''
 
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-5">
@@ -295,7 +293,6 @@ export default function ReportDetail() {
                       onClick={() => void copyObservationToClipboard(observationCopyText)}
                     >
                       <Copy className="size-4" />
-                      Copiar todo
                     </Button>
                     {copySuccess ? (
                       <span className="text-xs text-emerald-600">{copySuccess}</span>
