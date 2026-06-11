@@ -18,7 +18,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { REPORT_STATUSES, type Report, type ReportUpdate, loadReportWithUpdates, addReportUpdate, getCachedReportById } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth'
-import { ArrowLeft, Send, User, Calendar, Car, FileText, Wrench, Image as ImageIcon, ZoomIn } from 'lucide-react'
+import { ArrowLeft, Send, User, Calendar, Car, FileText, Wrench, Image as ImageIcon, ZoomIn, Copy } from 'lucide-react'
 
 const STATUS_BADGE: Record<string, string> = {
   'Caso Finalizado': 'bg-emerald-500/15 text-emerald-700 border-emerald-200',
@@ -93,6 +93,7 @@ export default function ReportDetail() {
   const [submitting, setSubmitting] = React.useState(false)
   const [submitError, setSubmitError] = React.useState<string | null>(null)
   const [showImageModal, setShowImageModal] = React.useState(false)
+  const [copySuccess, setCopySuccess] = React.useState<string | null>(null)
 
   const fetchData = React.useCallback(async () => {
     if (!id) return
@@ -161,6 +162,22 @@ export default function ReportDetail() {
     setSubmitting(false)
   }
 
+  const copyObservationToClipboard = async (text: string) => {
+    if (!text) {
+      return
+    }
+
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopySuccess('Información copiada al portapapeles')
+      window.setTimeout(() => setCopySuccess(null), 2000)
+    } catch (err) {
+      console.error('Error copiando observación:', err)
+      setCopySuccess('No se pudo copiar. Intenta nuevamente.')
+      window.setTimeout(() => setCopySuccess(null), 2000)
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex h-full items-center justify-center p-8">
@@ -196,6 +213,11 @@ export default function ReportDetail() {
       </div>
     )
   }
+
+  const observation = parseObservationComment(report.observation_comment || '')
+  const observationCopyText = observation.reason
+    ? `Motivo: ${observation.reason}${observation.text ? `\n\n${observation.text}` : ''}`
+    : observation.text
 
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-5">
@@ -259,11 +281,27 @@ export default function ReportDetail() {
           {/* Observación inicial */}
           {(report.observation_comment || report.observation_comment === '') && (
             <Card>
-              <CardHeader className="pb-2">
+              <CardHeader className="pb-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <CardTitle className="text-sm flex items-center gap-2">
                   <Wrench className="size-4 text-muted-foreground" />
                   Observación Inicial
                 </CardTitle>
+                {observationCopyText ? (
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="gap-2"
+                      onClick={() => void copyObservationToClipboard(observationCopyText)}
+                    >
+                      <Copy className="size-4" />
+                      Copiar todo
+                    </Button>
+                    {copySuccess ? (
+                      <span className="text-xs text-emerald-600">{copySuccess}</span>
+                    ) : null}
+                  </div>
+                ) : null}
               </CardHeader>
               <CardContent className="space-y-3">
                 {(() => {
