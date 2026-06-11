@@ -28,13 +28,41 @@ import { canManageAgents, fetchOnlineUsersFromServer, getOnlineUsers, getRoleCol
 import { getDefaultApiBase } from '@/lib/supabase'
 import { LayoutDashboard, FileText, LogOut, FilePlus, Users, AlertCircle } from 'lucide-react'
 
+const ONLINE_USER_FETCH_INTERVAL_MS = 60000
+const FAILED_ATTEMPTS_REFRESH_INTERVAL_MS = 60000
+
+function areOnlineUsersEqual(a: Array<ReturnType<typeof getOnlineUsers>[number]>, b: Array<ReturnType<typeof getOnlineUsers>[number]>) {
+  if (a.length !== b.length) {
+    return false
+  }
+
+  for (let index = 0; index < a.length; index += 1) {
+    const userA = a[index]
+    const userB = b[index]
+
+    if (
+      userA.userId !== userB.userId ||
+      userA.email !== userB.email ||
+      userA.fullName !== userB.fullName ||
+      userA.role !== userB.role ||
+      userA.lastSeen !== userB.lastSeen ||
+      userA.roles.length !== userB.roles.length ||
+      userA.roles.some((role, roleIndex) => role !== userB.roles[roleIndex])
+    ) {
+      return false
+    }
+  }
+
+  return true
+}
+
 const navItems = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/informes', label: 'Informes', icon: FileText },
   { to: '/usuarios', label: 'Usuarios', icon: Users },
 ]
 
-export function AppSidebar() {
+export const AppSidebar = React.memo(function AppSidebar() {
   const { user, signOut, updateCurrentUserProfile } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
@@ -46,15 +74,65 @@ export function AppSidebar() {
   const rawDisplayName = (user?.user_metadata?.full_name as string) ?? user?.email ?? 'Usuario'
   const displayName = profileName || rawDisplayName
   const avatarUrl = user?.user_metadata?.avatar_url as string | undefined
-  const userRoles = getUserRoles(user)
-  const canManageAgentAccess = canManageAgents(user)
+  const userRoles = React.useMemo(() => getUserRoles(user), [user])
+  const canManageAgentAccess = React.useMemo(() => canManageAgents(user), [user])
   const [onlineUsers, setOnlineUsers] = React.useState<ReturnType<typeof getOnlineUsers>>(() => getOnlineUsers())
-  const initials = displayName
-    .split(' ')
-    .map((n: string) => n[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2)
+  const initials = React.useMemo(() =>
+    displayName
+      .split(' ')
+      .map((n: string) => n[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2),
+    [displayName]
+  )
+  const lastServerUsersRef = React.useRef<ReturnType<typeof getOnlineUsers> | null>(null)
+  const remoteIntervalRef = React.useRef<number | null>(null)
+  const isMountedRef = React.useRef(true)
+
+  const refreshOnlineUsers = React.useCallback(() => {
+    setOnlineUsers(prevUsers => {
+      const nextUsers = getOnlineUsers()
+      return areOnlineUsersEqual(prevUsers, nextUsers) ? prevUsers : nextUsers
+    })
+  }, [])
+
+  const refreshOnlineUsersFromServer = React.useCallback(async () => {
+    if (document.visibilityState !== 'visible') {
+      return
+    }
+
+    try {
+      const serverUsers = await fetchOnlineUsersFromServer()
+      const previousServerUsers = lastServerUsersRef.current ?? []
+
+      if (!areOnlineUsersEqual(previousServerUsers, serverUsers)) {
+        lastServerUsersRef.current = serverUsers
+        if (isMountedRef.current) {
+          setOnlineUsers(serverUsers)
+        }
+      }
+    } catch {
+      // Si falla, mantenemos la lista local.
+    }
+  }, [])
+
+  const startRemoteSync = React.useCallback(() => {
+    if (remoteIntervalRef.current !== null) {
+      return
+    }
+
+    remoteIntervalRef.current = window.setInterval(() => {
+      void refreshOnlineUsersFromServer()
+    }, ONLINE_USER_FETCH_INTERVAL_MS)
+  }, [refreshOnlineUsersFromServer])
+
+  const stopRemoteSync = React.useCallback(() => {
+    if (remoteIntervalRef.current !== null) {
+      window.clearInterval(remoteIntervalRef.current)
+      remoteIntervalRef.current = null
+    }
+  }, [])
 
   // Estados para alertas de intentos fallidos
   const [failedAttempts, setFailedAttempts] = React.useState<Array<{
@@ -73,28 +151,19 @@ export function AppSidebar() {
   }, [rawDisplayName])
 
   React.useEffect(() => {
-    const refreshOnlineUsers = () => {
-      setOnlineUsers(getOnlineUsers())
-    }
+    isMountedRef.current = true
 
-    const refreshOnlineUsersFromServer = async () => {
-      try {
-        const serverUsers = await fetchOnlineUsersFromServer()
-        setOnlineUsers(serverUsers)
-      } catch {
-        // Si falla el servidor, mantenemos la lista local.
-      }
+    const syncIfVisible = () => {
+      refreshOnlineUsers()
+      void refreshOnlineUsersFromServer()
     }
 
     const handleStorage = (event: StorageEvent) => {
-      if (event.storageArea !== window.localStorage) {
+      if (event.storageArea !== window.localStorage || event.key !== PRESENCE_STORAGE_KEY) {
         return
       }
 
-      if (event.key === PRESENCE_STORAGE_KEY) {
-        refreshOnlineUsers()
-        void refreshOnlineUsersFromServer()
-      }
+      refreshOnlineUsers()
     }
 
     const handlePresenceSync = () => {
@@ -103,48 +172,55 @@ export function AppSidebar() {
     }
 
     const handleUsersSync = (event: Event) => {
-      // Primero actualizar localmente con el nombre nuevo si viene en el evento
       if (event instanceof CustomEvent && event.detail?.email && event.detail?.newName) {
-        setOnlineUsers((prevUsers) => {
-          return prevUsers.map(u => 
+        setOnlineUsers(prevUsers =>
+          prevUsers.map(u =>
             u.email.toLowerCase() === event.detail.email.toLowerCase()
               ? { ...u, fullName: event.detail.newName }
               : u
           )
-        })
+        )
       }
-      // Luego refrescar desde el servidor
-      refreshOnlineUsers()
-      void refreshOnlineUsersFromServer()
+
+      if (document.visibilityState === 'visible') {
+        refreshOnlineUsers()
+        void refreshOnlineUsersFromServer()
+      }
     }
 
-    const intervalId = window.setInterval(() => {
-      refreshOnlineUsers()
-    }, 1000)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        syncIfVisible()
+        startRemoteSync()
+      } else {
+        stopRemoteSync()
+      }
+    }
 
-    const remoteIntervalId = window.setInterval(() => {
+    refreshOnlineUsers()
+    if (document.visibilityState === 'visible') {
       void refreshOnlineUsersFromServer()
-    }, 5000)
+      startRemoteSync()
+    }
 
     window.addEventListener('storage', handleStorage)
     window.addEventListener(PRESENCE_SYNC_STORAGE_KEY, handlePresenceSync)
     window.addEventListener(USERS_SYNC_STORAGE_KEY, handleUsersSync)
-    refreshOnlineUsers()
-    void refreshOnlineUsersFromServer()
+    window.addEventListener('visibilitychange', handleVisibilityChange)
 
     return () => {
-      window.clearInterval(intervalId)
-      window.clearInterval(remoteIntervalId)
+      isMountedRef.current = false
+      stopRemoteSync()
       window.removeEventListener('storage', handleStorage)
       window.removeEventListener(PRESENCE_SYNC_STORAGE_KEY, handlePresenceSync)
       window.removeEventListener(USERS_SYNC_STORAGE_KEY, handleUsersSync)
+      window.removeEventListener('visibilitychange', handleVisibilityChange)
     }
-  }, [])
+  }, [refreshOnlineUsers, refreshOnlineUsersFromServer, startRemoteSync, stopRemoteSync])
 
   // Función para cargar intentos fallidos (fuera del useEffect para ser reutilizable)
   const loadFailedAttempts = React.useCallback(async () => {
-    if (!isAdminRole) {
-      setFailedAttempts([])
+    if (!isAdminRole || document.visibilityState !== 'visible') {
       return
     }
 
@@ -181,37 +257,58 @@ export function AppSidebar() {
       return
     }
 
-    // Cargar inmediatamente
-    loadFailedAttempts()
+    let intervalId: number | null = null
 
-    // Escuchar señal local para recargar inmediatamente cuando se registre un intento
+    const startFailedAttemptInterval = () => {
+      if (intervalId !== null || document.visibilityState !== 'visible') {
+        return
+      }
+
+      intervalId = window.setInterval(() => {
+        loadFailedAttempts()
+      }, FAILED_ATTEMPTS_REFRESH_INTERVAL_MS)
+    }
+
+    const stopFailedAttemptInterval = () => {
+      if (intervalId !== null) {
+        window.clearInterval(intervalId)
+        intervalId = null
+      }
+    }
+
     const onFailedAttempt = (_ev: Event) => {
       console.log('🔔 Señal custom failedAttemptRegistered recibida, recargando ahora...')
-      // Recargar inmediatamente sin esperar
       loadFailedAttempts()
     }
 
     const onStorage = (ev: StorageEvent) => {
       if (ev.key === 'failedAttemptSignal') {
         console.log('🔔 Señal storage failedAttemptSignal recibida, recargando ahora...')
-        // Recargar inmediatamente sin esperar
         loadFailedAttempts()
       }
     }
 
-    // Registrar listeners con capture phase para asegurar que se ejecuten primero
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        loadFailedAttempts()
+        startFailedAttemptInterval()
+      } else {
+        stopFailedAttemptInterval()
+      }
+    }
+
+    loadFailedAttempts()
+    startFailedAttemptInterval()
+
     window.addEventListener('failedAttemptRegistered', onFailedAttempt as EventListener, true)
     window.addEventListener('storage', onStorage, true)
-
-    // Recargar intentos fallidos cada 1 segundo para actualización casi instantánea
-    const intervalId = window.setInterval(() => {
-      loadFailedAttempts()
-    }, 1000)
+    window.addEventListener('visibilitychange', handleVisibilityChange)
 
     return () => {
-      window.clearInterval(intervalId)
+      stopFailedAttemptInterval()
       window.removeEventListener('failedAttemptRegistered', onFailedAttempt as EventListener, true)
       window.removeEventListener('storage', onStorage, true)
+      window.removeEventListener('visibilitychange', handleVisibilityChange)
     }
   }, [isAdminRole, loadFailedAttempts])
 
@@ -223,7 +320,7 @@ export function AppSidebar() {
     }
   }, [alertsOpen, isAdminRole, loadFailedAttempts])
 
-  const visibleUsers = (() => {
+  const visibleUsers = React.useMemo(() => {
     const list = onlineUsers.map(user => ({
       email: user.email.trim().toLowerCase(),
       fullName: user.fullName,
@@ -258,7 +355,7 @@ export function AppSidebar() {
     }
 
     return Array.from(mergedByEmail.values())
-  })()
+  }, [onlineUsers, user])
 
   const getUserInitials = (value: string) => value
     .split(' ')

@@ -41,6 +41,7 @@ export const PRESENCE_SYNC_STORAGE_KEY = 'intelasist-presence-sync'
 export const ROLE_SYNC_STORAGE_KEY = 'intelasist-role-sync'
 export const USERS_SYNC_STORAGE_KEY = 'intelasist-users-sync'
 const PRESENCE_TTL_MS = 1000 * 45
+const PRESENCE_SYNC_INTERVAL_MS = 1000 * 60
 const getDefaultApiBase = () => {
   if (import.meta.env.VITE_API_BASE_URL) return import.meta.env.VITE_API_BASE_URL
   return 'https://intelasist.onrender.com'
@@ -760,30 +761,52 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user])
 
+  const presenceIntervalRef = React.useRef<number | null>(null)
+
   React.useEffect(() => {
     if (!user?.id) {
       return
     }
 
-    // Sincroniza la presencia cada 15 segundos para mantener al usuario como "Activo".
-    // Esto da margen frente a latencia y evita que un salto pequeño de reloj provoque desapariciones.
     const syncPresence = () => {
+      if (document.visibilityState !== 'visible') {
+        return
+      }
+
       upsertOnlineUser(user)
     }
 
-    const presenceInterval = window.setInterval(syncPresence, 15000)
+    const startPresenceSync = () => {
+      if (presenceIntervalRef.current !== null || document.visibilityState !== 'visible') {
+        return
+      }
 
-    // Sincroniza inmediatamente cuando la pestaña se vuelve visible.
-    const handleVisibilityChange = () => {
-      if (!document.hidden) {
-        syncPresence()
+      presenceIntervalRef.current = window.setInterval(syncPresence, PRESENCE_SYNC_INTERVAL_MS)
+    }
+
+    const stopPresenceSync = () => {
+      if (presenceIntervalRef.current !== null) {
+        window.clearInterval(presenceIntervalRef.current)
+        presenceIntervalRef.current = null
       }
     }
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        syncPresence()
+        startPresenceSync()
+      } else {
+        stopPresenceSync()
+      }
+    }
+
+    syncPresence()
+    startPresenceSync()
 
     window.addEventListener('visibilitychange', handleVisibilityChange)
 
     return () => {
-      window.clearInterval(presenceInterval)
+      stopPresenceSync()
       window.removeEventListener('visibilitychange', handleVisibilityChange)
     }
   }, [user])
