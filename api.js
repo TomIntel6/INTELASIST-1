@@ -175,9 +175,9 @@ app.post('/upload', upload.single('file'), async (req, res) => {
 
       if (uploadError) {
         const uploadErrorPayload = {
-          message: uploadError.message,
-          statusCode: (uploadError as any).statusCode ?? null,
-          error: (uploadError as any).error ?? null,
+          message: uploadError?.message,
+          statusCode: uploadError?.statusCode ?? null,
+          error: uploadError?.error ?? null,
           full: JSON.stringify(uploadError, Object.getOwnPropertyNames(uploadError)),
         }
         console.error('[Supabase Storage] Error subiendo archivo a Supabase Storage:', uploadErrorPayload)
