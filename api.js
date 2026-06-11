@@ -71,6 +71,12 @@ function getSupabaseAdminClient() {
 
 const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || 'https://intelasist-ai.vercel.app'
 const SUPABASE_STORAGE_BUCKET = String(process.env.SUPABASE_STORAGE_BUCKET || 'uploads').trim()
+console.log('[Supabase] ENV vars:', {
+  SUPABASE_URL: SUPABASE_URL ? 'set' : 'missing',
+  SUPABASE_SERVICE_KEY: SUPABASE_SERVICE_KEY ? 'set' : 'missing',
+  SUPABASE_STORAGE_BUCKET: SUPABASE_STORAGE_BUCKET,
+})
+console.log('[Supabase] cliente administrativo inicializado:', supabase ? 'sí' : 'no')
 const allowedOrigins = [
   FRONTEND_ORIGIN,
   'https://intelasist-yps2-64ysydqqy-jose-rodriguez-s-projects1.vercel.app'
@@ -108,27 +114,74 @@ const upload = multer({
 
 app.post('/upload', upload.single('file'), async (req, res) => {
   try {
-    if (!req.file || !req.file.buffer) {
+    const file = req.file
+
+    if (!file) {
+      console.error('[Supabase Storage] No se recibió archivo en la petición.')
       res.status(400).json({ error: 'No se recibió ningún archivo.' })
       return
     }
 
-    const extension = extname(req.file.originalname).toLowerCase()
+    if (!file.buffer) {
+      console.error('[Supabase Storage] El archivo no contiene datos válidos.')
+      res.status(400).json({ error: 'El archivo no contiene datos válidos.' })
+      return
+    }
+
+    if (file.size === 0) {
+      console.error('[Supabase Storage] El archivo tiene tamaño 0.')
+      res.status(400).json({ error: 'El archivo tiene tamaño 0.' })
+      return
+    }
+
+    const originalName = String(file.originalname || 'unknown')
+    const extension = extname(originalName).toLowerCase()
     const filename = `${Date.now()}-${randomUUID()}${extension}`
     const storagePath = `reports/${filename}`
 
+    console.log('[Supabase Storage] Preparando subida:', {
+      bucket: SUPABASE_STORAGE_BUCKET,
+      storagePath,
+      originalName,
+      size: file.size,
+      mimeType: file.mimetype,
+      bufferLength: file.buffer.length,
+    })
+
     if (supabase) {
+      if (typeof supabase.storage.getBucket === 'function') {
+        const { data: bucketData, error: bucketError } = await supabase.storage.getBucket(SUPABASE_STORAGE_BUCKET)
+        console.log('[Supabase Storage] Verificando bucket:', { bucket: SUPABASE_STORAGE_BUCKET, bucketData, bucketError })
+
+        if (bucketError || !bucketData) {
+          const bucketMessage = bucketError?.message || bucketError?.details || bucketError?.hint || `Bucket ${SUPABASE_STORAGE_BUCKET} no existe o no es accesible.`
+          console.error('[Supabase Storage] Error de bucket:', bucketMessage, { bucketError, bucketData })
+          res.status(500).json({ error: bucketMessage })
+          return
+        }
+      } else {
+        console.warn('[Supabase Storage] No se puede verificar bucket con esta versión del cliente. Continúa sin verificación explícita.')
+      }
+
       const { data: uploadData, error: uploadError } = await supabase
         .storage
         .from(SUPABASE_STORAGE_BUCKET)
-        .upload(storagePath, req.file.buffer, {
-          contentType: req.file.mimetype,
+        .upload(storagePath, file.buffer, {
+          contentType: file.mimetype,
           upsert: false,
         })
 
+      console.log('[Supabase Storage] Respuesta de upload:', { uploadData, uploadError })
+
       if (uploadError) {
-        console.error('Error subiendo archivo a Supabase Storage:', uploadError)
-        res.status(500).json({ error: 'No se pudo subir el archivo a Supabase Storage.' })
+        const uploadErrorPayload = {
+          message: uploadError.message,
+          statusCode: (uploadError as any).statusCode ?? null,
+          error: (uploadError as any).error ?? null,
+          full: JSON.stringify(uploadError, Object.getOwnPropertyNames(uploadError)),
+        }
+        console.error('[Supabase Storage] Error subiendo archivo a Supabase Storage:', uploadErrorPayload)
+        res.status(500).json({ error: uploadErrorPayload })
         return
       }
 
@@ -137,9 +190,12 @@ app.post('/upload', upload.single('file'), async (req, res) => {
         .from(SUPABASE_STORAGE_BUCKET)
         .getPublicUrl(storagePath)
 
+      console.log('[Supabase Storage] Respuesta getPublicUrl:', { publicUrlData, publicUrlError })
+
       if (publicUrlError || !publicUrlData?.publicUrl) {
-        console.error('Error generando URL pública de Supabase:', publicUrlError)
-        res.status(500).json({ error: 'No se pudo generar la URL pública de Supabase Storage. Verifica la configuración del bucket.' })
+        const errorMessage = publicUrlError?.message || publicUrlError?.details || publicUrlError?.hint || 'No se pudo generar la URL pública de Supabase Storage.'
+        console.error('[Supabase Storage] Error generando URL pública de Supabase:', errorMessage, publicUrlError)
+        res.status(500).json({ error: errorMessage })
         return
       }
 
@@ -151,15 +207,17 @@ app.post('/upload', upload.single('file'), async (req, res) => {
       })
     }
 
+    console.warn('[Supabase Storage] No se detectó cliente Supabase válido. Guardando localmente en directorio uploads/ en lugar de Supabase Storage.')
     const localFilePath = resolve(uploadsDir, filename)
-    writeFileSync(localFilePath, req.file.buffer)
+    writeFileSync(localFilePath, file.buffer)
     const filePath = `/uploads/${filename}`
     const fileUrl = `${req.protocol}://${req.get('host')}${filePath}`
 
     res.status(201).json({ ok: true, filename, path: filePath, url: fileUrl })
   } catch (err) {
     console.error('Error al subir archivo:', err)
-    res.status(500).json({ error: 'Error al subir el archivo.' })
+    const errorMessage = err instanceof Error ? err.message : 'Error desconocido al subir el archivo.'
+    res.status(500).json({ error: errorMessage })
   }
 })
 
