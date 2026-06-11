@@ -66,6 +66,49 @@ const [form, setForm] = React.useState({
   const [evidenceFile, setEvidenceFile] = React.useState<File | null>(null)
   const [evidencePreview, setEvidencePreview] = React.useState<string | null>(null)
   const fileInputRef = React.useRef<HTMLInputElement | null>(null)
+  const pasteTextareaRef = React.useRef<HTMLTextAreaElement | null>(null)
+
+  const setClipboardImage = (blob: Blob) => {
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const preview = e.target?.result as string
+      const extension = blob.type ? `.${blob.type.split('/')[1] ?? 'png'}` : '.png'
+      const clipboardFile = new File([blob], `clipboard-${Date.now()}${extension}`, { type: blob.type || 'image/png' })
+      setEvidenceFile(clipboardFile)
+      setEvidencePreview(preview)
+      setError(null)
+    }
+    reader.onerror = () => {
+      setError('No se pudo leer la imagen del portapapeles.')
+    }
+    reader.readAsDataURL(blob)
+  }
+
+  const handleClipboardPaste = (clipboardEvent: ClipboardEvent | React.ClipboardEvent) => {
+    const clipboardData = (clipboardEvent as ClipboardEvent).clipboardData ?? (clipboardEvent as React.ClipboardEvent).clipboardData
+    if (!clipboardData) return
+
+    const imageItem = Array.from(clipboardData.items || []).find(item => item.type.startsWith('image/'))
+    if (imageItem) {
+      const blob = imageItem.getAsFile()
+      if (blob) {
+        setClipboardImage(blob)
+        return
+      }
+    }
+
+    const text = clipboardData.getData('text')?.trim()
+    if (text) {
+      try {
+        new URL(text)
+        setEvidenceFile(null)
+        setEvidencePreview(text)
+        setError(null)
+      } catch {
+        setError('Por favor pega una imagen desde el portapapeles.')
+      }
+    }
+  }
 
   // Función para registrar intento fallido (reutilizable)
   const registerFailedAttempt = React.useCallback(async () => {
@@ -669,31 +712,40 @@ const [form, setForm] = React.useState({
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base">Evidencia (Imagen)</CardTitle>
-            <CardDescription>Adjunta una foto o imagen de prueba relacionada con el servicio</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-3">
             {!evidencePreview ? (
-              <div
-                onClick={() => fileInputRef.current?.click()}
-                className="border-2 border-dashed border-border/70 rounded-lg p-8 text-center cursor-pointer hover:bg-muted/30 transition-colors"
-              >
-                <Upload className="size-8 mx-auto mb-2 text-muted-foreground" />
-                <p className="text-sm font-medium text-foreground mb-1">Haz clic para seleccionar una imagen</p>
-                <p className="text-xs text-muted-foreground">PNG, JPG, GIF (máximo 5MB)</p>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handleEvidenceChange}
+              <div className="space-y-2">
+                <textarea
+                  ref={pasteTextareaRef}
+                  onPaste={handleClipboardPaste}
+                  placeholder="Pega tu imagen aquí (Ctrl+V)"
+                  className="w-full min-h-[120px] p-3 border border-border/70 rounded-lg bg-muted/30 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                 />
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <Upload className="size-4 mr-1" /> Subir
+                  </Button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleEvidenceChange}
+                  />
+                </div>
               </div>
             ) : (
-              <div className="space-y-3">
-                <div className="relative w-full max-w-md mx-auto">
+              <div className="space-y-2">
+                <div className="relative w-full max-w-sm">
                   <img
                     src={evidencePreview}
-                    alt="Preview de evidencia"
+                    alt="Preview"
                     className="w-full rounded-lg border border-border/70 object-cover max-h-64"
                   />
                   <Button
@@ -706,15 +758,16 @@ const [form, setForm] = React.useState({
                     <X className="size-4" />
                   </Button>
                 </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="w-full"
-                >
-                  Cambiar imagen
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <Upload className="size-4 mr-1" /> Cambiar
+                  </Button>
+                </div>
               </div>
             )}
           </CardContent>

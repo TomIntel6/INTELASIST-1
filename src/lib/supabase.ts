@@ -439,16 +439,37 @@ export async function loadReportsForMonth(month: string, year: number): Promise<
 }
 
 export async function uploadEvidenceFile(file: File): Promise<{ filename: string; path: string; url: string }> {
+  if (!file) {
+    throw new Error('No se recibió ningún archivo para subir.')
+  }
+
+  console.info('[uploadEvidenceFile] archivo recibido:', {
+    name: file.name,
+    size: file.size,
+    type: file.type,
+    lastModified: file.lastModified,
+  })
+
+  if (file.size === 0) {
+    throw new Error('El archivo tiene tamaño 0.')
+  }
+
   const formData = new FormData()
   formData.append('file', file)
 
   try {
+    console.info('[uploadEvidenceFile] Enviando petición a:', `${API_BASE_URL}/upload`)
     const response = await fetch(`${API_BASE_URL}/upload`, {
       method: 'POST',
       body: formData,
     })
 
     const text = await response.text().catch(() => '')
+    console.info('[uploadEvidenceFile] respuesta del servidor:', {
+      status: response.status,
+      body: text,
+    })
+
     const payload = text && text.trim().startsWith('{') ? JSON.parse(text) : null
 
     if (!response.ok) {
@@ -459,8 +480,10 @@ export async function uploadEvidenceFile(file: File): Promise<{ filename: string
     return payload as { filename: string; path: string; url: string }
   } catch (error) {
     if (error instanceof Error) {
+      console.error('[uploadEvidenceFile] Error al subir la imagen:', error)
       throw error
     }
+    console.error('[uploadEvidenceFile] Error desconocido al subir la imagen:', error)
     throw new Error('No se pudo subir la imagen. Verifica tu conexión e intenta de nuevo.')
   }
 }
