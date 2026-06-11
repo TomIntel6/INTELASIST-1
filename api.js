@@ -13,11 +13,6 @@ const app = express()
 const sseClients = new Set()
 const ROLE_OPTIONS = ['Agente', 'Admin', 'Support', 'Gerente']
 const SALT_ROUNDS = 10
-const PROTECTED_USER_EMAIL = 'jrodriguez@intelasist.com'
-
-function isProtectedUser(email) {
-  return String(email ?? '').trim().toLowerCase() === PROTECTED_USER_EMAIL
-}
 
 function loadEnvFile() {
   try {
@@ -734,12 +729,6 @@ app.post('/usuarios', async (req, res) => {
     const password = typeof req.body?.password === 'string' ? req.body.password : ''
     const requirePasswordChange = req.body?.requirePasswordChange === true
     const roles = normalizeRolePayload(req.body)
-    const normalizedEmail = correo.trim().toLowerCase()
-
-    if (isProtectedUser(normalizedEmail) && !roles.includes('Support')) {
-      roles.push('Support')
-    }
-
     const primaryRole = derivePrimaryRole(roles)
 
     if (!correo) {
@@ -803,11 +792,6 @@ app.put('/usuarios/:email/rol', async (req, res) => {
 
     if (!email) {
       res.status(400).json({ error: 'Falta el correo del usuario.' })
-      return
-    }
-
-    if (isProtectedUser(email) && !roles.includes('Support')) {
-      res.status(403).json({ error: 'No se puede quitar el rol Support a este usuario.' })
       return
     }
 
@@ -902,11 +886,6 @@ app.delete('/usuarios/:id', async (req, res) => {
     const existing = await pool.query('SELECT correo FROM usuarios WHERE id = $1', [id])
     if (existing.rowCount === 0) {
       res.status(404).json({ error: 'Usuario no encontrado' })
-      return
-    }
-
-    if (isProtectedUser(existing.rows[0].correo)) {
-      res.status(403).json({ error: 'No se puede eliminar este usuario.' })
       return
     }
 

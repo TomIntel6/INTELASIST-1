@@ -34,7 +34,6 @@ interface AuthContextValue {
 }
 
 const USER_ROLE_OPTIONS: UserRole[] = ['Agente', 'Admin', 'Support', 'Gerente']
-const PRIMARY_ADMIN_EMAIL = 'jrodriguez@intelasist.com'
 export const AUTH_STORAGE_KEY = 'intelasist-local-auth-session'
 export const PRESENCE_STORAGE_KEY = 'intelasist-online-users'
 export const PRESENCE_SYNC_STORAGE_KEY = 'intelasist-presence-sync'
@@ -517,10 +516,6 @@ async function safeSyncUserToBackend(user: LocalUser | null, overrides?: { passw
   }
 }
 
-export function isPrimaryAdmin(user: LocalUser | null): boolean {
-  return user?.email === PRIMARY_ADMIN_EMAIL
-}
-
 export function getUserRoles(user: LocalUser | null): UserRole[] {
   const metadataRoles = normalizeRoleList(user?.user_metadata?.roles)
   if (metadataRoles.length > 0) {
@@ -540,15 +535,15 @@ export function getUserRoles(user: LocalUser | null): UserRole[] {
     return [legacyRole]
   }
 
-  if (isPrimaryAdmin(user)) {
-    return ['Admin']
-  }
-
   return ['Agente']
 }
 
 export function getUserRole(user: LocalUser | null): UserRole {
   return getUserRoles(user)[0] ?? 'Agente'
+}
+
+export function isAdminUser(user: LocalUser | null): boolean {
+  return hasAnyRole(user, ['Admin'])
 }
 
 export function hasAnyRole(user: LocalUser | null, allowedRoles: UserRole[]): boolean {
