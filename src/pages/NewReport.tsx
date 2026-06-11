@@ -64,10 +64,8 @@ const [form, setForm] = React.useState({
   }, [])
 
   const [evidenceFile, setEvidenceFile] = React.useState<File | null>(null)
-  const [evidenceUrl, setEvidenceUrl] = React.useState<string>('')
   const [evidencePreview, setEvidencePreview] = React.useState<string | null>(null)
   const fileInputRef = React.useRef<HTMLInputElement | null>(null)
-  const pasteTextareaRef = React.useRef<HTMLTextAreaElement | null>(null)
 
   const setClipboardImage = (blob: Blob) => {
     const reader = new FileReader()
@@ -76,7 +74,6 @@ const [form, setForm] = React.useState({
       const extension = blob.type ? `.${blob.type.split('/')[1] ?? 'png'}` : '.png'
       const clipboardFile = new File([blob], `clipboard-${Date.now()}${extension}`, { type: blob.type || 'image/png' })
       setEvidenceFile(clipboardFile)
-      setEvidenceUrl('')
       setEvidencePreview(preview)
       setError(null)
     }
@@ -86,35 +83,28 @@ const [form, setForm] = React.useState({
     reader.readAsDataURL(blob)
   }
 
-  const handleClipboardPaste = (event: React.ClipboardEvent<HTMLTextAreaElement>) => {
-    const clipboardData = event.clipboardData
-    if (!clipboardData) {
-      return
-    }
+  const handleClipboardPaste = (clipboardEvent: ClipboardEvent | React.ClipboardEvent) => {
+    const clipboardData = (clipboardEvent as ClipboardEvent).clipboardData ?? (clipboardEvent as React.ClipboardEvent).clipboardData
+    if (!clipboardData) return
 
     const imageItem = Array.from(clipboardData.items || []).find(item => item.type.startsWith('image/'))
     if (imageItem) {
       const blob = imageItem.getAsFile()
       if (blob) {
         setClipboardImage(blob)
-        event.preventDefault()
         return
       }
     }
 
-    const text = clipboardData.getData('text').trim()
+    const text = clipboardData.getData('text')?.trim()
     if (text) {
       try {
-        const url = new URL(text)
+        new URL(text)
         setEvidenceFile(null)
-        if (fileInputRef.current) {
-          fileInputRef.current.value = ''
-        }
-        setEvidenceUrl(url.toString())
-        setEvidencePreview(url.toString())
+        setEvidencePreview(text)
         setError(null)
       } catch {
-        setError('Por favor pega una imagen o una URL de imagen válida.')
+        setError('Por favor pega una imagen desde el portapapeles.')
       }
     }
   }
@@ -321,7 +311,6 @@ const [form, setForm] = React.useState({
     reader.onload = (e) => {
       const preview = e.target?.result as string
       setEvidenceFile(file)
-      setEvidenceUrl('')
       setEvidencePreview(preview)
       setError(null)
     }
@@ -331,40 +320,56 @@ const [form, setForm] = React.useState({
     reader.readAsDataURL(file)
   }
 
-  const handleEvidenceUrlChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const value = event.target.value.trim()
-    setEvidenceUrl(value)
+  // Handler to open a temporary hidden textarea and capture the next paste event
+  const handlePasteButtonClick = () => {
+    const currentScroll = typeof window !== 'undefined' ? window.scrollY || 0 : 0
 
-    if (!value) {
-      if (!evidenceFile) {
-        setEvidencePreview(null)
+    const ta = document.createElement('textarea')
+    ta.style.position = 'fixed'
+    ta.style.left = '50%'
+    ta.style.top = '10px'
+    ta.style.transform = 'translateX(-50%)'
+    ta.style.opacity = '0'
+    ta.style.width = '1px'
+    ta.style.height = '1px'
+    ta.setAttribute('aria-hidden', 'true')
+    document.body.appendChild(ta)
+
+    const onPaste = (e: ClipboardEvent) => {
+      try {
+        e.preventDefault()
+        handleClipboardPaste(e)
+      } catch (err) {
+        console.error('Error handling paste:', err)
+      } finally {
+        cleanup()
+        window.scrollTo(0, currentScroll)
       }
-      setError(null)
-      return
     }
 
+    const onBlur = () => {
+      cleanup()
+      window.scrollTo(0, currentScroll)
+    }
+
+    function cleanup() {
+      ta.removeEventListener('paste', onPaste)
+      ta.removeEventListener('blur', onBlur)
+      if (document.body.contains(ta)) document.body.removeChild(ta)
+    }
+
+    ta.addEventListener('paste', onPaste)
+    ta.addEventListener('blur', onBlur)
+    // focus without scrolling
     try {
-      const url = new URL(value)
-      if (!url.protocol.startsWith('http')) {
-        throw new Error('URL inválida')
-      }
-      setEvidenceFile(null)
-      if (fileInputRef.current) {
-        fileInputRef.current.value = ''
-      }
-      setEvidencePreview(value)
-      setError(null)
+      ta.focus({ preventScroll: true } as FocusOptions)
     } catch {
-      setError('Por favor ingresa una URL válida de imagen.')
-      if (!evidenceFile) {
-        setEvidencePreview(null)
-      }
+      ta.focus()
     }
   }
 
   const removeEvidence = () => {
     setEvidenceFile(null)
-    setEvidenceUrl('')
     setEvidencePreview(null)
     if (fileInputRef.current) {
       fileInputRef.current.value = ''
@@ -434,20 +439,6 @@ const [form, setForm] = React.useState({
           setError(uploadError instanceof Error ? uploadError.message : 'No se pudo subir la imagen.')
         }
         return
-      }
-    } else if (evidenceUrl) {
-      try {
-        new URL(evidenceUrl)
-      } catch {
-        setSaving(false)
-        setError('Por favor ingresa una URL válida de imagen.')
-        return
-      }
-
-      evidencePayload = {
-        evidence_url: evidenceUrl,
-        evidence_filename: null,
-        evidence_path: null,
       }
     }
 
@@ -821,37 +812,14 @@ const [form, setForm] = React.useState({
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={() => pasteTextareaRef.current?.focus()}
+                onClick={handlePasteButtonClick}
                 className="w-full"
               >
                 Pegar imagen desde el portapapeles
               </Button>
-              <textarea
-                ref={pasteTextareaRef}
-                onPaste={handleClipboardPaste}
-                style={{
-                  position: 'absolute',
-                  left: '-9999px',
-                  top: '-9999px',
-                  width: 0,
-                  height: 0,
-                  opacity: 0,
-                }}
-                aria-hidden="true"
-              />
               <p className="text-xs text-muted-foreground">Haz clic en el botón y luego presiona Ctrl+V para pegar la imagen desde el portapapeles.</p>
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="evidence_url">Pegar URL de imagen</Label>
-              <Input
-                id="evidence_url"
-                value={evidenceUrl}
-                onChange={handleEvidenceUrlChange}
-                placeholder="https://ejemplo.com/imagen.jpg"
-                className="bg-muted/50 border-border/70"
-              />
-              <p className="text-xs text-muted-foreground">Pega la URL de una imagen de otra web para usarla como evidencia sin subir el archivo.</p>
-            </div>
+            
           </CardContent>
         </Card>
 
