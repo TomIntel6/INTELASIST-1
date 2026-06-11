@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { readFileSync, mkdirSync } from 'node:fs'
+import { readFileSync, mkdirSync, writeFileSync } from 'node:fs'
 import { resolve, extname } from 'node:path'
 import express from 'express'
 import cors from 'cors'
@@ -70,6 +70,7 @@ function getSupabaseAdminClient() {
 }
 
 const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || 'https://intelasist-ai.vercel.app'
+const SUPABASE_STORAGE_BUCKET = String(process.env.SUPABASE_STORAGE_BUCKET || 'uploads').trim()
 const allowedOrigins = [
   FRONTEND_ORIGIN,
   'https://intelasist-yps2-64ysydqqy-jose-rodriguez-s-projects1.vercel.app'
@@ -102,24 +103,56 @@ mkdirSync(uploadsDir, { recursive: true })
 app.use('/uploads', express.static(uploadsDir))
 
 const upload = multer({
-  storage: multer.diskStorage({
-    destination: uploadsDir,
-    filename: (req, file, callback) => {
-      const extension = extname(file.originalname).toLowerCase()
-      const filename = `${Date.now()}-${randomUUID()}${extension}`
-      callback(null, filename)
-    },
-  }),
+  storage: multer.memoryStorage(),
 })
 
-app.post('/upload', upload.single('file'), (req, res) => {
+app.post('/upload', upload.single('file'), async (req, res) => {
   try {
-    if (!req.file) {
+    if (!req.file || !req.file.buffer) {
       res.status(400).json({ error: 'No se recibió ningún archivo.' })
       return
     }
 
-    const filename = req.file.filename
+    const extension = extname(req.file.originalname).toLowerCase()
+    const filename = `${Date.now()}-${randomUUID()}${extension}`
+    const storagePath = `reports/${filename}`
+
+    if (supabase) {
+      const { data: uploadData, error: uploadError } = await supabase
+        .storage
+        .from(SUPABASE_STORAGE_BUCKET)
+        .upload(storagePath, req.file.buffer, {
+          contentType: req.file.mimetype,
+          upsert: false,
+        })
+
+      if (uploadError) {
+        console.error('Error subiendo archivo a Supabase Storage:', uploadError)
+        res.status(500).json({ error: 'No se pudo subir el archivo a Supabase Storage.' })
+        return
+      }
+
+      const { data: publicUrlData, error: publicUrlError } = await supabase
+        .storage
+        .from(SUPABASE_STORAGE_BUCKET)
+        .getPublicUrl(storagePath)
+
+      if (publicUrlError || !publicUrlData?.publicUrl) {
+        console.error('Error generando URL pública de Supabase:', publicUrlError)
+        res.status(500).json({ error: 'No se pudo generar la URL pública de Supabase Storage. Verifica la configuración del bucket.' })
+        return
+      }
+
+      return res.status(201).json({
+        ok: true,
+        filename,
+        path: storagePath,
+        url: publicUrlData.publicUrl,
+      })
+    }
+
+    const localFilePath = resolve(uploadsDir, filename)
+    writeFileSync(localFilePath, req.file.buffer)
     const filePath = `/uploads/${filename}`
     const fileUrl = `${req.protocol}://${req.get('host')}${filePath}`
 
@@ -1397,8 +1430,8 @@ app.post('/reports/:id/updates', async (req, res) => {
 
 app.get('/online-users', async (req, res) => {
   try {
-    // Cutoff de 35 segundos (el cliente sincroniza cada 20s, así que esto es más seguro)
-    const cutoff = Date.now() - 1000 * 35
+    // Cutoff de 45 segundos para dar margen frente a latencia y sincronización ligera.
+    const cutoff = Date.now() - 1000 * 45
     const result = await pool.query(
       'SELECT user_id, email, full_name, role, last_seen FROM online_presence WHERE last_seen > $1 ORDER BY last_seen DESC',
       [cutoff]
@@ -1421,24 +1454,24 @@ app.get('/online-users', async (req, res) => {
 
 app.post('/online-users', async (req, res) => {
   try {
-    const { userId, email, fullName, role, lastSeen } = req.body
+    const { userId, email, fullName, role } = req.body
 
     if (!userId || !email || !fullName || !role) {
       res.status(400).json({ error: 'Faltan datos para registrar presencia.' })
       return
     }
 
-    const payloadLastSeen = typeof lastSeen === 'number' ? lastSeen : Date.now()
+    const serverTimestamp = Date.now()
 
     await pool.query(
       `INSERT INTO online_presence (user_id, email, full_name, role, last_seen)
        VALUES ($1, $2, $3, $4, $5)
        ON CONFLICT (user_id)
        DO UPDATE SET email = EXCLUDED.email, full_name = EXCLUDED.full_name, role = EXCLUDED.role, last_seen = EXCLUDED.last_seen`,
-      [userId, email, fullName, role, payloadLastSeen]
+      [userId, email, fullName, role, serverTimestamp]
     )
 
-    res.json({ ok: true })
+    res.json({ ok: true, lastSeen: serverTimestamp })
   } catch (err) {
     console.error(err)
     res.status(500).json({ error: 'Error al actualizar presencia' })
@@ -1486,7 +1519,7 @@ async function startCleanupTask() {
   // Limpia usuarios con presencia expirada cada 20 segundos
   setInterval(async () => {
     try {
-      const cutoff = Date.now() - 1000 * 35
+      const cutoff = Date.now() - 1000 * 45
       const result = await pool.query(
         'DELETE FROM online_presence WHERE last_seen < $1 RETURNING user_id',
         [cutoff]

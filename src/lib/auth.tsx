@@ -40,7 +40,7 @@ export const PRESENCE_STORAGE_KEY = 'intelasist-online-users'
 export const PRESENCE_SYNC_STORAGE_KEY = 'intelasist-presence-sync'
 export const ROLE_SYNC_STORAGE_KEY = 'intelasist-role-sync'
 export const USERS_SYNC_STORAGE_KEY = 'intelasist-users-sync'
-const PRESENCE_TTL_MS = 1000 * 60
+const PRESENCE_TTL_MS = 1000 * 45
 const getDefaultApiBase = () => {
   if (import.meta.env.VITE_API_BASE_URL) return import.meta.env.VITE_API_BASE_URL
   return 'https://intelasist.onrender.com'
@@ -765,13 +765,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return
     }
 
-    // Sincroniza la presencia cada 20 segundos para mantener al usuario como "Activo".
-    // Incluso si la pestaña está en segundo plano, seguimos renovando la presencia.
+    // Sincroniza la presencia cada 15 segundos para mantener al usuario como "Activo".
+    // Esto da margen frente a latencia y evita que un salto pequeño de reloj provoque desapariciones.
     const syncPresence = () => {
       upsertOnlineUser(user)
     }
 
-    const presenceInterval = window.setInterval(syncPresence, 20000)
+    const presenceInterval = window.setInterval(syncPresence, 15000)
 
     // Sincroniza inmediatamente cuando la pestaña se vuelve visible.
     const handleVisibilityChange = () => {
