@@ -697,4 +697,4 @@ export const AppSidebar = React.memo(function AppSidebar() {
       </SidebarFooter>
     </Sidebar>
   )
-}
+})
