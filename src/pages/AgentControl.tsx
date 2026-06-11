@@ -239,7 +239,6 @@ export default function AgentControl() {
 
     const nextRoles = draftRoles[agent.email] ?? agent.roles
     const normalizedRoles = Array.from(new Set(nextRoles.filter(role => roleOptions.includes(role))))
-    const normalizedEmail = String(agent.email).trim().toLowerCase()
 
     if (normalizedRoles.length === 0) {
       setMessage('Selecciona al menos un rol para guardar.')
@@ -370,7 +369,7 @@ export default function AgentControl() {
                           return (
                             <label
                               key={role}
-                              className={`flex items-center gap-3 rounded-md border border-border bg-background px-3 py-2 text-sm ${isDisabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:bg-muted/60'}`}
+                              className={`flex items-center gap-3 rounded-md border border-border bg-background px-3 py-2 text-sm ${updatingAgent === agent.email ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:bg-muted/60'}`}
                             >
                               <Checkbox
                                 checked={isChecked}
