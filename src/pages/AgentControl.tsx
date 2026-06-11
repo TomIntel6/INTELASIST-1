@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Spinner } from '@/components/ui/spinner'
-import { canManageAgents, fetchOnlineUsersFromServer, getOnlineUsers, getUserRoles, isPrimaryAdmin, mergeOnlineUsers, updateStoredUserRoles, useAuth, type UserRole } from '@/lib/auth'
+import { canManageAgents, fetchOnlineUsersFromServer, getOnlineUsers, getUserRoles, isAdminUser, mergeOnlineUsers, updateStoredUserRoles, useAuth, type UserRole } from '@/lib/auth'
 import { ArrowLeft, ShieldAlert, Users } from 'lucide-react'
 
 const getDefaultApiBase = () => {
@@ -31,7 +31,6 @@ interface BackendUserRecord {
 }
 
 const ROLE_OPTIONS: UserRole[] = ['Agente', 'Admin', 'Support', 'Gerente']
-const PROTECTED_AGENT_EMAIL = 'jrodriguez@intelasist.com'
 
 function dedupeAgentsByEmail(agents: AgentRow[]) {
   const deduped = new Map<string, AgentRow>()
@@ -120,7 +119,7 @@ export default function AgentControl() {
   const [draftRoles, setDraftRoles] = React.useState<Record<string, UserRole[]>>({})
 
   const canManageAgentAccess = canManageAgents(user)
-  const canAssignCreatorRole = isPrimaryAdmin(user)
+  const canAssignCreatorRole = isAdminUser(user)
   const canViewAllCreatedUsers = canManageAgentAccess
   const roleOptions = canAssignCreatorRole
     ? ROLE_OPTIONS
@@ -241,20 +240,14 @@ export default function AgentControl() {
     const nextRoles = draftRoles[agent.email] ?? agent.roles
     const normalizedRoles = Array.from(new Set(nextRoles.filter(role => roleOptions.includes(role))))
     const normalizedEmail = String(agent.email).trim().toLowerCase()
-    const isProtectedAgent = normalizedEmail === PROTECTED_AGENT_EMAIL
 
     if (normalizedRoles.length === 0) {
       setMessage('Selecciona al menos un rol para guardar.')
       return
     }
 
-    if (isProtectedAgent && !normalizedRoles.includes('Support')) {
-      setMessage('No se puede quitar el rol Support a este usuario.')
-      return
-    }
-
     if (normalizedRoles.includes('Support') && !canAssignCreatorRole) {
-      setMessage('Solo José Rodríguez puede asignar el rol Support.')
+      setMessage('Solo usuarios con rol Admin pueden asignar el rol Support.')
       return
     }
 
@@ -372,8 +365,6 @@ export default function AgentControl() {
                       <p className="text-xs uppercase tracking-wide text-muted-foreground mb-2">Roles</p>
                       <div className="grid gap-2 sm:grid-cols-2">
                         {roleOptions.map(role => {
-                          const isProtectedAgent = agent.email.trim().toLowerCase() === PROTECTED_AGENT_EMAIL
-                          const isDisabled = isProtectedAgent && role === 'Support'
                           const isChecked = selectedRoles.includes(role)
 
                           return (
@@ -383,12 +374,8 @@ export default function AgentControl() {
                             >
                               <Checkbox
                                 checked={isChecked}
-                                disabled={updatingAgent === agent.email || isDisabled}
-                                onCheckedChange={() => {
-                                  if (!isDisabled) {
-                                    toggleAgentRole(agent.email, role)
-                                  }
-                                }}
+                                disabled={updatingAgent === agent.email}
+                                onCheckedChange={() => toggleAgentRole(agent.email, role)}
                               />
                               <span>{role}</span>
                             </label>

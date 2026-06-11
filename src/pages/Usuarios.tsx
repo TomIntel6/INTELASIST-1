@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Spinner } from '@/components/ui/spinner'
-import { canCreateUsers, canDeleteUsers, canManageAgents, canViewPasswords, fetchOnlineUsersFromServer, isPrimaryAdmin, useAuth, USERS_SYNC_STORAGE_KEY, type UserRole } from '@/lib/auth'
+import { canCreateUsers, canDeleteUsers, canManageAgents, canViewPasswords, fetchOnlineUsersFromServer, isAdminUser, useAuth, USERS_SYNC_STORAGE_KEY, type UserRole } from '@/lib/auth'
 
 interface Usuario {
   id: number
@@ -115,7 +115,7 @@ export default function Usuarios() {
 
   const canCreateUserAccess = canCreateUsers(user)
   const canShowPasswords = canViewPasswords(user)
-  const canAssignCreatorRole = isPrimaryAdmin(user)
+  const canAssignCreatorRole = isAdminUser(user)
   const canEditUserNames = canManageAgents(user)
   const roleOptions = canAssignCreatorRole
     ? ROLE_OPTIONS
@@ -312,7 +312,7 @@ export default function Usuarios() {
     }
 
     if (newUserRole === 'Support' && !canAssignCreatorRole) {
-      setCreateMessage('Solo José Rodríguez puede asignar el rol Support.')
+      setCreateMessage('Solo usuarios con rol Admin pueden asignar el rol Support.')
       return
     }
 
