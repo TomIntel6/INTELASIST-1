@@ -465,7 +465,7 @@ export default function ReportDetail() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {REPORT_STATUSES.filter(s => s !== 'Cotizacion' && s !== 'Falta de Informacion').map(s => (
+                      {REPORT_STATUSES.filter(s => s !== 'Cotizacion' && s !== 'Falta de Informacion' && s !== 'Caso Finalizado').map(s => (
                         <SelectItem key={s} value={s}>{s}</SelectItem>
                       ))}
                     </SelectContent>

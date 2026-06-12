@@ -30,7 +30,7 @@ export default function NewReport() {
 
   const COVERAGE_OPTIONS = ['No', 'KC', 'K1', 'K8', 'VA', 'FAB', 'FAP', 'FAV', 'FP', 'FAM', 'FAE', 'CB', 'CP', 'CV'] as const
   const INFORMATIVE_MOTIVOS = ['SERVICIO UTILIZADO', 'NO CUBIERTO POR LA POLIZA', 'OTROS'] as const
-  const VALIDATION_MOTIVOS = ['SOAT', 'SALDO MOROSO', 'RENOVACION NO PAGADA', 'BENEFICIO EN 24H', 'POLIZA CANCELADA'] as const
+  const VALIDATION_MOTIVOS = ['SOAT', 'SALDO MOROSO', 'RENOVACION NO PAGADA', 'BENEFICIO EN 24H', 'POLIZA CANCELADA', 'OTROS'] as const
 
 const [form, setForm] = React.useState({
     month: MONTHS[currentMonthIdx],
@@ -675,7 +675,7 @@ const [form, setForm] = React.useState({
                   <SelectValue placeholder="Seleccionar estado" />
                 </SelectTrigger>
                 <SelectContent>
-                  {REPORT_STATUSES.filter(s => s !== 'Falta de Informacion' && s !== 'Cotizacion').map(s => (
+                  {REPORT_STATUSES.filter(s => s !== 'Falta de Informacion' && s !== 'Cotizacion' && s !== 'Caso Finalizado').map(s => (
                     <SelectItem key={s} value={s}>{s}</SelectItem>
                   ))}
                 </SelectContent>
