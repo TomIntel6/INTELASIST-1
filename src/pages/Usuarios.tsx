@@ -121,6 +121,15 @@ export default function Usuarios() {
     ? ROLE_OPTIONS
     : ROLE_OPTIONS.filter(role => role !== 'Support')
 
+  const sortedUsuarios = React.useMemo(
+    () => [...usuarios].sort((a, b) => {
+      const nameA = (a.nombre?.trim() || a.correo?.trim() || '').toLowerCase()
+      const nameB = (b.nombre?.trim() || b.correo?.trim() || '').toLowerCase()
+      return nameA.localeCompare(nameB, 'es', { sensitivity: 'base' })
+    }),
+    [usuarios]
+  )
+
   const resetNewUserForm = React.useCallback(() => {
     setNewUserName('')
     setNewUserEmail('')
@@ -511,7 +520,7 @@ export default function Usuarios() {
             </Card>
           ) : (
             <div className="space-y-3">
-              {usuarios.map(usuario => {
+              {sortedUsuarios.map(usuario => {
                 const displayName = usuario.nombre?.trim() || usuario.correo?.trim() || 'Usuario'
                 const email = usuario.correo?.trim() || 'Correo no disponible'
 

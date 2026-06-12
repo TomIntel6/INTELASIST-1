@@ -590,11 +590,11 @@ export function getRoleColorClasses(role: UserRole, fullName?: string | null) {
 }
 
 export function canDeleteReports(user: LocalUser | null): boolean {
-  return hasAnyRole(user, ['Admin', 'Support', 'Gerente'])
+  return hasAnyRole(user, ['Support', 'Gerente'])
 }
 
 export function canViewPasswords(user: LocalUser | null): boolean {
-  return hasAnyRole(user, ['Admin', 'Support', 'Gerente'])
+  return hasAnyRole(user, ['Support', 'Gerente'])
 }
 
 export function canManageAgents(user: LocalUser | null): boolean {
@@ -606,7 +606,7 @@ export function canDeleteUsers(user: LocalUser | null): boolean {
 }
 
 export function canCreateUsers(user: LocalUser | null): boolean {
-  return hasAnyRole(user, ['Admin', 'Support', 'Gerente'])
+  return hasAnyRole(user, ['Support', 'Gerente'])
 }
 
 export function passwordChangeRequired(user: LocalUser | null): boolean {
