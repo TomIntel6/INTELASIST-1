@@ -114,7 +114,6 @@ export default function Usuarios() {
   const [editingUserId, setEditingUserId] = React.useState<number | null>(null)
   const [editingUserName, setEditingUserName] = React.useState('')
   const [passwordEditingUserId, setPasswordEditingUserId] = React.useState<number | null>(null)
-  const [passwordEditingUserEmail, setPasswordEditingUserEmail] = React.useState('')
   const [newPasswordForUser, setNewPasswordForUser] = React.useState('')
   const [showNewPassword, setShowNewPassword] = React.useState(false)
   const [changingPasswordUserId, setChangingPasswordUserId] = React.useState<number | null>(null)
