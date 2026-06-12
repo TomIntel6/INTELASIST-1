@@ -5,8 +5,9 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Spinner } from '@/components/ui/spinner'
-import { canManageAgents, fetchOnlineUsersFromServer, getOnlineUsers, getUserRoles, isAdminUser, mergeOnlineUsers, updateStoredUserRoles, useAuth, type UserRole } from '@/lib/auth'
-import { ArrowLeft, ShieldAlert, Users } from 'lucide-react'
+import { Input } from '@/components/ui/input'
+import { canAssignSupportRole, canManageAgents, fetchOnlineUsersFromServer, getOnlineUsers, getUserRoles, mergeOnlineUsers, updateStoredUserRoles, useAuth, type UserRole } from '@/lib/auth'
+import { ArrowLeft, Eye, EyeOff, KeyRound, ShieldAlert, Users } from 'lucide-react'
 
 const getDefaultApiBase = () => {
   if (import.meta.env.VITE_API_BASE_URL) return import.meta.env.VITE_API_BASE_URL
@@ -117,11 +118,15 @@ export default function AgentControl() {
   const [message, setMessage] = React.useState<string | null>(null)
   const [updatingAgent, setUpdatingAgent] = React.useState<string | null>(null)
   const [draftRoles, setDraftRoles] = React.useState<Record<string, UserRole[]>>({})
+  const [passwordAgentEmail, setPasswordAgentEmail] = React.useState<string | null>(null)
+  const [newPassword, setNewPassword] = React.useState('')
+  const [showNewPassword, setShowNewPassword] = React.useState(false)
+  const [savingPassword, setSavingPassword] = React.useState(false)
 
   const canManageAgentAccess = canManageAgents(user)
-  const canAssignCreatorRole = isAdminUser(user)
+  const canAssignSupport = canAssignSupportRole(user)
   const canViewAllCreatedUsers = canManageAgentAccess
-  const roleOptions = canAssignCreatorRole
+  const roleOptions = canAssignSupport
     ? ROLE_OPTIONS
     : ROLE_OPTIONS.filter(role => role !== 'Support')
 
@@ -245,8 +250,8 @@ export default function AgentControl() {
       return
     }
 
-    if (normalizedRoles.includes('Support') && !canAssignCreatorRole) {
-      setMessage('Solo usuarios con rol Admin pueden asignar el rol Support.')
+    if (normalizedRoles.includes('Support') && !canAssignSupport) {
+      setMessage('Solo usuarios con rol Support pueden asignar el rol Support.')
       return
     }
 
@@ -279,6 +284,56 @@ export default function AgentControl() {
         : 'No se pudo guardar el rol en el servidor.')
     } finally {
       setUpdatingAgent(null)
+    }
+  }
+
+  const openPasswordEditor = (agentEmail: string) => {
+    setPasswordAgentEmail(prev => (prev === agentEmail ? null : agentEmail))
+    setNewPassword('')
+    setShowNewPassword(false)
+    setMessage(null)
+  }
+
+  const handleAgentPasswordChange = async (agent: AgentRow) => {
+    if (!canManageAgentAccess) {
+      setMessage('No tienes permisos para cambiar la contraseña de agentes.')
+      return
+    }
+
+    const trimmedPassword = newPassword.trim()
+    if (trimmedPassword.length < 6) {
+      setMessage('La nueva contraseña debe tener al menos 6 caracteres.')
+      return
+    }
+
+    setSavingPassword(true)
+    setMessage(null)
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/usuarios/${encodeURIComponent(agent.email)}/password`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ password: trimmedPassword }),
+      })
+
+      const payload = await response.json().catch(() => ({}))
+
+      if (!response.ok) {
+        throw new Error(payload.error || 'No se pudo actualizar la contraseña en el servidor.')
+      }
+
+      setMessage(`Contraseña actualizada correctamente para ${agent.fullName}.`)
+      setPasswordAgentEmail(null)
+      setNewPassword('')
+      setShowNewPassword(false)
+    } catch (error) {
+      setMessage(error instanceof Error
+        ? `No se pudo cambiar la contraseña: ${error.message}`
+        : 'No se pudo cambiar la contraseña.')
+    } finally {
+      setSavingPassword(false)
     }
   }
 
@@ -386,12 +441,58 @@ export default function AgentControl() {
                       <Button
                         type="button"
                         size="sm"
+                        variant="outline"
+                        onClick={() => openPasswordEditor(agent.email)}
+                        disabled={savingPassword}
+                      >
+                        <KeyRound className="size-4" />
+                        {passwordAgentEmail === agent.email ? 'Cancelar' : 'Cambiar contraseña'}
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
                         onClick={() => handleAgentRolesChange(agent)}
                         disabled={updatingAgent === agent.email || (draftRoles[agent.email]?.length ?? 0) === 0}
                       >
                         Guardar roles
                       </Button>
                     </div>
+
+                    {passwordAgentEmail === agent.email ? (
+                      <div className="rounded-md border border-border bg-background p-3 space-y-2">
+                        <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                          Nueva contraseña (si el agente la olvidó)
+                        </p>
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                          <div className="relative flex-1">
+                            <Input
+                              type={showNewPassword ? 'text' : 'password'}
+                              value={newPassword}
+                              onChange={event => setNewPassword(event.target.value)}
+                              placeholder="Mínimo 6 caracteres"
+                              disabled={savingPassword}
+                              className="pr-9"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowNewPassword(prev => !prev)}
+                              className="absolute inset-y-0 right-2 flex items-center text-muted-foreground hover:text-foreground"
+                              aria-label={showNewPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                            >
+                              {showNewPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                            </button>
+                          </div>
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={() => handleAgentPasswordChange(agent)}
+                            disabled={savingPassword || newPassword.trim().length < 6}
+                          >
+                            {savingPassword ? 'Guardando…' : 'Guardar contraseña'}
+                          </Button>
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
                 </div>
               )
