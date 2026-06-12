@@ -548,6 +548,10 @@ export function isAdminUser(user: LocalUser | null): boolean {
   return hasAnyRole(user, ['Admin'])
 }
 
+export function canAssignSupportRole(user: LocalUser | null): boolean {
+  return hasAnyRole(user, ['Support'])
+}
+
 export function hasAnyRole(user: LocalUser | null, allowedRoles: UserRole[]): boolean {
   const userRoles = getUserRoles(user)
   return userRoles.some(role => allowedRoles.includes(role))
