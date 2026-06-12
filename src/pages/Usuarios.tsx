@@ -317,7 +317,6 @@ export default function Usuarios() {
     }
 
     setPasswordEditingUserId(prev => (prev === usuario.id ? null : usuario.id))
-    setPasswordEditingUserEmail(usuario.correo ?? '')
     setNewPasswordForUser('')
     setShowNewPassword(false)
     setPasswordMessage(null)
@@ -357,7 +356,6 @@ export default function Usuarios() {
 
       setPasswordMessage(`Contraseña actualizada correctamente para ${usuario.nombre || usuario.correo}.`)
       setPasswordEditingUserId(null)
-      setPasswordEditingUserEmail('')
       setNewPasswordForUser('')
       setShowNewPassword(false)
 
