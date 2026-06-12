@@ -40,7 +40,9 @@ export const PRESENCE_SYNC_STORAGE_KEY = 'intelasist-presence-sync'
 export const ROLE_SYNC_STORAGE_KEY = 'intelasist-role-sync'
 export const USERS_SYNC_STORAGE_KEY = 'intelasist-users-sync'
 const PRESENCE_TTL_MS = 1000 * 45
-const PRESENCE_SYNC_INTERVAL_MS = 1000 * 60
+// El heartbeat debe ser claramente más frecuente que el TTL para evitar que el
+// usuario "expire" entre un latido y el siguiente (antes: 60s > 45s -> parpadeo).
+const PRESENCE_SYNC_INTERVAL_MS = 1000 * 20
 const getDefaultApiBase = () => {
   if (import.meta.env.VITE_API_BASE_URL) return import.meta.env.VITE_API_BASE_URL
   return 'https://intelasist.onrender.com'
