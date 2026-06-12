@@ -557,17 +557,35 @@ export function hasAnyRole(user: LocalUser | null, allowedRoles: UserRole[]): bo
   return userRoles.some(role => allowedRoles.includes(role))
 }
 
-export function getRoleColorClasses(role: UserRole) {
+// Usuario destacado: nombre y rol con la paleta completa (arcoíris)
+const RAINBOW_USER_NAMES = ['manuel barria']
+
+export function isRainbowUser(fullName: string | null | undefined): boolean {
+  if (!fullName) return false
+  return RAINBOW_USER_NAMES.includes(fullName.trim().toLowerCase())
+}
+
+// Clases para el NOMBRE: solo los usuarios destacados reciben la paleta de color
+export function getNameColorClasses(fullName: string | null | undefined): string {
+  return isRainbowUser(fullName) ? 'rainbow-animated font-extrabold' : ''
+}
+
+export function getRoleColorClasses(role: UserRole, fullName?: string | null) {
+  // Sin cuadro ni fondo: el degradado se aplica dentro del propio texto
+  if (isRainbowUser(fullName)) {
+    return 'rainbow-animated font-bold bg-transparent border-0'
+  }
+
   switch (role) {
     case 'Support':
-      return 'support-animated border-purple-500/80 bg-purple-500/10 text-white dark:text-white font-bold'
+      return 'support-animated font-bold bg-transparent border-0'
     case 'Gerente':
-      return 'gerente-animated border-red-500/80 bg-red-500/10 text-white dark:text-white font-bold'
+      return 'gerente-animated font-bold bg-transparent border-0'
     case 'Admin':
-      return 'admin-animated border-slate-400/80 text-white dark:text-white font-bold'
+      return 'admin-animated font-bold bg-transparent border-0'
     case 'Agente':
     default:
-      return 'agente-animated border-slate-400/80 bg-slate-500/10 text-white dark:text-white font-bold'
+      return 'agente-animated font-bold bg-transparent border-0'
   }
 }
 

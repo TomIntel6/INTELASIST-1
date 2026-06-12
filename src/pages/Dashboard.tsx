@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { hasValidReportMeta, isFinalizedStatus, type Report, loadAllReports, getCachedReportsForYear } from '@/lib/supabase'
-import { getRoleColorClasses, getUserRoles, useAuth } from '@/lib/auth'
+import { getNameColorClasses, getRoleColorClasses, getUserRoles, useAuth } from '@/lib/auth'
 import {
   FilePlus,
   FileText,
@@ -115,14 +115,14 @@ export default function Dashboard() {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
               <h1 className="text-2xl font-bold text-foreground">
-                Bienvenido, {displayName.split(' ')[0]}
+                Bienvenido, <span className={getNameColorClasses(displayName)}>{displayName.split(' ')[0]}</span>
               </h1>
               <p className="text-sm text-muted-foreground mt-1">
                 Panel de control — Hoy, {currentDay.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
               </p>
               <div className="mt-2 flex flex-wrap items-center gap-2">
                 {userRoles.map(role => (
-                  <Badge key={role} className={`text-xs ${getRoleColorClasses(role)}`}>
+                  <Badge key={role} className={`text-xs ${getRoleColorClasses(role, displayName)}`}>
                     {role}
                   </Badge>
                 ))}
