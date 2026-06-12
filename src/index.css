@@ -239,40 +239,44 @@
   }
 }
 
+/* Insignias de rol: degradado relleno + texto sólido para máxima legibilidad */
+.admin-animated,
+.support-animated,
+.gerente-animated,
+.agente-animated {
+  background-size: 200% 200%;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
+  border: none !important;
+  border-radius: 9999px;
+  text-transform: uppercase;
+}
+
 .admin-animated {
   background-image: linear-gradient(90deg, #0f2d51 0%, #ff6f61 30%, #d4af37 60%, #708090 100%);
-  background-size: 200% 200%;
   animation: support-stripe-shift 4s ease-in-out infinite;
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
+  box-shadow: 0 0 8px rgba(212, 175, 55, 0.6);
 }
 
 .support-animated {
   background-image: linear-gradient(90deg, #7928CA 0%, #29D8FF 50%, #FF0080 100%);
-  background-size: 200% 200%;
   animation: support-stripe-shift 3.5s ease-in-out infinite;
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
+  box-shadow: 0 0 8px rgba(121, 40, 202, 0.65);
 }
 
 .gerente-animated {
   background-image: linear-gradient(90deg, #FF3B30 0%, #FFCC00 50%, #007AFF 100%);
-  background-size: 200% 200%;
   animation: support-stripe-shift 3.5s ease-in-out infinite;
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
+  box-shadow: 0 0 8px rgba(255, 59, 48, 0.6);
 }
 
 .agente-animated {
-  background-image: linear-gradient(90deg, #64748B 0%, #94A3B8 50%, #CBD5E1 100%);
-  background-size: 200% 200%;
+  background-image: linear-gradient(90deg, #475569 0%, #64748B 50%, #94A3B8 100%);
   animation: support-stripe-shift 3.5s ease-in-out infinite;
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
+  box-shadow: 0 0 6px rgba(100, 116, 139, 0.5);
 }
 
 .agente-animated-special {

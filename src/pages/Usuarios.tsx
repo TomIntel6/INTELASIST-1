@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Spinner } from '@/components/ui/spinner'
-import { canCreateUsers, canDeleteUsers, canManageAgents, canViewPasswords, fetchOnlineUsersFromServer, isAdminUser, useAuth, USERS_SYNC_STORAGE_KEY, type UserRole } from '@/lib/auth'
+import { canAssignSupportRole, canCreateUsers, canDeleteUsers, canManageAgents, canViewPasswords, fetchOnlineUsersFromServer, useAuth, USERS_SYNC_STORAGE_KEY, type UserRole } from '@/lib/auth'
 
 interface Usuario {
   id: number
@@ -115,9 +115,9 @@ export default function Usuarios() {
 
   const canCreateUserAccess = canCreateUsers(user)
   const canShowPasswords = canViewPasswords(user)
-  const canAssignCreatorRole = isAdminUser(user)
+  const canAssignSupport = canAssignSupportRole(user)
   const canEditUserNames = canManageAgents(user)
-  const roleOptions = canAssignCreatorRole
+  const roleOptions = canAssignSupport
     ? ROLE_OPTIONS
     : ROLE_OPTIONS.filter(role => role !== 'Support')
 
@@ -311,8 +311,8 @@ export default function Usuarios() {
       return
     }
 
-    if (newUserRole === 'Support' && !canAssignCreatorRole) {
-      setCreateMessage('Solo usuarios con rol Admin pueden asignar el rol Support.')
+    if (newUserRole === 'Support' && !canAssignSupport) {
+      setCreateMessage('Solo usuarios con rol Support pueden asignar el rol Support.')
       return
     }
 
@@ -377,7 +377,12 @@ export default function Usuarios() {
           <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <div>
               <p className="text-sm font-medium text-primary">INTELASIST</p>
-              <h1 className="mt-1 text-2xl font-bold text-foreground">Usuarios</h1>
+              <div className="mt-1 flex items-center gap-3">
+                <h1 className="text-2xl font-bold text-foreground">Usuarios</h1>
+                <Badge className="border-primary/30 bg-primary/15 px-3 py-1 text-sm font-bold text-primary dark:text-primary">
+                  {usuarios.length} {usuarios.length === 1 ? 'usuario registrado' : 'usuarios registrados'}
+                </Badge>
+              </div>
               <p className="mt-2 text-sm text-muted-foreground">
                 Listado de usuarios registrados en la plataforma
               </p>
