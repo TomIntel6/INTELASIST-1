@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Spinner } from '@/components/ui/spinner'
-import { canAssignSupportRole, canCreateUsers, canDeleteUsers, canManageAgents, canViewPasswords, fetchOnlineUsersFromServer, useAuth, USERS_SYNC_STORAGE_KEY, type UserRole } from '@/lib/auth'
+import { canAssignSupportRole, canCreateUsers, canDeleteUsers, canManageAgents, canViewPasswords, fetchOnlineUsersFromServer, getNameColorClasses, useAuth, USERS_SYNC_STORAGE_KEY, type UserRole } from '@/lib/auth'
 
 interface Usuario {
   id: number
@@ -552,7 +552,7 @@ export default function Usuarios() {
                         </div>
                       ) : (
                         <div onDoubleClick={() => { if (canEditUserNames) { setEditingUserId(usuario.id); setEditingUserName(displayName) } }}>
-                          <p className={`truncate text-sm font-semibold text-foreground ${canEditUserNames ? 'cursor-pointer hover:text-primary' : ''}`}>
+                          <p className={`truncate text-sm font-semibold text-foreground ${canEditUserNames ? 'cursor-pointer hover:text-primary' : ''} ${getNameColorClasses(displayName)}`}>
                             {displayName}
                             {!canEditUserNames && <span className="text-xs text-muted-foreground ml-2">(sin permisos para editar)</span>}
                           </p>

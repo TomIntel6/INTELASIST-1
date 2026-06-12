@@ -24,7 +24,7 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { canManageAgents, fetchOnlineUsersFromServer, getOnlineUsers, getRoleColorClasses, getUserRole, getUserRoles, useAuth, PRESENCE_STORAGE_KEY, PRESENCE_SYNC_STORAGE_KEY, USERS_SYNC_STORAGE_KEY } from '@/lib/auth'
+import { canManageAgents, fetchOnlineUsersFromServer, getNameColorClasses, getOnlineUsers, getRoleColorClasses, getUserRole, getUserRoles, useAuth, PRESENCE_STORAGE_KEY, PRESENCE_SYNC_STORAGE_KEY, USERS_SYNC_STORAGE_KEY } from '@/lib/auth'
 import { getDefaultApiBase } from '@/lib/supabase'
 import { LayoutDashboard, FileText, LogOut, FilePlus, Users, AlertCircle } from 'lucide-react'
 
@@ -545,7 +545,7 @@ export const AppSidebar = React.memo(function AppSidebar() {
                           <span className="absolute -bottom-0.5 -right-0.5 inline-flex h-2 w-2 rounded-full border-1 border-sidebar bg-emerald-500" />
                         </div>
                         <div className="min-w-0">
-                          <p className="truncate text-[10px] font-medium text-sidebar-foreground">{user.fullName || 'Usuario'}</p>
+                          <p className={`truncate text-[10px] font-medium text-sidebar-foreground ${getNameColorClasses(user.fullName)}`}>{user.fullName || 'Usuario'}</p>
                         </div>
                       </div>
 
@@ -554,7 +554,7 @@ export const AppSidebar = React.memo(function AppSidebar() {
                           <Badge
                             key={role}
                             title={`Rol: ${role}`}
-                            className={`text-[8px] px-1 py-0 h-5 flex items-center whitespace-nowrap ${getRoleColorClasses(role)}`}
+                            className={`text-[8px] px-1 py-0 h-5 flex items-center whitespace-nowrap ${getRoleColorClasses(role, user.fullName)}`}
                           >
                             {role}
                           </Badge>
@@ -584,14 +584,14 @@ export const AppSidebar = React.memo(function AppSidebar() {
               onClick={() => openProfile(true)}
               className="rounded-xl px-2 py-1 text-left transition-all duration-150 hover:bg-primary/10 hover:shadow-[0_0_20px_rgba(59,130,246,0.16)]"
             >
-              <span className="block text-xs font-medium text-sidebar-foreground truncate transition-all duration-150 hover:text-primary hover:drop-shadow-[0_0_10px_rgba(59,130,246,0.28)]">
+              <span className={`block text-xs font-medium text-sidebar-foreground truncate transition-all duration-150 hover:text-primary hover:drop-shadow-[0_0_10px_rgba(59,130,246,0.28)] ${getNameColorClasses(displayName)}`}>
                 {displayName}
               </span>
             </button>
             <span className="px-2 text-xs text-sidebar-foreground/85 truncate">{user?.email}</span>
             <div className="flex flex-wrap gap-1 px-2 mt-1">
               {userRoles.map(role => (
-                <Badge key={role} className={`text-[10px] ${getRoleColorClasses(role)} transition-all duration-150`}>
+                <Badge key={role} className={`text-[10px] ${getRoleColorClasses(role, displayName)} transition-all duration-150`}>
                   {role}
                 </Badge>
               ))}
