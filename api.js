@@ -1479,7 +1479,7 @@ app.post('/reports/:id/updates', async (req, res) => {
       createdAt,
     ])
 
-    const reportStatusToStore = payload.status === 'Informativo' || payload.status === 'Informacion'
+    const reportStatusToStore = payload.status === 'Informativo'
       ? report.status
       : payload.status ?? report.status
 
