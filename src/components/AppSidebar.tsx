@@ -144,7 +144,7 @@ export const AppSidebar = React.memo(function AppSidebar() {
     missingFields: string[]
   }>>([])
   const [alertsOpen, setAlertsOpen] = React.useState(false)
-  const isAdminRole = userRoles.includes('Admin') || userRoles.includes('Gerente') || userRoles.includes('Support')
+  const isAdminRole = userRoles.includes('Admin') || userRoles.includes('Gerente')
 
   React.useEffect(() => {
     setProfileName(rawDisplayName)

@@ -11,7 +11,7 @@ import pool from './db.js'
 const app = express()
 // Conjunto de clientes SSE conectados
 const sseClients = new Set()
-const ROLE_OPTIONS = ['Agente', 'Admin', 'Support', 'Gerente']
+const ROLE_OPTIONS = ['Agente', 'Admin', 'Gerente']
 const SALT_ROUNDS = 10
 
 function loadEnvFile() {
@@ -532,7 +532,7 @@ async function ensureReportsTable() {
   `)
 }
 
-async function ensureReportsSupportTables() {
+async function ensureReportUpdatesTableWrapper() {
   await ensureReportUpdatesTable()
 }
 
@@ -1580,7 +1580,7 @@ async function start() {
     await ensureUsersMustChangePasswordColumn()
     await ensureUsersPasswordConstraint()
     await ensureReportsTable()
-    await ensureReportsSupportTables()
+    await ensureReportUpdatesTableWrapper()
     await ensureFailedReportAttemptsTable()
     console.log('Base de datos inicializada correctamente')
   } catch (err) {
