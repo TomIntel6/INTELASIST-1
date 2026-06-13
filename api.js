@@ -360,6 +360,9 @@ function serializeReportRow(row) {
       : row.evidence_urls && typeof row.evidence_urls === 'string'
         ? JSON.parse(row.evidence_urls)
         : null,
+    created_by: row.created_by ?? null,
+    created_by_name: String(row.created_by_name ?? ''),
+    created_by_email: String(row.created_by_email ?? ''),
   }
 }
 
