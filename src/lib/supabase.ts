@@ -69,6 +69,7 @@ export interface Report {
   evidence_url?: string | null
   evidence_filename?: string | null
   evidence_path?: string | null
+  evidence_urls?: EvidenceImage[] | null
   created_by: string | null
   created_by_name: string
   created_by_email: string
@@ -86,6 +87,12 @@ export interface ReportUpdate {
   added_by_name: string
   added_by_email: string
   created_at: string
+}
+
+export interface EvidenceImage {
+  url: string
+  filename: string
+  path: string
 }
 
 export const getDefaultApiBase = () => {
@@ -276,6 +283,15 @@ function normalizeReport(raw: Record<string, unknown>): Report {
     evidence_url: raw.evidence_url === null || raw.evidence_url === undefined ? null : String(raw.evidence_url),
     evidence_filename: raw.evidence_filename === null || raw.evidence_filename === undefined ? null : String(raw.evidence_filename),
     evidence_path: raw.evidence_path === null || raw.evidence_path === undefined ? null : String(raw.evidence_path),
+    evidence_urls: Array.isArray(raw.evidence_urls)
+      ? raw.evidence_urls.map((item) => ({
+          url: String((item as Record<string, unknown>).url ?? ''),
+          filename: String((item as Record<string, unknown>).filename ?? ''),
+          path: String((item as Record<string, unknown>).path ?? ''),
+        }))
+      : raw.evidence_url && raw.evidence_url !== null
+        ? [{ url: String(raw.evidence_url), filename: String(raw.evidence_filename ?? ''), path: String(raw.evidence_path ?? '') }]
+        : null,
     created_by: raw.created_by === null || raw.created_by === undefined ? null : String(raw.created_by),
     created_by_name: String(raw.created_by_name ?? ''),
     created_by_email: String(raw.created_by_email ?? ''),
@@ -566,7 +582,9 @@ export async function addReportUpdate(reportId: string, payload: Omit<ReportUpda
 
   const current = getCachedReportById(reportId)
   if (current) {
-    current.status = payload.status
+    if (payload.status !== 'Informativo') {
+      current.status = payload.status
+    }
     current.updated_at = update.created_at
     current.report_updates = [...(current.report_updates ?? []), update]
     writeCache([current], { replaceMonth: false })

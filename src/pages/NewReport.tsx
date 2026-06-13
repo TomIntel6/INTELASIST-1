@@ -63,8 +63,8 @@ const [form, setForm] = React.useState({
     }
   }, [])
 
-  const [evidenceFile, setEvidenceFile] = React.useState<File | null>(null)
-  const [evidencePreview, setEvidencePreview] = React.useState<string | null>(null)
+  type EvidenceItem = { file: File; preview: string }
+  const [evidenceItems, setEvidenceItems] = React.useState<EvidenceItem[]>([])
   const fileInputRef = React.useRef<HTMLInputElement | null>(null)
   const pasteTextareaRef = React.useRef<HTMLTextAreaElement | null>(null)
 
@@ -74,8 +74,7 @@ const [form, setForm] = React.useState({
       const preview = e.target?.result as string
       const extension = blob.type ? `.${blob.type.split('/')[1] ?? 'png'}` : '.png'
       const clipboardFile = new File([blob], `clipboard-${Date.now()}${extension}`, { type: blob.type || 'image/png' })
-      setEvidenceFile(clipboardFile)
-      setEvidencePreview(preview)
+      setEvidenceItems(prev => [...prev, { file: clipboardFile, preview }])
       setError(null)
     }
     reader.onerror = () => {
@@ -101,8 +100,7 @@ const [form, setForm] = React.useState({
     if (text) {
       try {
         new URL(text)
-        setEvidenceFile(null)
-        setEvidencePreview(text)
+        setEvidenceItems(prev => [...prev, { file: new File([], `clipboard-url-${Date.now()}.png`), preview: text }])
         setError(null)
       } catch {
         setError('Por favor pega una imagen desde el portapapeles.')
@@ -295,35 +293,45 @@ const [form, setForm] = React.useState({
   }, [form.status, form.motivo])
 
   const handleEvidenceChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (!file) return
+    const files = event.target.files ? Array.from(event.target.files) : []
+    if (files.length === 0) return
 
-    if (!file.type.startsWith('image/')) {
-      setError('Por favor selecciona una imagen válida.')
-      return
+    const acceptedFiles: EvidenceItem[] = []
+    const errors: string[] = []
+
+    files.forEach((file) => {
+      if (!file.type.startsWith('image/')) {
+        errors.push(`El archivo ${file.name} no es una imagen válida.`)
+        return
+      }
+
+      if (file.size > 5 * 1024 * 1024) {
+        errors.push(`La imagen ${file.name} no debe superar 5MB.`)
+        return
+      }
+
+      acceptedFiles.push({ file, preview: '' })
+    })
+
+    if (errors.length > 0) {
+      setError(errors.join(' '))
     }
 
-    if (file.size > 5 * 1024 * 1024) {
-      setError('La imagen no debe superar 5MB.')
-      return
-    }
-
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      const preview = e.target?.result as string
-      setEvidenceFile(file)
-      setEvidencePreview(preview)
+    if (acceptedFiles.length > 0) {
+      acceptedFiles.forEach((item, index) => {
+        const reader = new FileReader()
+        reader.onload = (e) => {
+          const preview = e.target?.result as string
+          setEvidenceItems(prev => [...prev, { file: item.file, preview }])
+        }
+        reader.readAsDataURL(item.file)
+      })
       setError(null)
     }
-    reader.onerror = () => {
-      setError('No se pudo leer la imagen.')
-    }
-    reader.readAsDataURL(file)
   }
 
-  const removeEvidence = () => {
-    setEvidenceFile(null)
-    setEvidencePreview(null)
+  const removeEvidence = (index: number) => {
+    setEvidenceItems(prev => prev.filter((_, idx) => idx !== index))
     if (fileInputRef.current) {
       fileInputRef.current.value = ''
     }
@@ -358,7 +366,13 @@ const [form, setForm] = React.useState({
       setSaving(false)
       return
     }
-    
+
+    if (!form.observation_comment.trim()) {
+      setError('Por favor describe lo sucedido en la llamada.')
+      setSaving(false)
+      return
+    }
+
     if (!isMountedRef.current) {
       return
     }
@@ -368,28 +382,45 @@ const [form, setForm] = React.useState({
 
     const displayName = user?.user_metadata?.full_name ?? user?.email ?? ''
 
-    let evidencePayload = {
-      evidence_url: null as string | null,
-      evidence_filename: null as string | null,
-      evidence_path: null as string | null,
+    let evidencePayload: {
+      evidence_url: string | null
+      evidence_filename: string | null
+      evidence_path: string | null
+      evidence_urls: Array<{ url: string; filename: string; path: string }> | null
+    } = {
+      evidence_url: null,
+      evidence_filename: null,
+      evidence_path: null,
+      evidence_urls: null,
     }
 
-    if (evidenceFile) {
+    if (evidenceItems.length > 0) {
       try {
-        const uploaded = await uploadEvidenceFile(evidenceFile)
+        const uploadedItems = await Promise.all(
+          evidenceItems.map(async (item) => {
+            const uploaded = await uploadEvidenceFile(item.file)
+            return {
+              url: uploaded.url,
+              filename: uploaded.filename,
+              path: uploaded.path,
+            }
+          })
+        )
+
         if (!isMountedRef.current) {
           return
         }
 
         evidencePayload = {
-          evidence_url: uploaded.url,
-          evidence_filename: uploaded.filename,
-          evidence_path: uploaded.path,
+          evidence_url: uploadedItems[0]?.url ?? null,
+          evidence_filename: uploadedItems[0]?.filename ?? null,
+          evidence_path: uploadedItems[0]?.path ?? null,
+          evidence_urls: uploadedItems,
         }
       } catch (uploadError) {
         if (isMountedRef.current) {
           setSaving(false)
-          setError(uploadError instanceof Error ? uploadError.message : 'No se pudo subir la imagen.')
+          setError(uploadError instanceof Error ? uploadError.message : 'No se pudieron subir las imágenes.')
         }
         return
       }
@@ -697,9 +728,10 @@ const [form, setForm] = React.useState({
               </div>
             )}
             <div className="space-y-1.5 sm:col-span-2">
-              <Label htmlFor="observation_comment">Comentario</Label>
+              <Label htmlFor="observation_comment">Comentario <span className="text-destructive">*</span></Label>
               <Textarea
                 id="observation_comment"
+                required
                 value={form.observation_comment}
                 onChange={e => set('observation_comment', e.target.value)}
                 placeholder="Describe lo sucedido en el servicio..."
@@ -711,63 +743,56 @@ const [form, setForm] = React.useState({
 
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">Evidencia (Imagen)</CardTitle>
+            <CardTitle className="text-base">Evidencia (Imágenes)</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {!evidencePreview ? (
-              <div className="space-y-2">
-                <textarea
-                  ref={pasteTextareaRef}
-                  onPaste={handleClipboardPaste}
-                  placeholder="Pega tu imagen aquí (Ctrl+V)"
-                  className="w-full min-h-[120px] p-3 border border-border/70 rounded-lg bg-muted/30 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                />
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => fileInputRef.current?.click()}
-                  >
-                    <Upload className="size-4 mr-1" /> Subir
-                  </Button>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={handleEvidenceChange}
-                  />
-                </div>
+            <div className="space-y-2">
+              <textarea
+                ref={pasteTextareaRef}
+                onPaste={handleClipboardPaste}
+                placeholder="Pega tus imágenes aquí (Ctrl+V)"
+                className="w-full min-h-[120px] p-3 border border-border/70 rounded-lg bg-muted/30 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+              <div className="flex gap-2 items-center flex-wrap">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <Upload className="size-4 mr-1" /> Agregar imágenes
+                </Button>
+                <span className="text-xs text-muted-foreground">Puedes seleccionar varias imágenes.</span>
               </div>
-            ) : (
-              <div className="space-y-2">
-                <div className="relative w-full max-w-sm">
-                  <img
-                    src={evidencePreview}
-                    alt="Preview"
-                    className="w-full rounded-lg border border-border/70 object-cover max-h-64"
-                  />
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    size="icon-sm"
-                    className="absolute top-2 right-2"
-                    onClick={removeEvidence}
-                  >
-                    <X className="size-4" />
-                  </Button>
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => fileInputRef.current?.click()}
-                  >
-                    <Upload className="size-4 mr-1" /> Cambiar
-                  </Button>
-                </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                className="hidden"
+                onChange={handleEvidenceChange}
+              />
+            </div>
+            {evidenceItems.length > 0 && (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {evidenceItems.map((item, index) => (
+                  <div key={`${item.file.name}-${index}`} className="relative rounded-lg overflow-hidden border border-border/70 bg-background">
+                    <img
+                      src={item.preview}
+                      alt={`Evidencia ${index + 1}`}
+                      className="h-28 w-full object-cover"
+                    />
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="icon-sm"
+                      className="absolute top-2 right-2"
+                      onClick={() => removeEvidence(index)}
+                    >
+                      <X className="size-4" />
+                    </Button>
+                  </div>
+                ))}
               </div>
             )}
           </CardContent>
