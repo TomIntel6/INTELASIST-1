@@ -371,6 +371,8 @@ function serializeReportRow(row) {
     created_by: row.created_by ?? null,
     created_by_name: String(row.created_by_name ?? ''),
     created_by_email: String(row.created_by_email ?? ''),
+    created_at: formatTimestamp(row.created_at ?? new Date()),
+    updated_at: formatTimestamp(row.updated_at ?? row.created_at ?? new Date()),
   }
 }
 
@@ -383,7 +385,7 @@ function serializeUpdateRow(row) {
     added_by: row.added_by ?? null,
     added_by_name: String(row.added_by_name ?? ''),
     added_by_email: String(row.added_by_email ?? ''),
-    created_at: String(row.created_at ?? new Date().toISOString()),
+    created_at: formatTimestamp(row.created_at ?? new Date()),
   }
 }
 
