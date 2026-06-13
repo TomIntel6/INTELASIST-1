@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Spinner } from '@/components/ui/spinner'
 import { Eye, EyeOff, KeyRound } from 'lucide-react'
-import { canAssignSupportRole, canCreateUsers, canDeleteUsers, canManageAgents, canViewPasswords, fetchOnlineUsersFromServer, getNameColorClasses, useAuth, USERS_SYNC_STORAGE_KEY, type UserRole } from '@/lib/auth'
+import { canCreateUsers, canDeleteUsers, canManageAgents, canViewPasswords, fetchOnlineUsersFromServer, getNameColorClasses, useAuth, USERS_SYNC_STORAGE_KEY, type UserRole } from '@/lib/auth'
 
 interface Usuario {
   id: number
@@ -16,7 +16,7 @@ interface Usuario {
   estado?: 'Activo' | 'Desconectado'
 }
 
-const ROLE_OPTIONS: UserRole[] = ['Agente', 'Admin', 'Support', 'Gerente']
+const ROLE_OPTIONS: UserRole[] = ['Agente', 'Admin', 'Gerente']
 const getDefaultApiBase = () => {
   if (import.meta.env.VITE_API_BASE_URL) return import.meta.env.VITE_API_BASE_URL
   return 'https://intelasist.onrender.com'
@@ -122,11 +122,8 @@ export default function Usuarios() {
   const canCreateUserAccess = canCreateUsers(user)
   const canShowPasswords = canViewPasswords(user)
   const canChangeUserPasswords = canViewPasswords(user)
-  const canAssignSupport = canAssignSupportRole(user)
   const canEditUserNames = canManageAgents(user)
-  const roleOptions = canAssignSupport
-    ? ROLE_OPTIONS
-    : ROLE_OPTIONS.filter(role => role !== 'Support')
+  const roleOptions = ROLE_OPTIONS
 
   const sortedUsuarios = React.useMemo(
     () => [...usuarios].sort((a, b) => {
@@ -254,7 +251,7 @@ export default function Usuarios() {
 
   const saveUserName = React.useCallback(async (id: number, name: string) => {
     if (!canEditUserNames) {
-      setError('No tienes permiso para editar nombres de usuarios. Solo Admin, Gerente y Support pueden hacerlo.')
+      setError('No tienes permiso para editar nombres de usuarios. Solo Admin y Gerente pueden hacerlo.')
       setEditingUserId(null)
       setEditingUserName('')
       return
@@ -401,8 +398,9 @@ export default function Usuarios() {
       return
     }
 
-    if (newUserRole === 'Support' && !canAssignSupport) {
-      setCreateMessage('Solo usuarios con rol Support pueden asignar el rol Support.')
+    if (!ROLE_OPTIONS.includes(newUserRole)) {
+      setCreateMessage('Rol inválido.')
+      setCreatingUser(false)
       return
     }
 

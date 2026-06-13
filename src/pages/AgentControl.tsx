@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Checkbox } from '@/components/ui/checkbox'
 import { Spinner } from '@/components/ui/spinner'
 import { Input } from '@/components/ui/input'
-import { canAssignSupportRole, canManageAgents, fetchOnlineUsersFromServer, getOnlineUsers, getUserRoles, mergeOnlineUsers, updateStoredUserRoles, useAuth, type UserRole } from '@/lib/auth'
+import { canManageAgents, fetchOnlineUsersFromServer, getOnlineUsers, getUserRoles, mergeOnlineUsers, updateStoredUserRoles, useAuth, type UserRole } from '@/lib/auth'
 import { ArrowLeft, Eye, EyeOff, KeyRound, ShieldAlert, Users } from 'lucide-react'
 
 const getDefaultApiBase = () => {
@@ -31,7 +31,7 @@ interface BackendUserRecord {
   roles?: unknown
 }
 
-const ROLE_OPTIONS: UserRole[] = ['Agente', 'Admin', 'Support', 'Gerente']
+const ROLE_OPTIONS: UserRole[] = ['Agente', 'Admin', 'Gerente']
 
 function dedupeAgentsByEmail(agents: AgentRow[]) {
   const deduped = new Map<string, AgentRow>()
@@ -124,11 +124,8 @@ export default function AgentControl() {
   const [savingPassword, setSavingPassword] = React.useState(false)
 
   const canManageAgentAccess = canManageAgents(user)
-  const canAssignSupport = canAssignSupportRole(user)
   const canViewAllCreatedUsers = canManageAgentAccess
-  const roleOptions = canAssignSupport
-    ? ROLE_OPTIONS
-    : ROLE_OPTIONS.filter(role => role !== 'Support')
+  const roleOptions = ROLE_OPTIONS
 
   const ensureCurrentUserInAgents = React.useCallback((currentAgents: AgentRow[]) => {
     if (!user?.email) {
@@ -250,8 +247,8 @@ export default function AgentControl() {
       return
     }
 
-    if (normalizedRoles.includes('Support') && !canAssignSupport) {
-      setMessage('Solo usuarios con rol Support pueden asignar el rol Support.')
+    if (!normalizedRoles.every(role => ROLE_OPTIONS.includes(role))) {
+      setMessage('Uno o más roles no son válidos.')
       return
     }
 
