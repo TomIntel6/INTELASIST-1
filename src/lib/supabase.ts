@@ -12,6 +12,7 @@ export type ReportStatus =
   | 'Caso Finalizado'
   | 'Falta de Informacion'
   | 'Informativo'
+  | 'Informacion'
   | 'Validacion'
   | 'Cotizacion'
 
@@ -30,6 +31,7 @@ export const REPORT_STATUSES: ReportStatus[] = [
   'Caso Finalizado',
   'Falta de Informacion',
   'Informativo',
+  'Informacion',
   'Validacion',
   'Cotizacion',
 ]
