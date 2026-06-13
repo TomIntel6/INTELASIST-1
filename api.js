@@ -351,24 +351,15 @@ function serializeReportRow(row) {
     evidence_url: row.evidence_url ?? null,
     evidence_filename: row.evidence_filename ?? null,
     evidence_path: row.evidence_path ?? null,
-    created_by: row.created_by ?? null,
-    created_by_name: String(row.created_by_name ?? ''),
-    created_by_email: String(row.created_by_email ?? ''),
-    created_at: formatTimestamp(row.created_at),
-    updated_at: formatTimestamp(row.updated_at),
-  }
-}
-
-function serializeUpdateRow(row) {
-  return {
-    id: String(row.id),
-    report_id: String(row.report_id),
-    status: String(row.status ?? 'Seguimiento de caso'),
-    comment: String(row.comment ?? ''),
-    added_by: row.added_by ?? null,
-    added_by_name: String(row.added_by_name ?? ''),
-    added_by_email: String(row.added_by_email ?? ''),
-    created_at: formatTimestamp(row.created_at),
+    evidence_urls: Array.isArray(row.evidence_urls)
+      ? row.evidence_urls.map((item) => ({
+          url: String((item ?? {}).url ?? ''),
+          filename: String((item ?? {}).filename ?? ''),
+          path: String((item ?? {}).path ?? ''),
+        }))
+      : row.evidence_urls && typeof row.evidence_urls === 'string'
+        ? JSON.parse(row.evidence_urls)
+        : null,
   }
 }
 
@@ -498,6 +489,7 @@ async function ensureReportsTable() {
       evidence_url TEXT,
       evidence_filename TEXT,
       evidence_path TEXT,
+      evidence_urls JSONB,
       created_by TEXT,
       created_by_name TEXT NOT NULL DEFAULT '',
       created_by_email TEXT NOT NULL DEFAULT '',
@@ -543,6 +535,11 @@ async function ensureReportsTable() {
   await pool.query(`
     ALTER TABLE reports
     ADD COLUMN IF NOT EXISTS evidence_path TEXT
+  `)
+
+  await pool.query(`
+    ALTER TABLE reports
+    ADD COLUMN IF NOT EXISTS evidence_urls JSONB
   `)
 
   await pool.query(`
@@ -1054,6 +1051,7 @@ function normalizeReportPayload(payload) {
     evidence_url: payload.evidence_url ?? null,
     evidence_filename: payload.evidence_filename ?? null,
     evidence_path: payload.evidence_path ?? null,
+    evidence_urls: Array.isArray(payload.evidence_urls) ? payload.evidence_urls : null,
     created_by: payload.created_by ?? null,
     created_by_name: String(payload.created_by_name ?? ''),
     created_by_email: String(payload.created_by_email ?? ''),
@@ -1109,9 +1107,9 @@ app.post('/reports', async (req, res) => {
     const result = await pool.query(`
       INSERT INTO reports (
         id, month, year, insured_name, plate, policy, service_type, coverage, brand, model, color,
-        year_vehicle, status, observation_comment, evidence_url, evidence_filename, evidence_path, created_by, created_by_name, created_by_email,
+        year_vehicle, status, observation_comment, evidence_url, evidence_filename, evidence_path, evidence_urls, created_by, created_by_name, created_by_email,
         created_at, updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)
       RETURNING *
     `, [
       reportId,
@@ -1131,6 +1129,7 @@ app.post('/reports', async (req, res) => {
       payload.evidence_url ?? null,
       payload.evidence_filename ?? null,
       payload.evidence_path ?? null,
+      payload.evidence_urls ? JSON.stringify(payload.evidence_urls) : null,
       payload.created_by ?? null,
       payload.created_by_name ?? '',
       payload.created_by_email ?? '',
@@ -1187,6 +1186,7 @@ app.post('/reports/bulk', async (req, res) => {
         payload.evidence_url,
         payload.evidence_filename,
         payload.evidence_path,
+        payload.evidence_urls ? JSON.stringify(payload.evidence_urls) : null,
         payload.created_by,
         payload.created_by_name,
         payload.created_by_email,
@@ -1194,15 +1194,15 @@ app.post('/reports/bulk', async (req, res) => {
         createdAt
       )
 
-      const rowPlaceholders = Array.from({ length: 22 }, (_, offset) => `$${index + offset}`)
+      const rowPlaceholders = Array.from({ length: 23 }, (_, offset) => `$${index + offset}`)
       placeholders.push(`(${rowPlaceholders.join(', ')})`)
-      index += 22
+      index += 23
     }
 
     const result = await pool.query(`
       INSERT INTO reports (
         id, month, year, insured_name, plate, policy, service_type, coverage, brand, model, color,
-        year_vehicle, status, observation_comment, evidence_url, evidence_filename, evidence_path, created_by, created_by_name, created_by_email,
+        year_vehicle, status, observation_comment, evidence_url, evidence_filename, evidence_path, evidence_urls, created_by, created_by_name, created_by_email,
         created_at, updated_at
       ) VALUES ${placeholders.join(', ')}
       RETURNING *
@@ -1479,9 +1479,13 @@ app.post('/reports/:id/updates', async (req, res) => {
       createdAt,
     ])
 
+    const reportStatusToStore = payload.status === 'Informativo'
+      ? report.status
+      : payload.status ?? report.status
+
     await pool.query(
       'UPDATE reports SET status = $1, updated_at = $2 WHERE id = $3',
-      [payload.status ?? report.status, createdAt, req.params.id]
+      [reportStatusToStore, createdAt, req.params.id]
     )
 
     const update = await pool.query('SELECT * FROM report_updates WHERE id = $1', [updateId])

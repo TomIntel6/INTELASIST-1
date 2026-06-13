@@ -63,6 +63,20 @@ function parseObservationComment(comment: string) {
   }
 }
 
+function getAvailableReportUpdateStatuses(report: Report | null) {
+  return REPORT_STATUSES.filter((status) => {
+    if (status === 'Cotizacion' || status === 'Falta de Informacion') {
+      return false
+    }
+
+    if (status === 'Caso Finalizado' && report?.status !== 'Seguimiento de caso') {
+      return false
+    }
+
+    return true
+  })
+}
+
 function TimeAgo({ date }: { date: string }) {
   const d = new Date(date)
   const title = d.toLocaleString('es', {
@@ -93,6 +107,7 @@ export default function ReportDetail() {
   const [submitting, setSubmitting] = React.useState(false)
   const [submitError, setSubmitError] = React.useState<string | null>(null)
   const [showImageModal, setShowImageModal] = React.useState(false)
+  const [modalImageUrl, setModalImageUrl] = React.useState<string | null>(null)
   const [copySuccess, setCopySuccess] = React.useState<string | null>(null)
 
   const fetchData = React.useCallback(async () => {
@@ -108,7 +123,10 @@ export default function ReportDetail() {
       } else {
         setReport(currentReport)
         setUpdates(currentReport.report_updates ?? [])
-        setNewStatus(currentReport.status === 'Cotizacion' ? 'Seguimiento de caso' : currentReport.status)
+        const allowedStatuses = getAvailableReportUpdateStatuses(currentReport)
+        setNewStatus(allowedStatuses.includes(currentReport.status)
+          ? currentReport.status
+          : allowedStatuses[0] ?? 'Seguimiento de caso')
         setError(null)
       }
     } catch (err) {
@@ -216,6 +234,11 @@ export default function ReportDetail() {
 
   const observation = parseObservationComment(report.observation_comment || '')
   const observationCopyText = observation.text || ''
+  const evidenceImages = report.evidence_urls && report.evidence_urls.length > 0
+    ? report.evidence_urls
+    : report.evidence_url
+      ? [{ url: report.evidence_url, filename: report.evidence_filename ?? '', path: report.evidence_path ?? '' }]
+      : []
 
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-5">
@@ -326,7 +349,7 @@ export default function ReportDetail() {
           )}
 
           {/* Evidencia */}
-          {report.evidence_url && (
+          {evidenceImages.length > 0 && (
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm flex items-center gap-2">
@@ -335,17 +358,28 @@ export default function ReportDetail() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <img
-                  src={report.evidence_url}
-                  alt="Evidencia del informe"
-                  className="w-full rounded-lg border border-border/70 object-cover max-h-96 cursor-pointer hover:opacity-90 transition-opacity"
-                  onClick={() => setShowImageModal(true)}
-                />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {evidenceImages.map((image, index) => (
+                    <img
+                      key={`${image.url}-${index}`}
+                      src={image.url}
+                      alt={`Evidencia ${index + 1}`}
+                      className="w-full rounded-lg border border-border/70 object-cover max-h-80 cursor-pointer hover:opacity-90 transition-opacity"
+                      onClick={() => {
+                        setModalImageUrl(image.url)
+                        setShowImageModal(true)
+                      }}
+                    />
+                  ))}
+                </div>
                 <Button
                   size="sm"
                   variant="outline"
                   className="w-full gap-2"
-                  onClick={() => setShowImageModal(true)}
+                  onClick={() => {
+                    setModalImageUrl(evidenceImages[0]?.url ?? null)
+                    setShowImageModal(true)
+                  }}
                 >
                   <ZoomIn className="size-4" />
                   Ampliar imagen
@@ -465,7 +499,7 @@ export default function ReportDetail() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {REPORT_STATUSES.filter(s => s !== 'Cotizacion' && s !== 'Falta de Informacion' && s !== 'Caso Finalizado').map(s => (
+                      {getAvailableReportUpdateStatuses(report).map(s => (
                         <SelectItem key={s} value={s}>{s}</SelectItem>
                       ))}
                     </SelectContent>
@@ -502,9 +536,9 @@ export default function ReportDetail() {
       <Dialog open={showImageModal} onOpenChange={setShowImageModal}>
         <DialogContent className="max-w-4xl w-full bg-background border-border/50">
           <div className="relative flex items-center justify-center">
-            {report.evidence_url && (
+            {modalImageUrl && (
               <img
-                src={report.evidence_url}
+                src={modalImageUrl}
                 alt="Evidencia ampliada"
                 className="w-full max-h-[80vh] object-contain rounded-lg"
               />
