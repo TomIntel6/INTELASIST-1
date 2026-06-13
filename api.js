@@ -1499,6 +1499,38 @@ app.post('/reports/:id/updates', async (req, res) => {
   }
 })
 
+app.get('/reports/:id/updates', async (req, res) => {
+  const reportId = req.params.id
+  console.log(`[GET] /reports/${reportId}/updates - inicio`)
+
+  try {
+    console.log(`[GET] /reports/${reportId}/updates - consultando existencia del informe`)
+    const reportResult = await pool.query('SELECT id FROM reports WHERE id = $1', [reportId])
+    console.log(`[GET] /reports/${reportId}/updates - reportResult`, { rowCount: reportResult.rowCount })
+
+    if (reportResult.rowCount === 0) {
+      console.warn(`[GET] /reports/${reportId}/updates - informe no encontrado`)
+      res.status(404).json({ error: 'Informe no encontrado.' })
+      return
+    }
+
+    console.log(`[GET] /reports/${reportId}/updates - consultando actualizaciones`)
+    const updatesResult = await pool.query(
+      'SELECT * FROM report_updates WHERE report_id = $1 ORDER BY created_at ASC',
+      [reportId]
+    )
+    console.log(`[GET] /reports/${reportId}/updates - updatesResult`, { rowCount: updatesResult.rowCount })
+
+    const updates = updatesResult.rows.map(serializeUpdateRow)
+    console.log(`[GET] /reports/${reportId}/updates - éxito`, { updatesCount: updates.length })
+    res.json({ updates })
+  } catch (error) {
+    console.error(`[GET] /reports/${reportId}/updates - error`, error)
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    res.status(500).json({ error: `Error al obtener las actualizaciones: ${errorMessage}` })
+  }
+})
+
 app.get('/online-users', async (req, res) => {
   try {
     // Cutoff de 45 segundos para dar margen frente a latencia y sincronización ligera.
