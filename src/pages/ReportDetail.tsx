@@ -133,9 +133,17 @@ export default function ReportDetail() {
         setReport(currentReport)
         setUpdates(currentReport.report_updates ?? [])
         const allowedStatuses = getAvailableReportUpdateStatuses(currentReport)
-        setNewStatus(allowedStatuses.includes(currentReport.status)
-          ? currentReport.status
-          : allowedStatuses[0] ?? 'Seguimiento de caso')
+        setNewStatus((previousStatus) => {
+          if (allowedStatuses.includes(previousStatus)) {
+            return previousStatus
+          }
+
+          if (allowedStatuses.includes(currentReport.status)) {
+            return currentReport.status
+          }
+
+          return allowedStatuses[0] ?? 'Seguimiento de caso'
+        })
         setError(null)
       }
     } catch (err) {
