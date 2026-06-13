@@ -554,7 +554,7 @@ export const AppSidebar = React.memo(function AppSidebar() {
                           <Badge
                             key={role}
                             title={`Rol: ${role}`}
-                            className={`text-[8px] px-1 py-0 h-5 flex items-center whitespace-nowrap ${getRoleColorClasses(role, user.fullName)}`}
+                            className={`text-[12px] font-semibold px-1 py-0 h-5 flex items-center whitespace-nowrap ${getRoleColorClasses(role, user.fullName)}`}
                           >
                             {role}
                           </Badge>
@@ -591,7 +591,7 @@ export const AppSidebar = React.memo(function AppSidebar() {
             <span className="px-2 text-xs text-sidebar-foreground/85 truncate">{user?.email}</span>
             <div className="flex flex-wrap gap-1 px-2 mt-1">
               {userRoles.map(role => (
-                <Badge key={role} className={`text-[10px] ${getRoleColorClasses(role, displayName)} transition-all duration-150`}>
+                <Badge key={role} className={`text-[12px] font-semibold ${getRoleColorClasses(role, displayName)} transition-all duration-150`}>
                   {role}
                 </Badge>
               ))}
