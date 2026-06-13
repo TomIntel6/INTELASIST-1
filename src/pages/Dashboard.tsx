@@ -231,7 +231,6 @@ export default function Dashboard() {
                     { label: 'En seguimiento', count: todayReports.filter(r => r.status === 'Seguimiento de caso').length, color: 'text-amber-600' },
                     { label: 'Validacion', count: todayReports.filter(r => r.status === 'Validacion').length, color: 'text-destructive' },
                     { label: 'Informativo', count: todayReports.filter(r => r.status === 'Informativo').length, color: 'text-sky-600' },
-                    { label: 'Informacion', count: todayReports.filter(r => r.status === 'Informacion').length, color: 'text-sky-600' },
                   ].map(({ label, count, color }) => (
                     <div key={label} className="flex items-center justify-between text-sm">
                       <span className="text-muted-foreground">{label}</span>

@@ -6,13 +6,13 @@ export type ServiceType =
   | 'Paso de Corriente'
   | 'Cambio de Neumatico'
   | 'Abasto de Combustible'
+  | 'Informacion'
 
 export type ReportStatus =
   | 'Seguimiento de caso'
   | 'Caso Finalizado'
   | 'Falta de Informacion'
   | 'Informativo'
-  | 'Informacion'
   | 'Validacion'
   | 'Cotizacion'
 
@@ -24,6 +24,7 @@ export const SERVICE_TYPES: ServiceType[] = [
   'Paso de Corriente',
   'Cambio de Neumatico',
   'Abasto de Combustible',
+  'Informacion',
 ]
 
 export const REPORT_STATUSES: ReportStatus[] = [
@@ -31,7 +32,6 @@ export const REPORT_STATUSES: ReportStatus[] = [
   'Caso Finalizado',
   'Falta de Informacion',
   'Informativo',
-  'Informacion',
   'Validacion',
   'Cotizacion',
 ]
