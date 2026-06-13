@@ -294,7 +294,7 @@ const [form, setForm] = React.useState<NewReportForm>({
     setForm(prev => ({ ...prev, [field]: value }))
 
   React.useEffect(() => {
-    if (form.status === 'Informativo' && form.motivo && !INFORMATIVE_MOTIVOS.includes(form.motivo as any)) {
+    if ((form.status === 'Informativo' || form.status === 'Informacion') && form.motivo && !INFORMATIVE_MOTIVOS.includes(form.motivo as any)) {
       set('motivo', '')
       return
     }
@@ -304,7 +304,7 @@ const [form, setForm] = React.useState<NewReportForm>({
       return
     }
 
-    if (form.status !== 'Validacion' && form.status !== 'Informativo' && form.motivo) {
+    if (form.status !== 'Validacion' && form.status !== 'Informativo' && form.status !== 'Informacion' && form.motivo) {
       set('motivo', '')
     }
   }, [form.status, form.motivo])
@@ -378,7 +378,7 @@ const [form, setForm] = React.useState<NewReportForm>({
       }
     }
 
-    if ((form.status === 'Validacion' || form.status === 'Informativo') && !form.motivo) {
+    if ((form.status === 'Validacion' || form.status === 'Informativo' || form.status === 'Informacion') && !form.motivo) {
       setError('Por favor selecciona un motivo.')
       setSaving(false)
       return
@@ -444,7 +444,7 @@ const [form, setForm] = React.useState<NewReportForm>({
     }
 
     const observationComment = form.observation_comment.trim()
-    const fullObservationComment = (form.status === 'Validacion' || form.status === 'Informativo') && form.motivo
+    const fullObservationComment = (form.status === 'Validacion' || form.status === 'Informativo' || form.status === 'Informacion') && form.motivo
       ? `Motivo: ${form.motivo}${observationComment ? `\n\n${observationComment}` : ''}`
       : observationComment
 
@@ -729,7 +729,7 @@ const [form, setForm] = React.useState<NewReportForm>({
                 </SelectContent>
               </Select>
             </div>
-            {(form.status === 'Validacion' || form.status === 'Informativo') && (
+            {(form.status === 'Validacion' || form.status === 'Informativo' || form.status === 'Informacion') && (
               <div className="space-y-1.5">
                 <Label>Motivo</Label>
                 <Select value={form.motivo} onValueChange={v => set('motivo', v)}>
@@ -737,7 +737,7 @@ const [form, setForm] = React.useState<NewReportForm>({
                     <SelectValue placeholder="Seleccionar motivo" />
                   </SelectTrigger>
                   <SelectContent>
-                    {(form.status === 'Informativo' ? INFORMATIVE_MOTIVOS : VALIDATION_MOTIVOS).map(option => (
+                    {(form.status === 'Informativo' || form.status === 'Informacion' ? INFORMATIVE_MOTIVOS : VALIDATION_MOTIVOS).map(option => (
                       <SelectItem key={option} value={option}>{option}</SelectItem>
                     ))}
                   </SelectContent>

@@ -25,6 +25,7 @@ const STATUS_BADGE: Record<string, string> = {
   'Seguimiento de caso': 'bg-amber-500/15 text-amber-700 border-amber-200',
   'Falta de Informacion': 'bg-destructive/15 text-destructive border-destructive/20',
   'Informativo': 'bg-emerald-500/15 text-emerald-700 border-emerald-200',
+  'Informacion': 'bg-emerald-500/15 text-emerald-700 border-emerald-200',
   'Validacion': 'bg-emerald-500/15 text-emerald-700 border-emerald-200',
   'Cotizacion': 'bg-blue-500/15 text-blue-700 border-blue-200',
 }
@@ -64,6 +65,10 @@ function parseObservationComment(comment: string) {
 }
 
 function getAvailableReportUpdateStatuses(report: Report | null) {
+  if (report?.status === 'Seguimiento de caso') {
+    return REPORT_STATUSES.filter((status) => status === 'Seguimiento de caso' || status === 'Caso Finalizado')
+  }
+
   return REPORT_STATUSES.filter((status) => {
     if (status === 'Cotizacion' || status === 'Falta de Informacion') {
       return false
