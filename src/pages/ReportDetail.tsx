@@ -16,7 +16,7 @@ import {
 } from '@/components/ui/select'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
-import { REPORT_STATUSES, type Report, type ReportUpdate, loadReportWithUpdates, addReportUpdate, getCachedReportById } from '@/lib/supabase'
+import { REPORT_STATUSES, type Report, type ReportStatus, type ReportUpdate, loadReportWithUpdates, addReportUpdate, getCachedReportById } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth'
 import { ArrowLeft, Send, User, Calendar, Car, FileText, Wrench, Image as ImageIcon, ZoomIn, Copy } from 'lucide-react'
 
@@ -102,9 +102,13 @@ export default function ReportDetail() {
   const [loading, setLoading] = React.useState(cachedReport === null)
   const [error, setError] = React.useState<string | null>(null)
 
-  const [newStatus, setNewStatus] = React.useState('Seguimiento de caso')
+  const [newStatus, setNewStatus] = React.useState<ReportStatus>('Seguimiento de caso')
   const [newComment, setNewComment] = React.useState('')
   const [submitting, setSubmitting] = React.useState(false)
+
+  const handleNewStatusChange = (value: string) => {
+    setNewStatus(value as ReportStatus)
+  }
   const [submitError, setSubmitError] = React.useState<string | null>(null)
   const [showImageModal, setShowImageModal] = React.useState(false)
   const [modalImageUrl, setModalImageUrl] = React.useState<string | null>(null)
@@ -494,7 +498,7 @@ export default function ReportDetail() {
               <form onSubmit={handleAddUpdate} className="space-y-3">
                 <div className="space-y-1.5">
                   <Label className="text-xs">Estado</Label>
-                  <Select value={newStatus} onValueChange={setNewStatus}>
+                  <Select value={newStatus} onValueChange={handleNewStatusChange}>
                     <SelectTrigger className="h-8 text-sm">
                       <SelectValue />
                     </SelectTrigger>

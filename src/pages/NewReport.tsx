@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/select'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Spinner } from '@/components/ui/spinner'
-import { SERVICE_TYPES, REPORT_STATUSES, MONTHS, createReport, uploadEvidenceFile } from '@/lib/supabase'
+import { SERVICE_TYPES, REPORT_STATUSES, MONTHS, type ReportStatus, createReport, uploadEvidenceFile } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth'
 import { ArrowLeft, Save, Upload, X } from 'lucide-react'
 
@@ -32,7 +32,24 @@ export default function NewReport() {
   const INFORMATIVE_MOTIVOS = ['SERVICIO UTILIZADO', 'NO CUBIERTO POR LA POLIZA', 'OTROS'] as const
   const VALIDATION_MOTIVOS = ['SOAT', 'SALDO MOROSO', 'RENOVACION NO PAGADA', 'BENEFICIO EN 24H', 'POLIZA CANCELADA', 'OTROS'] as const
 
-const [form, setForm] = React.useState({
+type NewReportForm = {
+  month: string
+  year: number
+  insured_name: string
+  plate: string
+  policy: string
+  service_type: string
+  coverage: string
+  brand: string
+  model: string
+  color: string
+  year_vehicle: string
+  status: ReportStatus | ''
+  observation_comment: string
+  motivo: string
+}
+
+const [form, setForm] = React.useState<NewReportForm>({
     month: MONTHS[currentMonthIdx],
     year: currentYear,
     insured_name: '',
@@ -44,9 +61,9 @@ const [form, setForm] = React.useState({
     model: '',
     color: '',
     year_vehicle: '',
-    status: '' as string,
+    status: '',
     observation_comment: '',
-    motivo: '' as string,
+    motivo: '',
   })
 
   const latestFormRef = React.useRef(form)
@@ -442,7 +459,7 @@ const [form, setForm] = React.useState({
       model: form.model.trim(),
       color: form.color.trim(),
       year_vehicle: form.year_vehicle ? parseInt(form.year_vehicle) : null,
-      status: form.status,
+      status: form.status as ReportStatus,
       observation_comment: fullObservationComment,
       ...evidencePayload,
       created_by: user?.id ?? null,
