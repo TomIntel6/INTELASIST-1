@@ -71,7 +71,14 @@ function loadEnvFile() {
 loadEnvFile()
 
 const SUPABASE_URL = String(process.env.SUPABASE_URL || '').trim()
-const SUPABASE_SERVICE_KEY = String(process.env.SUPABASE_SERVICE_KEY || '').trim()
+const SUPABASE_SERVICE_KEY = String(
+  process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || ''
+).trim()
+const SUPABASE_SERVICE_KEY_SOURCE = process.env.SUPABASE_SERVICE_KEY
+  ? 'SUPABASE_SERVICE_KEY'
+  : process.env.SUPABASE_SERVICE_ROLE_KEY
+    ? 'SUPABASE_SERVICE_ROLE_KEY'
+    : 'none'
 const PLACEHOLDER_SERVICE_KEY = 'TU_SECRET_KEY'
 
 const supabase = SUPABASE_URL && SUPABASE_SERVICE_KEY && SUPABASE_SERVICE_KEY !== PLACEHOLDER_SERVICE_KEY
@@ -79,7 +86,7 @@ const supabase = SUPABASE_URL && SUPABASE_SERVICE_KEY && SUPABASE_SERVICE_KEY !=
   : null
 
 if (!supabase) {
-  console.warn('[Supabase] SUPABASE_SERVICE_KEY no está configurada con una service role real; el backend no usará el cliente administrativo de Supabase.')
+  console.warn('[Supabase] service role key no está configurada con valor válido; el backend no usará el cliente administrativo de Supabase.')
 }
 
 function getSupabaseAdminClient() {
@@ -90,6 +97,7 @@ const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || 'https://intelasist-ai.ve
 const SUPABASE_STORAGE_BUCKET = String(process.env.SUPABASE_STORAGE_BUCKET || 'uploads').trim()
 console.log('[Supabase] ENV vars:', {
   SUPABASE_URL: SUPABASE_URL ? 'set' : 'missing',
+  SUPABASE_SERVICE_KEY_SOURCE: SUPABASE_SERVICE_KEY_SOURCE,
   SUPABASE_SERVICE_KEY: SUPABASE_SERVICE_KEY ? 'set' : 'missing',
   SUPABASE_STORAGE_BUCKET: SUPABASE_STORAGE_BUCKET,
 })
@@ -366,6 +374,19 @@ function serializeReportRow(row) {
   }
 }
 
+function serializeUpdateRow(row) {
+  return {
+    id: String(row.id),
+    report_id: String(row.report_id ?? ''),
+    status: String(row.status ?? 'Seguimiento de caso'),
+    comment: String(row.comment ?? ''),
+    added_by: row.added_by ?? null,
+    added_by_name: String(row.added_by_name ?? ''),
+    added_by_email: String(row.added_by_email ?? ''),
+    created_at: String(row.created_at ?? new Date().toISOString()),
+  }
+}
+
 function getReportId() {
   return randomUUID()
 }
@@ -618,9 +639,12 @@ async function loadReportsWithUpdates(query = '', values = []) {
 }
 
 async function loadSingleReportWithUpdates(reportId) {
+  console.log(`[loadSingleReportWithUpdates] inicio reportId=${reportId}`)
   const reportResult = await pool.query('SELECT * FROM reports WHERE id = $1', [reportId])
+  console.log(`[loadSingleReportWithUpdates] report query rowCount=${reportResult.rowCount}`)
 
   if (reportResult.rowCount === 0) {
+    console.warn(`[loadSingleReportWithUpdates] informe no encontrado reportId=${reportId}`)
     return null
   }
 
@@ -628,6 +652,7 @@ async function loadSingleReportWithUpdates(reportId) {
     'SELECT * FROM report_updates WHERE report_id = $1 ORDER BY created_at ASC',
     [reportId]
   )
+  console.log(`[loadSingleReportWithUpdates] updates query rowCount=${updatesResult.rowCount}`)
 
   return {
     ...serializeReportRow(reportResult.rows[0]),
@@ -1012,18 +1037,25 @@ app.get('/reports/count', async (req, res) => {
 })
 
 app.get('/reports/:id', async (req, res) => {
+  const reportId = req.params.id
+  console.log(`[GET] /reports/${reportId} - inicio`)
+
   try {
-    const report = await loadSingleReportWithUpdates(req.params.id)
+    const report = await loadSingleReportWithUpdates(reportId)
+    console.log(`[GET] /reports/${reportId} - carga de informe completada`, { reportExists: Boolean(report) })
 
     if (!report) {
+      console.warn(`[GET] /reports/${reportId} - informe no encontrado`)
       res.status(404).json({ error: 'Informe no encontrado.' })
       return
     }
 
     res.json({ report })
+    console.log(`[GET] /reports/${reportId} - éxito`)
   } catch (error) {
-    console.error(error)
-    res.status(500).json({ error: 'Error al obtener el informe' })
+    console.error(`[GET] /reports/${reportId} - error`, error)
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    res.status(500).json({ error: `Error al obtener el informe: ${errorMessage}` })
   }
 })
 
@@ -1455,17 +1487,34 @@ app.delete('/failed-report-attempts/:id', async (req, res) => {
 })
 
 app.post('/reports/:id/updates', async (req, res) => {
+  const reportId = req.params.id
+  console.log(`[POST] /reports/${reportId}/updates - inicio`, { payload: req.body })
+
   try {
     const payload = req.body ?? {}
     const updateId = getReportId()
     const createdAt = new Date().toISOString()
 
-    const report = await loadSingleReportWithUpdates(req.params.id)
+    const report = await loadSingleReportWithUpdates(reportId)
+    console.log(`[POST] /reports/${reportId}/updates - informe cargado`, { reportId, reportExists: Boolean(report) })
 
     if (!report) {
+      console.warn(`[POST] /reports/${reportId}/updates - informe no encontrado`)
       res.status(404).json({ error: 'Informe no encontrado.' })
       return
     }
+
+    const statusToInsert = payload.status ?? report.status
+    console.log(`[POST] /reports/${reportId}/updates - insertando actualización`, {
+      updateId,
+      reportId,
+      status: statusToInsert,
+      comment: payload.comment ?? '',
+      added_by: payload.added_by ?? null,
+      added_by_name: payload.added_by_name ?? '',
+      added_by_email: payload.added_by_email ?? '',
+      createdAt,
+    })
 
     await pool.query(`
       INSERT INTO report_updates (
@@ -1473,29 +1522,42 @@ app.post('/reports/:id/updates', async (req, res) => {
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
     `, [
       updateId,
-      req.params.id,
-      payload.status ?? report.status,
+      reportId,
+      statusToInsert,
       payload.comment ?? '',
       payload.added_by ?? null,
       payload.added_by_name ?? '',
       payload.added_by_email ?? '',
       createdAt,
     ])
+    console.log(`[POST] /reports/${reportId}/updates - insert completado`, { updateId })
 
     const reportStatusToStore = payload.status === 'Informativo'
       ? report.status
       : payload.status ?? report.status
 
-    await pool.query(
+    const updateReportResult = await pool.query(
       'UPDATE reports SET status = $1, updated_at = $2 WHERE id = $3',
-      [reportStatusToStore, createdAt, req.params.id]
+      [reportStatusToStore, createdAt, reportId]
     )
+    console.log(`[POST] /reports/${reportId}/updates - actualización de informe completada`, { rowCount: updateReportResult.rowCount })
 
-    const update = await pool.query('SELECT * FROM report_updates WHERE id = $1', [updateId])
-    res.status(201).json({ update: serializeUpdateRow(update.rows[0]) })
+    const updateResult = await pool.query('SELECT * FROM report_updates WHERE id = $1', [updateId])
+    console.log(`[POST] /reports/${reportId}/updates - select update`, { rowCount: updateResult.rowCount })
+
+    if (updateResult.rowCount === 0 || !updateResult.rows[0]) {
+      console.error(`[POST] /reports/${reportId}/updates - actualización insertada no encontrada`, { updateId })
+      res.status(500).json({ error: 'La actualización se creó pero no se pudo recuperar.' })
+      return
+    }
+
+    const serializedUpdate = serializeUpdateRow(updateResult.rows[0])
+    res.status(201).json({ update: serializedUpdate })
+    console.log(`[POST] /reports/${reportId}/updates - éxito`, { updateId })
   } catch (error) {
-    console.error(error)
-    res.status(500).json({ error: 'Error al agregar la actualización' })
+    console.error(`[POST] /reports/${reportId}/updates - error`, error)
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    res.status(500).json({ error: `Error al agregar la actualización: ${errorMessage}` })
   }
 })
 
