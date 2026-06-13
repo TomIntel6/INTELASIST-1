@@ -13,6 +13,28 @@ const app = express()
 const sseClients = new Set()
 const ROLE_OPTIONS = ['Agente', 'Admin', 'Support', 'Gerente']
 const SALT_ROUNDS = 10
+const SUPPORT_LOCKED_EMAIL = 'jrodriguez@intelasist.com'
+
+function isSupportLockedEmail(email) {
+  return typeof email === 'string' && email.trim().toLowerCase() === SUPPORT_LOCKED_EMAIL
+}
+
+function enforceLockedSupportRoles(email, roles) {
+  const normalizedEmail = typeof email === 'string' ? email.trim().toLowerCase() : ''
+  if (normalizedEmail !== SUPPORT_LOCKED_EMAIL) {
+    return roles
+  }
+
+  const nextRoles = Array.isArray(roles) ? Array.from(new Set(roles)) : []
+  if (!nextRoles.includes('Support')) {
+    nextRoles.unshift('Support')
+  } else {
+    nextRoles.splice(nextRoles.indexOf('Support'), 1)
+    nextRoles.unshift('Support')
+  }
+
+  return nextRoles
+}
 
 function loadEnvFile() {
   try {
@@ -282,7 +304,11 @@ async function comparePassword(password, hash) {
 }
 
 function serializeUserRecord(row) {
-  const roles = extractRolesFromRow(row)
+  let roles = extractRolesFromRow(row)
+
+  if (isSupportLockedEmail(row?.correo)) {
+    roles = enforceLockedSupportRoles(row?.correo, roles)
+  }
 
   return {
     id: String(row.id),
@@ -728,7 +754,7 @@ app.post('/usuarios', async (req, res) => {
     const nombre = typeof req.body?.nombre === 'string' ? req.body.nombre.trim() : ''
     const password = typeof req.body?.password === 'string' ? req.body.password : ''
     const requirePasswordChange = req.body?.requirePasswordChange === true
-    const roles = normalizeRolePayload(req.body)
+    const roles = enforceLockedSupportRoles(correo, normalizeRolePayload(req.body))
     const primaryRole = derivePrimaryRole(roles)
 
     if (!correo) {
@@ -744,7 +770,8 @@ app.post('/usuarios', async (req, res) => {
     if (existing.rows.length > 0) {
       const existingUser = existing.rows[0]
       const nextName = nombre || existingUser.nombre || existingUser.correo
-      const nextRoles = roles.length > 0 ? roles : extractRolesFromRow(existingUser)
+      const baseNextRoles = roles.length > 0 ? roles : extractRolesFromRow(existingUser)
+      const nextRoles = enforceLockedSupportRoles(correo, baseNextRoles)
       const nextPrimaryRole = derivePrimaryRole(nextRoles)
       const nextHash = password ? await hashPassword(password) : existingUser.password
       const nextMustChangePassword = requirePasswordChange || existingUser.must_change_password === true || !!password
@@ -787,7 +814,7 @@ app.post('/usuarios', async (req, res) => {
 app.put('/usuarios/:email/rol', async (req, res) => {
   try {
     const email = typeof req.params.email === 'string' ? req.params.email.trim() : ''
-    const roles = normalizeRolePayload(req.body)
+    const roles = enforceLockedSupportRoles(email, normalizeRolePayload(req.body))
     const primaryRole = derivePrimaryRole(roles)
 
     if (!email) {
