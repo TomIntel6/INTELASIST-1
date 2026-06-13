@@ -34,6 +34,13 @@ export const REPORT_STATUSES: ReportStatus[] = [
   'Cotizacion',
 ]
 
+export function normalizeReportStatus(value: unknown): ReportStatus {
+  const status = typeof value === 'string' ? value.trim() : ''
+  return REPORT_STATUSES.includes(status as ReportStatus)
+    ? status as ReportStatus
+    : 'Seguimiento de caso'
+}
+
 export function isFinalizedStatus(status: string | null | undefined) {
   return status === 'Caso Finalizado' || status === 'Informativo' || status === 'Validacion'
 }
@@ -64,7 +71,7 @@ export interface Report {
   model: string
   color: string
   year_vehicle: number | null
-  status: string
+  status: ReportStatus
   observation_comment: string
   evidence_url?: string | null
   evidence_filename?: string | null
@@ -81,7 +88,7 @@ export interface Report {
 export interface ReportUpdate {
   id: string
   report_id: string
-  status: string
+  status: ReportStatus
   comment: string
   added_by: string | null
   added_by_name: string
@@ -251,7 +258,7 @@ function normalizeUpdate(raw: Record<string, unknown>): ReportUpdate {
   return {
     id: String(raw.id ?? createId()),
     report_id: String(raw.report_id ?? ''),
-    status: String(raw.status ?? 'Seguimiento de caso'),
+    status: normalizeReportStatus(raw.status),
     comment: String(raw.comment ?? ''),
     added_by: raw.added_by === null || raw.added_by === undefined ? null : String(raw.added_by),
     added_by_name: String(raw.added_by_name ?? ''),
@@ -278,7 +285,7 @@ function normalizeReport(raw: Record<string, unknown>): Report {
     model: String(raw.model ?? ''),
     color: String(raw.color ?? ''),
     year_vehicle: raw.year_vehicle === null || raw.year_vehicle === undefined ? null : Number(raw.year_vehicle),
-    status: String(raw.status ?? 'Seguimiento de caso'),
+    status: normalizeReportStatus(raw.status),
     observation_comment: String(raw.observation_comment ?? ''),
     evidence_url: raw.evidence_url === null || raw.evidence_url === undefined ? null : String(raw.evidence_url),
     evidence_filename: raw.evidence_filename === null || raw.evidence_filename === undefined ? null : String(raw.evidence_filename),
