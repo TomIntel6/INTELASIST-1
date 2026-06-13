@@ -63,8 +63,20 @@ function parseObservationComment(comment: string) {
   }
 }
 
+function isReportStatusLocked(status: ReportStatus | null | undefined) {
+  return status === 'Informativo' || status === 'Validacion'
+}
+
 function getAvailableReportUpdateStatuses(report: Report | null) {
-  if (report?.status === 'Seguimiento de caso') {
+  if (!report) {
+    return REPORT_STATUSES
+  }
+
+  if (isReportStatusLocked(report.status)) {
+    return [report.status]
+  }
+
+  if (report.status === 'Seguimiento de caso') {
     return REPORT_STATUSES.filter((status) => status === 'Seguimiento de caso' || status === 'Caso Finalizado')
   }
 
@@ -177,10 +189,12 @@ export default function ReportDetail() {
     setSubmitError(null)
 
     const displayName = user?.user_metadata?.full_name ?? user?.email ?? ''
+    const isLocked = isReportStatusLocked(report?.status)
+    const statusToSend = isLocked ? report!.status : newStatus
 
     try {
       await addReportUpdate(id!, {
-        status: newStatus,
+        status: statusToSend,
         comment: newComment,
         added_by: user?.id ?? null,
         added_by_name: displayName,
@@ -509,8 +523,16 @@ export default function ReportDetail() {
             <CardContent>
               <form onSubmit={handleAddUpdate} className="space-y-3">
                 <div className="space-y-1.5">
-                  <Label className="text-xs">Estado</Label>
-                  <Select value={newStatus} onValueChange={handleNewStatusChange}>
+                  <Label className="text-xs">
+                    {isReportStatusLocked(report.status)
+                      ? 'Estado (información adicional)'
+                      : 'Estado'}
+                  </Label>
+                  <Select
+                    value={newStatus}
+                    onValueChange={handleNewStatusChange}
+                    disabled={isReportStatusLocked(report.status)}
+                  >
                     <SelectTrigger className="h-8 text-sm">
                       <SelectValue />
                     </SelectTrigger>

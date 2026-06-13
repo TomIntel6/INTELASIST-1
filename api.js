@@ -1506,7 +1506,9 @@ app.post('/reports/:id/updates', async (req, res) => {
       return
     }
 
-    const statusToInsert = payload.status ?? report.status
+    const isLockedStatus = report.status === 'Informativo' || report.status === 'Validacion'
+    const statusToInsert = isLockedStatus ? report.status : payload.status ?? report.status
+
     console.log(`[POST] /reports/${reportId}/updates - insertando actualización`, {
       updateId,
       reportId,
@@ -1516,6 +1518,7 @@ app.post('/reports/:id/updates', async (req, res) => {
       added_by_name: payload.added_by_name ?? '',
       added_by_email: payload.added_by_email ?? '',
       createdAt,
+      lockedStatus: isLockedStatus,
     })
 
     await pool.query(`
@@ -1534,7 +1537,7 @@ app.post('/reports/:id/updates', async (req, res) => {
     ])
     console.log(`[POST] /reports/${reportId}/updates - insert completado`, { updateId })
 
-    const reportStatusToStore = payload.status === 'Informativo'
+    const reportStatusToStore = isLockedStatus
       ? report.status
       : payload.status ?? report.status
 
