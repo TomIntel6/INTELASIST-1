@@ -1,6 +1,6 @@
 import * as React from 'react'
 
-export type UserRole = 'Agente' | 'Admin' | 'Gerente'
+export type UserRole = 'Agente' | 'Admin' | 'Support' | 'Gerente'
 
 export interface LocalUser {
   id: string
@@ -33,7 +33,7 @@ interface AuthContextValue {
   signOut: () => Promise<void>
 }
 
-const USER_ROLE_OPTIONS: UserRole[] = ['Agente', 'Admin', 'Gerente']
+const USER_ROLE_OPTIONS: UserRole[] = ['Agente', 'Admin', 'Support', 'Gerente']
 export const AUTH_STORAGE_KEY = 'intelasist-local-auth-session'
 export const PRESENCE_STORAGE_KEY = 'intelasist-online-users'
 export const PRESENCE_SYNC_STORAGE_KEY = 'intelasist-presence-sync'
@@ -545,7 +545,7 @@ export function getUserRole(user: LocalUser | null): UserRole {
 }
 
 export function isAdminUser(user: LocalUser | null): boolean {
-  return hasAnyRole(user, ['Admin'])
+  return hasAnyRole(user, ['Admin', 'Support'])
 }
 
 export function hasAnyRole(user: LocalUser | null, allowedRoles: UserRole[]): boolean {
@@ -573,6 +573,8 @@ export function getRoleColorClasses(role: UserRole, fullName?: string | null) {
   }
 
   switch (role) {
+    case 'Support':
+      return 'support-animated text-[10px] md:text-[12px] uppercase tracking-[0.12em] font-extrabold bg-transparent border-0'
     case 'Gerente':
       return 'gerente-animated font-bold bg-transparent border-0'
     case 'Admin':
@@ -584,23 +586,23 @@ export function getRoleColorClasses(role: UserRole, fullName?: string | null) {
 }
 
 export function canDeleteReports(user: LocalUser | null): boolean {
-  return hasAnyRole(user, ['Gerente'])
+  return hasAnyRole(user, ['Support', 'Gerente'])
 }
 
 export function canViewPasswords(user: LocalUser | null): boolean {
-  return hasAnyRole(user, ['Gerente'])
+  return hasAnyRole(user, ['Support', 'Gerente'])
 }
 
 export function canManageAgents(user: LocalUser | null): boolean {
-  return hasAnyRole(user, ['Admin', 'Gerente'])
+  return hasAnyRole(user, ['Admin', 'Support', 'Gerente'])
 }
 
 export function canDeleteUsers(user: LocalUser | null): boolean {
-  return hasAnyRole(user, ['Admin', 'Gerente'])
+  return hasAnyRole(user, ['Admin', 'Support', 'Gerente'])
 }
 
 export function canCreateUsers(user: LocalUser | null): boolean {
-  return hasAnyRole(user, ['Gerente'])
+  return hasAnyRole(user, ['Support', 'Gerente'])
 }
 
 export function passwordChangeRequired(user: LocalUser | null): boolean {

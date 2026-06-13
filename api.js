@@ -11,7 +11,7 @@ import pool from './db.js'
 const app = express()
 // Conjunto de clientes SSE conectados
 const sseClients = new Set()
-const ROLE_OPTIONS = ['Agente', 'Admin', 'Gerente']
+const ROLE_OPTIONS = ['Agente', 'Admin', 'Support', 'Gerente']
 const SALT_ROUNDS = 10
 
 function loadEnvFile() {

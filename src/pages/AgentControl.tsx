@@ -31,7 +31,7 @@ interface BackendUserRecord {
   roles?: unknown
 }
 
-const ROLE_OPTIONS: UserRole[] = ['Agente', 'Admin', 'Gerente']
+const ROLE_OPTIONS: UserRole[] = ['Agente', 'Admin', 'Support', 'Gerente']
 
 function dedupeAgentsByEmail(agents: AgentRow[]) {
   const deduped = new Map<string, AgentRow>()

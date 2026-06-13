@@ -16,7 +16,7 @@ interface Usuario {
   estado?: 'Activo' | 'Desconectado'
 }
 
-const ROLE_OPTIONS: UserRole[] = ['Agente', 'Admin', 'Gerente']
+const ROLE_OPTIONS: UserRole[] = ['Agente', 'Admin', 'Support', 'Gerente']
 const getDefaultApiBase = () => {
   if (import.meta.env.VITE_API_BASE_URL) return import.meta.env.VITE_API_BASE_URL
   return 'https://intelasist.onrender.com'
