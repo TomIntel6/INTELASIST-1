@@ -123,7 +123,7 @@ export default function Dashboard() {
               <div className="mt-2 flex flex-wrap items-center gap-2">
                 {userRoles.map(role => (
                   <Badge key={role} className={`text-[8px] font-semibold px-1.5 py-0.5 ${getRoleColorClasses(role, displayName)}`}>
-                    {role}
+                    {role.toUpperCase()}
                   </Badge>
                 ))}
                 <Badge variant="secondary" className="text-xs">
