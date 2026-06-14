@@ -591,7 +591,7 @@ export const AppSidebar = React.memo(function AppSidebar() {
             <span className="px-2 text-xs text-sidebar-foreground/85 truncate">{user?.email}</span>
             <div className="flex flex-wrap gap-1 px-2 mt-1">
               {userRoles.map(role => (
-                <Badge key={role} className={`text-[11px] font-semibold ${getRoleColorClasses(role, displayName)} transition-all duration-150`}>
+                <Badge key={role} className={`text-[9px] font-semibold ${getRoleColorClasses(role, displayName)} transition-all duration-150`}>
                   {role}
                 </Badge>
               ))}
