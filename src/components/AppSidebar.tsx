@@ -550,13 +550,13 @@ export const AppSidebar = React.memo(function AppSidebar() {
                       </div>
 
                       <div className="flex flex-wrap gap-0.5 justify-end">
-                        {(user.roles ?? []).slice(0, 1).map(role => (
+                        {(user.roles ?? []).map(role => (
                           <Badge
                             key={role}
-                            title={`Rol: ${role}`}
+                            title={`Rol: ${role.toUpperCase()}`}
                             className={`text-[8px] font-semibold px-1 py-0 h-4 flex items-center whitespace-nowrap ${getRoleColorClasses(role, user.fullName)}`}
                           >
-                            {role}
+                            {role.toUpperCase()}
                           </Badge>
                         ))}
                       </div>
@@ -592,7 +592,7 @@ export const AppSidebar = React.memo(function AppSidebar() {
             <div className="flex flex-wrap gap-1 px-2 mt-1">
               {userRoles.map(role => (
                 <Badge key={role} className={`text-[8px] font-semibold px-1.5 py-0.5 ${getRoleColorClasses(role, displayName)} transition-all duration-150`}>
-                  {role}
+                  {role.toUpperCase()}
                 </Badge>
               ))}
             </div>
