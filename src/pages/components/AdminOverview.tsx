@@ -1,9 +1,10 @@
 import * as React from 'react'
-import { supabase } from '@/lib/supabase'
+import { getDefaultApiBase } from '@/lib/supabase'
 import { UserManagementService } from '@/lib/user-management'
 import { AuditService } from '@/lib/audit-service'
-import { TrashService } from '@/lib/trash-service'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+
+const API_BASE = getDefaultApiBase()
 import { Badge } from '@/components/ui/badge'
 import { Spinner } from '@/components/ui/spinner'
 import { Users, FileText, Trash2, Activity, TrendingUp, AlertCircle } from 'lucide-react'
@@ -32,7 +33,7 @@ export default function AdminOverview() {
       setError(null)
 
       // Get all stats in one call
-      const response = await fetch('https://intelasist.onrender.com/api/users/statistics')
+      const response = await fetch(`${API_BASE}/api/users/statistics`)
       if (!response.ok) throw new Error('Failed to load statistics')
       const statsData = await response.json()
 
@@ -44,17 +45,12 @@ export default function AdminOverview() {
       }
 
       // Get trash stats
-      const trashStats = await TrashService.getTrashStats()
+      const trashResponse = await fetch(`${API_BASE}/api/trash/stats`)
+      const trashStats = await trashResponse.json()
 
       // Get recent audit logs (last 24 hours)
-      const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
-      const { data: recentAudits, error: auditError } = await supabase
-        .from('audit_logs')
-        .select('id')
-        .gte('created_at', twentyFourHoursAgo)
-        .limit(1000)
-
-      if (auditError) throw auditError
+      const auditResponse = await fetch(`${API_BASE}/api/audit-logs?limit=1000`)
+      const auditData = await auditResponse.json()
 
       setStats({
         totalUsers: totalUsers,
@@ -62,7 +58,7 @@ export default function AdminOverview() {
         suspendedUsers: activityStats.suspendedUsers,
         totalReports: activityStats.totalReports,
         trashCount: trashStats.totalDeleted,
-        recentAuditCount: recentAudits?.length || 0,
+        recentAuditCount: auditData.data?.length || 0,
       })
     } catch (err) {
       console.error('Error loading stats:', err)

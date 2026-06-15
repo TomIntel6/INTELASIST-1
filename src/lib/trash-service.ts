@@ -1,5 +1,7 @@
-import { supabase } from '@/lib/supabase'
 import { AuditService } from '@/lib/audit-service'
+import { getDefaultApiBase } from '@/lib/supabase'
+
+const API_BASE = getDefaultApiBase()
 
 export interface TrashReport {
   id: string
@@ -25,18 +27,22 @@ export class TrashService {
    */
   static async moveToTrash(reportId: string, reportData: Record<string, any>, reason?: string) {
     try {
-      const { data, error } = await supabase.from('deleted_reports').insert({
-        report_id: reportId,
-        original_data: reportData,
-        reason: reason || 'Deleted by user',
+      const response = await fetch(`${API_BASE}/api/trash`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          reportId,
+          originalData: reportData,
+          reason: reason || 'Deleted by user',
+        }),
       })
 
-      if (error) throw error
+      if (!response.ok) throw new Error('Failed to move report to trash')
 
       // Log the action
       await AuditService.logReportDeleted(reportId, reportData)
 
-      return data
+      return await response.json()
     } catch (error) {
       console.error('Error moving report to trash:', error)
       throw error
@@ -48,17 +54,25 @@ export class TrashService {
    */
   static async getTrash(limit = 50, offset = 0) {
     try {
-      const { data, error, count } = await supabase
-        .from('deleted_reports')
-        .select('*', { count: 'exact' })
-        .is('permanently_deleted_at', null)
-        .is('restored_at', null)
-        .order('deleted_at', { ascending: false })
-        .range(offset, offset + limit - 1)
-
-      if (error) throw error
-
-      return { data: (data || []) as TrashReport[], count: count || 0 }
+      const response = await fetch(`${API_BASE}/api/trash?limit=${limit}&offset=${offset}`)
+      if (!response.ok) throw new Error('Failed to fetch trash')
+      
+      const result = await response.json()
+      return {
+        data: (result.data || []).map((item: any) => ({
+          id: item.id,
+          reportId: item.report_id,
+          originalData: item.original_data,
+          deletedBy: item.deleted_by,
+          deletedByName: item.deleted_by_name,
+          deletedByEmail: item.deleted_by_email,
+          deletedAt: item.deleted_at,
+          restoredAt: item.restored_at,
+          permanentlyDeletedAt: item.permanently_deleted_at,
+          reason: item.reason,
+        })) as TrashReport[],
+        count: result.count || 0,
+      }
     } catch (error) {
       console.error('Error fetching trash:', error)
       return { data: [], count: 0 }
@@ -70,15 +84,22 @@ export class TrashService {
    */
   static async getDeletedReport(trashId: string) {
     try {
-      const { data, error } = await supabase
-        .from('deleted_reports')
-        .select('*')
-        .eq('id', trashId)
-        .single()
-
-      if (error && error.code !== 'PGRST116') throw error
-
-      return (data as TrashReport) || null
+      const response = await fetch(`${API_BASE}/api/trash/${trashId}`)
+      if (!response.ok) return null
+      
+      const item = await response.json()
+      return {
+        id: item.id,
+        reportId: item.report_id,
+        originalData: item.original_data,
+        deletedBy: item.deleted_by,
+        deletedByName: item.deleted_by_name,
+        deletedByEmail: item.deleted_by_email,
+        deletedAt: item.deleted_at,
+        restoredAt: item.restored_at,
+        permanentlyDeletedAt: item.permanently_deleted_at,
+        reason: item.reason,
+      } as TrashReport
     } catch (error) {
       console.error('Error fetching deleted report:', error)
       return null
@@ -96,18 +117,15 @@ export class TrashService {
         throw new Error('Deleted report not found')
       }
 
-      const { reportId } = trash
+      const response = await fetch(`${API_BASE}/api/trash/${trashId}/restore`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      })
 
-      // Update trash record to mark as restored
-      const { error: updateError } = await supabase
-        .from('deleted_reports')
-        .update({ restored_at: new Date().toISOString() })
-        .eq('id', trashId)
-
-      if (updateError) throw updateError
+      if (!response.ok) throw new Error('Failed to restore report')
 
       // Log the action
-      await AuditService.logReportRestored(reportId)
+      await AuditService.logReportRestored(trash.reportId)
 
       return { success: true }
     } catch (error) {
@@ -127,20 +145,15 @@ export class TrashService {
         throw new Error('Deleted report not found')
       }
 
-      const { reportId } = trash
+      const response = await fetch(`${API_BASE}/api/trash/${trashId}/delete`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      })
 
-      // Update trash record
-      const { error: updateError } = await supabase
-        .from('deleted_reports')
-        .update({
-          permanently_deleted_at: new Date().toISOString(),
-        })
-        .eq('id', trashId)
-
-      if (updateError) throw updateError
+      if (!response.ok) throw new Error('Failed to permanently delete report')
 
       // Log the action
-      await AuditService.logReportPermanentlyDeleted(reportId)
+      await AuditService.logReportPermanentlyDeleted(trash.reportId)
 
       return { success: true }
     } catch (error) {
@@ -154,34 +167,19 @@ export class TrashService {
    */
   static async emptyTrash() {
     try {
-      // Get all items to delete
-      const { data: trashItems, error: fetchError } = await supabase
-        .from('deleted_reports')
-        .select('*')
-        .is('permanently_deleted_at', null)
-        .is('restored_at', null)
+      const response = await fetch(`${API_BASE}/api/trash/empty`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      })
 
-      if (fetchError) throw fetchError
+      if (!response.ok) throw new Error('Failed to empty trash')
 
-      if (!trashItems || trashItems.length === 0) {
-        return { success: true, count: 0 }
-      }
-
-      // Mark all as permanently deleted
-      const { error: updateError } = await supabase
-        .from('deleted_reports')
-        .update({
-          permanently_deleted_at: new Date().toISOString(),
-        })
-        .is('permanently_deleted_at', null)
-        .is('restored_at', null)
-
-      if (updateError) throw updateError
+      const result = await response.json()
 
       // Log the action
-      await AuditService.logTrashEmptied(trashItems.length)
+      await AuditService.logTrashEmptied(result.deleted_count || 0)
 
-      return { success: true, count: trashItems.length }
+      return { success: true, count: result.deleted_count || 0 }
     } catch (error) {
       console.error('Error emptying trash:', error)
       throw error
@@ -193,13 +191,11 @@ export class TrashService {
    */
   static async getTrashStats() {
     try {
-      const { count: totalDeleted } = await supabase
-        .from('deleted_reports')
-        .select('*', { count: 'exact' })
-        .is('permanently_deleted_at', null)
-        .is('restored_at', null)
-
-      return { totalDeleted: totalDeleted || 0 }
+      const response = await fetch(`${API_BASE}/api/trash/stats`)
+      if (!response.ok) throw new Error('Failed to fetch trash stats')
+      
+      const result = await response.json()
+      return { totalDeleted: result.totalDeleted || 0 }
     } catch (error) {
       console.error('Error fetching trash stats:', error)
       return { totalDeleted: 0 }

@@ -1,7 +1,9 @@
 import * as React from 'react'
-import { supabase } from '@/lib/supabase'
+import { getDefaultApiBase } from '@/lib/supabase'
 import { UserManagementService } from '@/lib/user-management'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+
+const API_BASE = getDefaultApiBase()
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Spinner } from '@/components/ui/spinner'
@@ -28,13 +30,15 @@ export default function SystemHealth() {
     try {
       const checks: HealthIndicator[] = []
 
-      // Check 1: Database connectivity
+      // Check 1: Database connectivity (via auth health endpoint)
       try {
-        const { data, error } = await supabase.from('audit_logs').select('id').limit(1)
+        const response = await fetch(`${API_BASE}/api/health/auth`)
+        const health = await response.json()
+        
         checks.push({
           name: 'Base de Datos',
-          status: error ? 'error' : 'healthy',
-          message: error ? 'No se puede conectar a la base de datos' : 'Conexión activa',
+          status: response.ok ? 'healthy' : 'error',
+          message: response.ok ? 'Conexión activa' : 'No se puede conectar a la base de datos',
           icon: <Zap className="size-4" />,
         })
       } catch (err) {
@@ -48,7 +52,7 @@ export default function SystemHealth() {
 
       // Check 2: Auth service
       try {
-        const response = await fetch('https://intelasist.onrender.com/api/health/auth')
+        const response = await fetch(`${API_BASE}/api/health/auth`)
         const health = await response.json()
         
         checks.push({
@@ -93,8 +97,9 @@ export default function SystemHealth() {
 
       // Check 4: Trash accumulation
       try {
-        const { data: trash } = await supabase.from('deleted_reports').select('id').eq('permanently_deleted_at', null)
-        const trashCount = trash?.length || 0
+        const response = await fetch(`${API_BASE}/api/trash/stats`)
+        const trashData = await response.json()
+        const trashCount = trashData.totalDeleted || 0
         const status = trashCount > 100 ? 'warning' : trashCount > 500 ? 'error' : 'healthy'
 
         checks.push({
@@ -114,20 +119,14 @@ export default function SystemHealth() {
 
       // Check 5: Recent activity
       try {
-        const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
-        const { data: recentActivity } = await supabase
-          .from('audit_logs')
-          .select('id')
-          .gte('created_at', oneDayAgo)
-          .limit(1)
+        const response = await fetch(`${API_BASE}/api/audit-logs?limit=1`)
+        const auditData = await response.json()
+        const hasActivity = auditData.data && auditData.data.length > 0
 
         checks.push({
           name: 'Actividad del Sistema',
-          status: recentActivity && recentActivity.length > 0 ? 'healthy' : 'warning',
-          message:
-            recentActivity && recentActivity.length > 0
-              ? 'Sistema con actividad normal'
-              : 'Sin actividad en las últimas 24h',
+          status: hasActivity ? 'healthy' : 'warning',
+          message: hasActivity ? 'Sistema con actividad normal' : 'Sin actividad en las últimas 24h',
           icon: <Clock className="size-4" />,
         })
       } catch (err) {

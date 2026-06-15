@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { supabase } from '@/lib/supabase'
+import { getDefaultApiBase } from '@/lib/supabase'
 import { PERMISSION_MODULES } from '@/lib/permissions'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -10,6 +10,8 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
 import { ChevronDown, ChevronUp, Save } from 'lucide-react'
 import { toast } from 'sonner'
+
+const API_BASE = getDefaultApiBase()
 
 interface UserModuleAccess {
   userId: string
@@ -35,7 +37,7 @@ export default function PermissionModules() {
       setLoading(true)
       
       // Backend devuelve usuarios + módulos accesibles
-      const response = await fetch('https://intelasist.onrender.com/api/users/with-modules')
+      const response = await fetch(`${API_BASE}/api/users/with-modules`)
       if (!response.ok) throw new Error('Failed to load users')
       
       const usersData = await response.json()
@@ -64,7 +66,7 @@ export default function PermissionModules() {
       if (!user) return
 
       // Call backend to update modules
-      const response = await fetch(`https://intelasist.onrender.com/api/users/${userId}/modules`, {
+      const response = await fetch(`${API_BASE}/api/users/${userId}/modules`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ modules: user.modules }),
