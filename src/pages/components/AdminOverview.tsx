@@ -31,14 +31,17 @@ export default function AdminOverview() {
       setLoading(true)
       setError(null)
 
-      // Get total users
-      const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers()
-      if (authError) throw authError
+      // Get all stats in one call
+      const response = await fetch('https://intelasist.onrender.com/api/users/statistics')
+      if (!response.ok) throw new Error('Failed to load statistics')
+      const statsData = await response.json()
 
-      const totalUsers = authUsers?.users?.length || 0
-
-      // Get user activity stats
-      const activityStats = await UserManagementService.getActivityStatistics()
+      const totalUsers = statsData.totalUsers || 0
+      const activityStats = {
+        activeUsers: statsData.activeUsers,
+        suspendedUsers: statsData.suspendedUsers,
+        totalReports: statsData.totalReports,
+      }
 
       // Get trash stats
       const trashStats = await TrashService.getTrashStats()

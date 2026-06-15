@@ -48,11 +48,13 @@ export default function SystemHealth() {
 
       // Check 2: Auth service
       try {
-        const { data, error } = await supabase.auth.admin.listUsers()
+        const response = await fetch('https://intelasist.onrender.com/api/health/auth')
+        const health = await response.json()
+        
         checks.push({
           name: 'Servicio de Autenticación',
-          status: error ? 'error' : 'healthy',
-          message: error ? 'Problema con autenticación' : `${data?.users?.length || 0} usuarios registrados`,
+          status: health.status === 'healthy' ? 'healthy' : 'error',
+          message: health.message || `${health.userCount || 0} usuarios registrados`,
           icon: <Users className="size-4" />,
         })
       } catch (err) {
