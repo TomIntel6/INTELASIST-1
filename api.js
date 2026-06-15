@@ -1976,14 +1976,14 @@ app.get('/api/users/with-activity', async (req, res) => {
         u.nombre,
         u.rol as role,
         COUNT(DISTINCT r.id) as reportsCreated,
-        (SELECT last_login FROM user_activity_log WHERE user_id = u.id::text ORDER BY last_login DESC LIMIT 1) as lastLogin,
-        (SELECT last_activity FROM user_activity_log WHERE user_id = u.id::text ORDER BY last_activity DESC LIMIT 1) as lastActivity,
-        COALESCE((SELECT is_suspended FROM user_activity_log WHERE user_id = u.id::text LIMIT 1), false) as isSuspended,
-        (SELECT suspension_reason FROM user_activity_log WHERE user_id = u.id::text LIMIT 1) as suspensionReason,
-        (SELECT suspended_at FROM user_activity_log WHERE user_id = u.id::text LIMIT 1) as suspendedAt,
-        (SELECT suspended_by FROM user_activity_log WHERE user_id = u.id::text LIMIT 1) as suspendedBy
+        (SELECT last_login FROM user_activity_log WHERE user_id = u.id ORDER BY last_login DESC LIMIT 1) as lastLogin,
+        (SELECT last_activity FROM user_activity_log WHERE user_id = u.id ORDER BY last_activity DESC LIMIT 1) as lastActivity,
+        COALESCE((SELECT is_suspended FROM user_activity_log WHERE user_id = u.id LIMIT 1), false) as isSuspended,
+        (SELECT suspension_reason FROM user_activity_log WHERE user_id = u.id LIMIT 1) as suspensionReason,
+        (SELECT suspended_at FROM user_activity_log WHERE user_id = u.id LIMIT 1) as suspendedAt,
+        (SELECT suspended_by FROM user_activity_log WHERE user_id = u.id LIMIT 1) as suspendedBy
       FROM usuarios u
-      LEFT JOIN reports r ON u.id::text = r.created_by
+      LEFT JOIN reports r ON u.id = r.created_by::integer
       GROUP BY u.id, u.correo, u.nombre, u.rol
       ORDER BY u.nombre ASC
     `)
