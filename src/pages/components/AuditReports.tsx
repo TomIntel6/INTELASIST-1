@@ -140,7 +140,7 @@ export default function AuditReports() {
                   <SelectValue placeholder="Todos los módulos" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todos</SelectItem>
+                  <SelectItem value="all">Todos</SelectItem>
                   <SelectItem value="REPORTS">Informes</SelectItem>
                   <SelectItem value="USERS">Usuarios</SelectItem>
                   <SelectItem value="SYSTEM">Sistema</SelectItem>
@@ -156,7 +156,7 @@ export default function AuditReports() {
                   <SelectValue placeholder="Todas las acciones" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todas</SelectItem>
+                  <SelectItem value="all">Todas</SelectItem>
                   {AUDIT_ACTIONS.map((act) => (
                     <SelectItem key={act} value={act}>
                       {AUDIT_ACTION_LABELS[act] || act}

@@ -24,7 +24,7 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { canManageAgents, fetchOnlineUsersFromServer, getNameColorClasses, getOnlineUsers, getRoleColorClasses, getUserRole, getUserRoles, useAuth, PRESENCE_STORAGE_KEY, PRESENCE_SYNC_STORAGE_KEY, USERS_SYNC_STORAGE_KEY } from '@/lib/auth'
+import { canManageAgents, fetchOnlineUsersFromServer, getNameColorClasses, getOnlineUsers, getRoleColorClasses, getUserRole, getUserRoles, useAuth, PRESENCE_STORAGE_KEY, PRESENCE_SYNC_STORAGE_KEY, USERS_SYNC_STORAGE_KEY, canAccessAdvancedAdmin } from '@/lib/auth'
 import { getDefaultApiBase } from '@/lib/supabase'
 import { LayoutDashboard, FileText, LogOut, FilePlus, Users, AlertCircle, Settings } from 'lucide-react'
 
@@ -521,7 +521,7 @@ export const AppSidebar = React.memo(function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {(userRoles.includes('Support') || String(user?.email).toLowerCase() === 'mbarria@intelasist.com') ? (
+        {canAccessAdvancedAdmin(user) ? (
           <SidebarGroup className="mt-2">
             <SidebarGroupContent>
               <SidebarMenu>

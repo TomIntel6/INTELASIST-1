@@ -605,6 +605,12 @@ export function canCreateUsers(user: LocalUser | null): boolean {
   return hasAnyRole(user, ['Support', 'Gerente'])
 }
 
+export function canAccessAdvancedAdmin(user: LocalUser | null): boolean {
+  const isSupport = hasAnyRole(user, ['Support'])
+  const isMbarria = String(user?.email).toLowerCase() === 'mbarria@intelasist.com'
+  return isSupport || isMbarria
+}
+
 export function passwordChangeRequired(user: LocalUser | null): boolean {
   return user?.user_metadata?.must_change_password === true
 }
