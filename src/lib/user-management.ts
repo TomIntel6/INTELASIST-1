@@ -68,7 +68,7 @@ export class UserManagementService {
         .from('user_activity_log')
         .select('id')
         .eq('user_id', userId)
-        .single()
+        .maybeSingle()
 
       if (!activity) {
         const { data: created } = await supabase
@@ -136,7 +136,7 @@ export class UserManagementService {
         .from('user_activity_log')
         .select('id')
         .eq('user_id', userId)
-        .single()
+        .maybeSingle()
 
       if (!activity) {
         const { data: created } = await supabase
@@ -174,7 +174,7 @@ export class UserManagementService {
         .from('user_activity_log')
         .select('id')
         .eq('user_id', userId)
-        .single()
+        .maybeSingle()
 
       if (!activity) {
         const { data: created } = await supabase
@@ -209,7 +209,7 @@ export class UserManagementService {
         .from('user_activity_log')
         .select('id, reports_created')
         .eq('user_id', userId)
-        .single()
+        .maybeSingle()
 
       if (!activity) {
         const { data: created } = await supabase
