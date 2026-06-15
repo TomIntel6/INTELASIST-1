@@ -606,6 +606,139 @@ async function ensureFailedReportAttemptsTable() {
   `)
 }
 
+async function ensureUserPermissionsTable() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS user_permissions (
+      id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      modules_access JSONB DEFAULT '{}'::jsonb,
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      updated_at TIMESTAMPTZ DEFAULT NOW(),
+      UNIQUE(user_id)
+    )
+  `)
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_user_permissions_user_id ON user_permissions(user_id)
+  `)
+}
+
+async function ensureUserPermissionDetailsTable() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS user_permission_details (
+      id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+      permission_id UUID NOT NULL REFERENCES user_permissions(id) ON DELETE CASCADE,
+      permission_key TEXT NOT NULL,
+      granted BOOLEAN NOT NULL DEFAULT false,
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      updated_at TIMESTAMPTZ DEFAULT NOW(),
+      UNIQUE(permission_id, permission_key)
+    )
+  `)
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_user_permission_details_permission_id ON user_permission_details(permission_id)
+  `)
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_user_permission_details_permission_key ON user_permission_details(permission_key)
+  `)
+}
+
+async function ensureAuditLogsTable() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS audit_logs (
+      id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+      user_id TEXT,
+      user_email TEXT,
+      user_name TEXT,
+      action TEXT NOT NULL,
+      module TEXT NOT NULL,
+      entity_id UUID,
+      entity_type TEXT,
+      old_values JSONB,
+      new_values JSONB,
+      ip_address TEXT,
+      user_agent TEXT,
+      status TEXT DEFAULT 'success',
+      error_message TEXT,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `)
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_audit_logs_user_id ON audit_logs(user_id)
+  `)
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_audit_logs_module ON audit_logs(module)
+  `)
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_audit_logs_action ON audit_logs(action)
+  `)
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_audit_logs_entity_id ON audit_logs(entity_id)
+  `)
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs(created_at DESC)
+  `)
+}
+
+async function ensureDeletedReportsTable() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS deleted_reports (
+      id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+      report_id TEXT NOT NULL,
+      original_data JSONB NOT NULL,
+      deleted_by TEXT,
+      deleted_by_name TEXT,
+      deleted_by_email TEXT,
+      deleted_at TIMESTAMPTZ DEFAULT NOW(),
+      restored_at TIMESTAMPTZ,
+      permanently_deleted_at TIMESTAMPTZ,
+      permanently_deleted_by TEXT,
+      reason TEXT
+    )
+  `)
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_deleted_reports_report_id ON deleted_reports(report_id)
+  `)
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_deleted_reports_deleted_by ON deleted_reports(deleted_by)
+  `)
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_deleted_reports_deleted_at ON deleted_reports(deleted_at DESC)
+  `)
+}
+
+async function ensureUserActivityLogTable() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS user_activity_log (
+      id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      reports_created INTEGER DEFAULT 0,
+      last_login TIMESTAMPTZ,
+      last_activity TIMESTAMPTZ,
+      is_suspended BOOLEAN DEFAULT false,
+      suspension_reason TEXT,
+      suspended_at TIMESTAMPTZ,
+      suspended_by TEXT,
+      updated_at TIMESTAMPTZ DEFAULT NOW(),
+      UNIQUE(user_id)
+    )
+  `)
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_user_activity_log_user_id ON user_activity_log(user_id)
+  `)
+}
+
 async function loadReportsWithUpdates(query = '', values = []) {
   const reportsResult = await pool.query(
     `
@@ -1797,6 +1930,71 @@ app.get('/api/users/statistics', async (req, res) => {
   }
 })
 
+// GET /api/users/with-permissions - Usuarios + Permisos (batch)
+app.get('/api/users/with-permissions', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT
+        u.id,
+        u.correo AS email,
+        u.nombre AS fullName,
+        u.rol AS role,
+        COALESCE(jsonb_object_agg(upd.permission_key, upd.granted) FILTER (WHERE upd.permission_key IS NOT NULL), '{}'::jsonb) AS permissions
+      FROM usuarios u
+      LEFT JOIN user_permissions up ON up.user_id = u.id
+      LEFT JOIN user_permission_details upd ON upd.permission_id = up.id
+      GROUP BY u.id, u.correo, u.nombre, u.rol
+      ORDER BY u.nombre ASC
+    `)
+
+    const usersWithPerms = result.rows.map((row) => ({
+      id: row.id,
+      email: row.email,
+      fullName: row.fullName,
+      role: row.role,
+      permissions: row.permissions || {},
+    }))
+
+    res.json(usersWithPerms)
+  } catch (err) {
+    console.error('Error fetching users with permissions:', err)
+    res.status(500).json({ error: 'Error al obtener usuarios con permisos' })
+  }
+})
+
+// GET /api/users/with-modules - Usuarios + Módulos accesibles
+app.get('/api/users/with-modules', async (req, res) => {
+  try {
+    const usersResult = await pool.query(`
+      SELECT 
+        u.id,
+        u.correo as email,
+        u.nombre as userName,
+        u.rol as role
+      FROM usuarios u
+      ORDER BY u.nombre ASC
+    `)
+
+    const moduleKeys = ['reports', 'evidence', 'updates', 'users', 'system', 'admin']
+    
+    const usersWithModules = usersResult.rows.map(user => ({
+      userId: user.id,
+      email: user.email,
+      userName: user.userName,
+      role: user.role,
+      modules: moduleKeys.reduce((acc, mod) => {
+        acc[mod] = true // Por defecto todos tienen acceso
+        return acc
+      }, {}),
+    }))
+
+    res.json(usersWithModules)
+  } catch (err) {
+    console.error('Error fetching users with modules:', err)
+    res.status(500).json({ error: 'Error al obtener usuarios con módulos' })
+  }
+})
+
 // GET /api/users/:userId - Obtener usuario específico
 app.get('/api/users/:userId', async (req, res) => {
   try {
@@ -1960,71 +2158,6 @@ app.post('/api/users/:userId/reactivate', async (req, res) => {
   } catch (err) {
     console.error('Error reactivating user:', err)
     res.status(500).json({ error: 'Error al reactivar usuario' })
-  }
-})
-
-// GET /api/users/with-permissions - Usuarios + Permisos (batch)
-app.get('/api/users/with-permissions', async (req, res) => {
-  try {
-    const result = await pool.query(`
-      SELECT
-        u.id,
-        u.correo AS email,
-        u.nombre AS fullName,
-        u.rol AS role,
-        COALESCE(jsonb_object_agg(upd.permission_key, upd.granted) FILTER (WHERE upd.permission_key IS NOT NULL), '{}'::jsonb) AS permissions
-      FROM usuarios u
-      LEFT JOIN user_permissions up ON up.user_id = u.id
-      LEFT JOIN user_permission_details upd ON upd.permission_id = up.id
-      GROUP BY u.id, u.correo, u.nombre, u.rol
-      ORDER BY u.nombre ASC
-    `)
-
-    const usersWithPerms = result.rows.map((row) => ({
-      id: row.id,
-      email: row.email,
-      fullName: row.fullName,
-      role: row.role,
-      permissions: row.permissions || {},
-    }))
-
-    res.json(usersWithPerms)
-  } catch (err) {
-    console.error('Error fetching users with permissions:', err)
-    res.status(500).json({ error: 'Error al obtener usuarios con permisos' })
-  }
-})
-
-// GET /api/users/with-modules - Usuarios + Módulos accesibles
-app.get('/api/users/with-modules', async (req, res) => {
-  try {
-    const usersResult = await pool.query(`
-      SELECT 
-        u.id,
-        u.correo as email,
-        u.nombre as userName,
-        u.rol as role
-      FROM usuarios u
-      ORDER BY u.nombre ASC
-    `)
-
-    const moduleKeys = ['reports', 'evidence', 'updates', 'users', 'system', 'admin']
-    
-    const usersWithModules = usersResult.rows.map(user => ({
-      userId: user.id,
-      email: user.email,
-      userName: user.userName,
-      role: user.role,
-      modules: moduleKeys.reduce((acc, mod) => {
-        acc[mod] = true // Por defecto todos tienen acceso
-        return acc
-      }, {}),
-    }))
-
-    res.json(usersWithModules)
-  } catch (err) {
-    console.error('Error fetching users with modules:', err)
-    res.status(500).json({ error: 'Error al obtener usuarios con módulos' })
   }
 })
 
@@ -2393,9 +2526,14 @@ async function startCleanupTask() {
   }, 20000)
 }
 
+async function ensurePgcryptoExtension() {
+  await pool.query(`CREATE EXTENSION IF NOT EXISTS pgcrypto`)
+}
+
 async function start() {
   try {
     console.log('Inicializando base de datos...')
+    await ensurePgcryptoExtension()
     await ensureOnlinePresenceTable()
     await ensureUsersTable()
     await ensureUsersRolesColumn()
@@ -2404,6 +2542,11 @@ async function start() {
     await ensureReportsTable()
     await ensureReportUpdatesTableWrapper()
     await ensureFailedReportAttemptsTable()
+    await ensureUserPermissionsTable()
+    await ensureUserPermissionDetailsTable()
+    await ensureUserActivityLogTable()
+    await ensureAuditLogsTable()
+    await ensureDeletedReportsTable()
     console.log('Base de datos inicializada correctamente')
   } catch (err) {
     console.error('Error inicializando base de datos:', err instanceof Error ? err.message : err)
