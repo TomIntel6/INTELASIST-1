@@ -59,8 +59,8 @@ export default function AuditLog() {
       // Filter by email if provided
       let filtered = data
       if (emailFilter) {
-        filtered = data.filter(log =>
-          log.userEmail?.toLowerCase().includes(emailFilter.toLowerCase())
+        filtered = data.filter((log: AuditLogType) =>
+          log.user_email?.toLowerCase().includes(emailFilter.toLowerCase())
         )
       }
 
