@@ -1935,7 +1935,7 @@ app.get('/api/users/with-activity', async (req, res) => {
         ual.suspended_at as suspendedAt,
         ual.suspended_by as suspendedBy
       FROM usuarios u
-      LEFT JOIN user_activity_log ual ON u.id::text = ual.user_id
+      LEFT JOIN user_activity_log ual ON u.id::text = ual.user_id::text
       ORDER BY u.nombre ASC
     `)
     
