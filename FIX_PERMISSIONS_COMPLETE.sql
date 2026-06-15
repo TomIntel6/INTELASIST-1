@@ -1,3 +1,12 @@
+-- ================================================================================
+-- SCRIPT COMPLETO: Crear tablas + Inicializar permisos para crear informes
+-- Ejecutar en SQL Editor de Supabase
+-- ================================================================================
+
+-- ================================================================================
+-- PARTE 1: CREAR TABLAS (si no existen)
+-- ================================================================================
+
 -- Drop existing tables if they were created with wrong references
 DROP TABLE IF EXISTS public.user_permission_details CASCADE;
 DROP TABLE IF EXISTS public.user_permissions CASCADE;
@@ -105,7 +114,11 @@ CREATE POLICY "All users can create reports"
     AND (modules_access->>'create_reports')::boolean = true
   );
 
--- 8. Initialize data for existing users
+-- ================================================================================
+-- PARTE 2: INICIALIZAR DATOS PARA TODOS LOS USUARIOS
+-- ================================================================================
+
+-- Initialize user_activity_log
 INSERT INTO public.user_activity_log (user_id, reports_created, is_suspended)
 SELECT u.id, 0, false
 FROM public.usuarios u
@@ -114,32 +127,46 @@ WHERE NOT EXISTS (
 )
 ON CONFLICT (user_id) DO NOTHING;
 
+-- Initialize user_permissions with create_reports enabled
 INSERT INTO public.user_permissions (user_id, modules_access)
 SELECT u.id, '{"reports":true,"evidence":true,"updates":true,"users":false,"system":false,"admin":false,"create_reports":true}'::jsonb
 FROM public.usuarios u
 WHERE NOT EXISTS (
   SELECT 1 FROM public.user_permissions up WHERE up.user_id = u.id
 )
-ON CONFLICT (user_id) DO NOTHING;
+ON CONFLICT (user_id) DO UPDATE SET 
+  modules_access = jsonb_set(
+    EXCLUDED.modules_access,
+    '{create_reports}',
+    'true'::jsonb
+  ),
+  updated_at = now();
 
--- Initialize permission details for all users based on their role
--- All users get create_reports, view_reports, upload_evidence, download_evidence, add_updates
-WITH user_perms AS (
-  SELECT 
+-- Initialize all permission details for each user based on their role
+WITH all_perms AS (
+  SELECT
     up.id as permission_id,
     u.id as user_id,
-    u.rol,
+    COALESCE(u.rol, 'Agente') as user_role,
+    perm.permission_key,
     CASE 
-      WHEN perm_key IN ('create_reports', 'view_reports', 'upload_evidence', 'download_evidence', 'add_updates') THEN true
+      -- Todos los usuarios pueden crear informes
+      WHEN perm.permission_key = 'create_reports' THEN true
+      WHEN perm.permission_key = 'view_reports' THEN true
+      WHEN perm.permission_key = 'upload_evidence' THEN true
+      WHEN perm.permission_key = 'download_evidence' THEN true
+      WHEN perm.permission_key = 'add_updates' THEN true
+      -- Admin y Support tienen todos los permisos
       WHEN u.rol = 'Admin' THEN true
       WHEN u.rol = 'Support' THEN true
-      WHEN u.rol = 'Gerente' AND perm_key IN ('view_all_reports', 'edit_reports', 'change_report_status', 'assign_reports', 'export_reports', 'view_users', 'view_alerts', 'view_audit_logs') THEN true
+      -- Gerente tiene permisos adicionales
+      WHEN u.rol = 'Gerente' AND perm.permission_key IN ('view_all_reports', 'edit_reports', 'change_report_status', 'assign_reports', 'export_reports', 'view_users', 'view_alerts', 'view_audit_logs') THEN true
       ELSE false
-    END as granted
+    END as should_grant
   FROM public.user_permissions up
   INNER JOIN public.usuarios u ON u.id = up.user_id
   CROSS JOIN (
-    SELECT 'create_reports' as perm_key UNION ALL
+    SELECT 'create_reports' as permission_key UNION ALL
     SELECT 'view_reports' UNION ALL
     SELECT 'view_all_reports' UNION ALL
     SELECT 'edit_reports' UNION ALL
@@ -168,14 +195,42 @@ WITH user_perms AS (
     SELECT 'restore_users' UNION ALL
     SELECT 'access_trash' UNION ALL
     SELECT 'permanently_delete_reports'
-  ) AS perms(perm_key)
+  ) as perms(permission_key)
 )
 INSERT INTO public.user_permission_details (permission_id, permission_key, granted, created_at, updated_at)
-SELECT permission_id, perm_key, granted, now(), now()
-FROM user_perms
+SELECT 
+  permission_id,
+  permission_key,
+  should_grant,
+  now(),
+  now()
+FROM all_perms
 WHERE NOT EXISTS (
   SELECT 1 FROM public.user_permission_details upd 
-  WHERE upd.permission_id = user_perms.permission_id 
-  AND upd.permission_key = user_perms.perm_key
+  WHERE upd.permission_id = all_perms.permission_id 
+  AND upd.permission_key = all_perms.permission_key
 )
-ON CONFLICT (permission_id, permission_key) DO UPDATE SET granted = EXCLUDED.granted, updated_at = now();
+ON CONFLICT (permission_id, permission_key) DO UPDATE SET 
+  granted = EXCLUDED.granted,
+  updated_at = now();
+
+-- ================================================================================
+-- PARTE 3: VERIFICACIÓN - Ver resultados finales
+-- ================================================================================
+
+-- Mostrar estado final de todos los usuarios
+SELECT 
+  u.email,
+  u.rol,
+  up.modules_access->>'create_reports' as create_reports_json,
+  COALESCE(upd.granted, false) as create_reports_detail,
+  ual.is_suspended,
+  CASE 
+    WHEN COALESCE(upd.granted, false) = true THEN '✅ HABILITADO'
+    ELSE '❌ DESHABILITADO'
+  END as estado_permisos
+FROM public.usuarios u
+LEFT JOIN public.user_permissions up ON u.id = up.user_id
+LEFT JOIN public.user_permission_details upd ON up.id = upd.permission_id AND upd.permission_key = 'create_reports'
+LEFT JOIN public.user_activity_log ual ON u.id = ual.user_id
+ORDER BY u.email;
