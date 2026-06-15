@@ -1,0 +1,51 @@
+════════════════════════════════════════════════════════════════════════════════
+⚡ INSTRUCCIONES RÁPIDAS - COPIAR Y PEGAR SOLO EL SQL
+════════════════════════════════════════════════════════════════════════════════
+
+1️⃣  PASO 1: Abre Supabase SQL Editor
+   → https://app.supabase.com/project/ceowmvfxjgrgwrespcrb/sql/new
+
+2️⃣  PASO 2: Copia el contenido de MIGRATION_1_SOLO_SQL.sql
+   → Abre ese archivo
+   → Selecciona TODO (Ctrl+A)
+   → Copia (Ctrl+C)
+
+3️⃣  PASO 3: Pega en Supabase SQL Editor
+   → Click en el editor de texto
+   → Pega (Ctrl+V)
+   → Click botón "RUN" (verde)
+   → Espera ✅ Success
+
+   ⚠️  Si falla con "type already exists": ES NORMAL
+      Continúa a PASO 5
+
+4️⃣  PASO 4: Copia MIGRATION_2_SOLO_SQL.sql
+   → Abre una NUEVA query: https://app.supabase.com/project/ceowmvfxjgrgwrespcrb/sql/new
+   → Abre MIGRATION_2_SOLO_SQL.sql
+   → Selecciona TODO (Ctrl+A)
+   → Copia (Ctrl+C)
+   → Pega en nueva query (Ctrl+V)
+   → Click "RUN" 
+   → Espera ✅ Success
+
+5️⃣  PASO 5: Verifica que funcionó
+   → Nueva query: https://app.supabase.com/project/ceowmvfxjgrgwrespcrb/sql/new
+   
+   Copia y pega ESTO:
+   
+   SELECT table_name FROM information_schema.tables 
+   WHERE table_schema = 'public' 
+   AND table_name IN ('user_permissions','user_permission_details','user_activity_log','audit_logs','deleted_reports') 
+   ORDER BY table_name;
+   
+   Debes ver 5 tablas listadas ✅
+
+6️⃣  ¡LISTO! 
+   → Abre Admin Dashboard: https://intelasist-ai.vercel.app/admin
+   → Verifica que carga sin errores 404
+
+════════════════════════════════════════════════════════════════════════════════
+📁 Archivos que necesitas:
+  - MIGRATION_1_SOLO_SQL.sql (Para PASO 2)
+  - MIGRATION_2_SOLO_SQL.sql (Para PASO 4)
+════════════════════════════════════════════════════════════════════════════════
