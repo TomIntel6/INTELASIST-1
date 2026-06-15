@@ -1685,6 +1685,376 @@ app.delete('/online-users/:userId', async (req, res) => {
   }
 })
 
+// ========== NEW ADMIN ENDPOINTS (API v2) ==========
+
+// GET /api/users/with-activity - Listar usuarios con actividad (SIN auth.admin)
+app.get('/api/users/with-activity', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT 
+        u.id,
+        u.correo as email,
+        u.nombre,
+        u.rol as role,
+        ual.reports_created as reportsCreated,
+        ual.last_login as lastLogin,
+        ual.last_activity as lastActivity,
+        ual.is_suspended as isSuspended,
+        ual.suspension_reason as suspensionReason,
+        ual.suspended_at as suspendedAt,
+        ual.suspended_by as suspendedBy
+      FROM usuarios u
+      LEFT JOIN user_activity_log ual ON u.id::text = ual.user_id
+      ORDER BY u.nombre ASC
+    `)
+    
+    res.json(result.rows.map(row => ({
+      id: row.id,
+      email: row.email,
+      nombre: row.nombre,
+      role: row.role,
+      reportsCreated: row.reportsCreated || 0,
+      lastLogin: row.lastLogin,
+      lastActivity: row.lastActivity,
+      isSuspended: row.isSuspended || false,
+      suspensionReason: row.suspensionReason,
+      suspendedAt: row.suspendedAt,
+      suspendedBy: row.suspendedBy,
+    })))
+  } catch (err) {
+    console.error('Error fetching users with activity:', err)
+    res.status(500).json({ error: 'Error al obtener usuarios' })
+  }
+})
+
+// GET /api/users - Listar usuarios con actividad (SIN auth.admin)
+app.get('/api/users', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT 
+        u.id,
+        u.correo as email,
+        u.nombre,
+        u.rol as role,
+        ual.reports_created as reportsCreated,
+        ual.last_login as lastLogin,
+        ual.last_activity as lastActivity,
+        ual.is_suspended as isSuspended,
+        ual.suspension_reason as suspensionReason,
+        ual.suspended_at as suspendedAt,
+        ual.suspended_by as suspendedBy
+      FROM usuarios u
+      LEFT JOIN user_activity_log ual ON u.id::text = ual.user_id
+      ORDER BY u.nombre ASC
+    `)
+    
+    res.json(result.rows.map(row => ({
+      id: row.id,
+      email: row.email,
+      nombre: row.nombre,
+      role: row.role,
+      reportsCreated: row.reportsCreated || 0,
+      lastLogin: row.lastLogin,
+      lastActivity: row.lastActivity,
+      isSuspended: row.isSuspended || false,
+      suspensionReason: row.suspensionReason,
+      suspendedAt: row.suspendedAt,
+      suspendedBy: row.suspendedBy,
+    })))
+  } catch (err) {
+    console.error('Error fetching users:', err)
+    res.status(500).json({ error: 'Error al obtener usuarios' })
+  }
+})
+
+// GET /api/users/:userId - Obtener usuario específico
+app.get('/api/users/:userId', async (req, res) => {
+  try {
+    const userId = typeof req.params.userId === 'string' ? req.params.userId.trim() : ''
+    
+    if (!userId) {
+      return res.status(400).json({ error: 'userId requerido' })
+    }
+
+    const userResult = await pool.query(`
+      SELECT 
+        u.id,
+        u.correo as email,
+        u.nombre,
+        u.rol as role,
+        u.roles
+      FROM usuarios u
+      WHERE u.id::text = $1
+      LIMIT 1
+    `, [userId])
+    
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Usuario no encontrado' })
+    }
+
+    const activityResult = await pool.query(`
+      SELECT 
+        reports_created,
+        last_login,
+        last_activity,
+        is_suspended,
+        suspension_reason,
+        suspended_at,
+        suspended_by
+      FROM user_activity_log
+      WHERE user_id = $1
+      LIMIT 1
+    `, [userId])
+
+    const user = userResult.rows[0]
+    const activity = activityResult.rows[0] || {}
+
+    res.json({
+      user: {
+        id: user.id,
+        email: user.email,
+        nombre: user.nombre,
+        role: user.role,
+        roles: user.roles ? JSON.parse(user.roles) : [user.role],
+      },
+      activity: {
+        reportsCreated: activity.reports_created || 0,
+        lastLogin: activity.last_login,
+        lastActivity: activity.last_activity,
+        isSuspended: activity.is_suspended || false,
+        suspensionReason: activity.suspension_reason,
+        suspendedAt: activity.suspended_at,
+        suspendedBy: activity.suspended_by,
+      },
+    })
+  } catch (err) {
+    console.error('Error fetching user:', err)
+    res.status(500).json({ error: 'Error al obtener usuario' })
+  }
+})
+
+// GET /api/users/statistics - Estadísticas del sistema
+app.get('/api/users/statistics', async (req, res) => {
+  try {
+    const totalResult = await pool.query('SELECT COUNT(*) as count FROM usuarios')
+    const suspendedResult = await pool.query(
+      'SELECT COUNT(*) as count FROM user_activity_log WHERE is_suspended = true'
+    )
+    const reportsResult = await pool.query('SELECT COUNT(*) as count FROM reports')
+    const activeResult = await pool.query(
+      'SELECT COUNT(*) as count FROM user_activity_log WHERE is_suspended = false OR is_suspended IS NULL'
+    )
+
+    const totalUsers = parseInt(totalResult.rows[0]?.count || 0)
+    const suspendedUsers = parseInt(suspendedResult.rows[0]?.count || 0)
+    const totalReports = parseInt(reportsResult.rows[0]?.count || 0)
+    const activeUsers = parseInt(activeResult.rows[0]?.count || 0)
+
+    res.json({
+      totalUsers,
+      activeUsers,
+      suspendedUsers,
+      totalReports,
+      averageReportsPerUser: totalUsers > 0 ? (totalReports / totalUsers).toFixed(2) : 0,
+    })
+  } catch (err) {
+    console.error('Error fetching statistics:', err)
+    res.status(500).json({ error: 'Error al obtener estadísticas' })
+  }
+})
+
+// GET /api/users/with-permissions - Usuarios + Permisos (batch)
+app.get('/api/users/with-permissions', async (req, res) => {
+  try {
+    const usersResult = await pool.query(`
+      SELECT 
+        u.id,
+        u.correo as email,
+        u.nombre as fullName,
+        u.rol as role
+      FROM usuarios u
+      ORDER BY u.nombre ASC
+    `)
+
+    const usersWithPerms = []
+
+    for (const user of usersResult.rows) {
+      const permsResult = await pool.query(`
+        SELECT permission_key, granted
+        FROM user_permission_details
+        WHERE permission_id = (
+          SELECT id FROM user_permissions WHERE user_id = $1 LIMIT 1
+        )
+      `, [user.id])
+
+      const permissions = {}
+      permsResult.rows.forEach(row => {
+        permissions[row.permission_key] = row.granted
+      })
+
+      usersWithPerms.push({
+        id: user.id,
+        email: user.email,
+        fullName: user.fullName,
+        role: user.role,
+        permissions,
+      })
+    }
+
+    res.json(usersWithPerms)
+  } catch (err) {
+    console.error('Error fetching users with permissions:', err)
+    res.status(500).json({ error: 'Error al obtener usuarios con permisos' })
+  }
+})
+
+// GET /api/users/with-modules - Usuarios + Módulos accesibles
+app.get('/api/users/with-modules', async (req, res) => {
+  try {
+    const usersResult = await pool.query(`
+      SELECT 
+        u.id,
+        u.correo as email,
+        u.nombre as userName,
+        u.rol as role
+      FROM usuarios u
+      ORDER BY u.nombre ASC
+    `)
+
+    const moduleKeys = ['reports', 'evidence', 'updates', 'users', 'system', 'admin']
+    
+    const usersWithModules = usersResult.rows.map(user => ({
+      userId: user.id,
+      email: user.email,
+      userName: user.userName,
+      role: user.role,
+      modules: moduleKeys.reduce((acc, mod) => {
+        acc[mod] = true // Por defecto todos tienen acceso
+        return acc
+      }, {}),
+    }))
+
+    res.json(usersWithModules)
+  } catch (err) {
+    console.error('Error fetching users with modules:', err)
+    res.status(500).json({ error: 'Error al obtener usuarios con módulos' })
+  }
+})
+
+// PUT /api/users/:userId/permissions - Actualizar permisos
+app.put('/api/users/:userId/permissions', async (req, res) => {
+  try {
+    const userId = typeof req.params.userId === 'string' ? req.params.userId.trim() : ''
+    const permissions = req.body?.permissions || {}
+
+    if (!userId) {
+      return res.status(400).json({ error: 'userId requerido' })
+    }
+
+    // Get or create permission record
+    let permResult = await pool.query(
+      'SELECT id FROM user_permissions WHERE user_id = $1',
+      [userId]
+    )
+
+    let permId = permResult.rows[0]?.id
+
+    if (!permId) {
+      const createResult = await pool.query(
+        'INSERT INTO user_permissions (user_id) VALUES ($1) RETURNING id',
+        [userId]
+      )
+      permId = createResult.rows[0].id
+    }
+
+    // Delete existing permissions
+    await pool.query(
+      'DELETE FROM user_permission_details WHERE permission_id = $1',
+      [permId]
+    )
+
+    // Insert new permissions
+    for (const [key, granted] of Object.entries(permissions)) {
+      await pool.query(
+        'INSERT INTO user_permission_details (permission_id, permission_key, granted) VALUES ($1, $2, $3)',
+        [permId, key, granted]
+      )
+    }
+
+    res.json({ success: true, message: 'Permisos actualizados' })
+  } catch (err) {
+    console.error('Error updating permissions:', err)
+    res.status(500).json({ error: 'Error al actualizar permisos' })
+  }
+})
+
+// PUT /api/users/:userId/modules - Actualizar módulos accesibles
+app.put('/api/users/:userId/modules', async (req, res) => {
+  try {
+    const userId = typeof req.params.userId === 'string' ? req.params.userId.trim() : ''
+    const modules = req.body?.modules || {}
+
+    if (!userId) {
+      return res.status(400).json({ error: 'userId requerido' })
+    }
+
+    // Get or create permission record
+    let permResult = await pool.query(
+      'SELECT id FROM user_permissions WHERE user_id = $1',
+      [userId]
+    )
+
+    let permId = permResult.rows[0]?.id
+
+    if (!permId) {
+      const createResult = await pool.query(
+        'INSERT INTO user_permissions (user_id) VALUES ($1) RETURNING id',
+        [userId]
+      )
+      permId = createResult.rows[0].id
+    }
+
+    // Update modules_access JSONB column
+    const modulesJson = JSON.stringify(modules)
+    await pool.query(
+      'UPDATE user_permissions SET modules_access = $1, updated_at = NOW() WHERE id = $2',
+      [modulesJson, permId]
+    )
+    
+    res.json({ 
+      success: true, 
+      message: 'Módulos actualizados correctamente',
+      userId,
+      modules,
+    })
+  } catch (err) {
+    console.error('Error updating modules:', err)
+    res.status(500).json({ error: 'Error al actualizar módulos' })
+  }
+})
+
+// GET /api/health/auth - Health check del servicio de autenticación
+app.get('/api/health/auth', async (req, res) => {
+  try {
+    const countResult = await pool.query('SELECT COUNT(*) as count FROM usuarios')
+    const userCount = parseInt(countResult.rows[0]?.count || 0)
+
+    res.json({
+      status: 'healthy',
+      message: `Servicio de autenticación disponible`,
+      userCount,
+      timestamp: new Date().toISOString(),
+    })
+  } catch (err) {
+    console.error('Error checking auth health:', err)
+    res.status(500).json({
+      status: 'error',
+      message: 'Servicio de autenticación no disponible',
+      error: err instanceof Error ? err.message : 'Error desconocido',
+    })
+  }
+})
+
 async function startCleanupTask() {
   // Limpia usuarios con presencia expirada cada 20 segundos
   setInterval(async () => {

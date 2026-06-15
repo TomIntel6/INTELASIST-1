@@ -33,26 +33,12 @@ export default function PermissionModules() {
   const loadUsers = async () => {
     try {
       setLoading(true)
-      const { data: authUsers, error } = await supabase.auth.admin.listUsers()
-      if (error) throw error
-
-      const usersData: UserModuleAccess[] = []
-
-      for (const user of authUsers?.users || []) {
-        const moduleAccess: Record<string, boolean> = {}
-        Object.keys(PERMISSION_MODULES).forEach((module) => {
-          moduleAccess[module] = true
-        })
-
-        usersData.push({
-          userId: user.id,
-          email: user.email || '',
-          userName: user.user_metadata?.full_name || '',
-          role: user.user_metadata?.role || 'Agente',
-          modules: moduleAccess,
-        })
-      }
-
+      
+      // Backend devuelve usuarios + módulos accesibles
+      const response = await fetch('https://intelasist.onrender.com/api/users/with-modules')
+      if (!response.ok) throw new Error('Failed to load users')
+      
+      const usersData = await response.json()
       setUsers(usersData)
     } catch (error) {
       console.error('Error loading users:', error)
@@ -77,14 +63,14 @@ export default function PermissionModules() {
       const user = users.find((u) => u.userId === userId)
       if (!user) return
 
-      // Save to database
-      await supabase
-        .from('user_permissions')
-        .upsert({
-          user_id: userId,
-          modules_access: user.modules,
-          updated_at: new Date().toISOString(),
-        })
+      // Call backend to update modules
+      const response = await fetch(`https://intelasist.onrender.com/api/users/${userId}/modules`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ modules: user.modules }),
+      })
+      
+      if (!response.ok) throw new Error('Failed to update modules')
 
       toast.success(`Módulos actualizados para ${user.email}`)
     } catch (error) {

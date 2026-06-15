@@ -22,36 +22,10 @@ export class UserManagementService {
    */
   static async getAllUsersWithActivity() {
     try {
-      const { data, error: usersError } = await supabase.auth.admin.listUsers()
-
-      if (usersError) throw usersError
-
-      const users = (data?.users || []) as any[]
-
-      const { data: activities, error: activitiesError } = await supabase
-        .from('user_activity_log')
-        .select('*')
-
-      if (activitiesError) throw activitiesError
-
-      const activitiesMap = new Map(activities?.map((a: any) => [a.user_id, a]) || [])
-
-      return users.map((user: any) => {
-        const activity = activitiesMap.get(user.id)
-        return {
-          id: user.id,
-          email: user.email || '',
-          fullName: user.user_metadata?.full_name || '',
-          role: user.user_metadata?.role || 'Agente',
-          reportsCreated: activity?.reports_created || 0,
-          lastLogin: activity?.last_login,
-          lastActivity: activity?.last_activity,
-          isSuspended: activity?.is_suspended || false,
-          suspensionReason: activity?.suspension_reason,
-          suspendedAt: activity?.suspended_at,
-          suspendedBy: activity?.suspended_by,
-        }
-      })
+      const response = await fetch('https://intelasist.onrender.com/api/users/with-activity')
+      if (!response.ok) throw new Error('Failed to fetch users')
+      const users = await response.json()
+      return users
     } catch (error) {
       console.error('Error getting users with activity:', error)
       return []
@@ -63,41 +37,21 @@ export class UserManagementService {
    */
   static async getUserActivity(userId: string) {
     try {
-      const { data: user, error: userError } = await supabase.auth.admin.getUserById(userId)
-
-      if (userError) throw userError
-
-      let { data: activity, error: activityError } = await supabase
-        .from('user_activity_log')
-        .select('*')
-        .eq('user_id', userId)
-        .single()
-
-      if (activityError && activityError.code !== 'PGRST116') {
-        throw activityError
-      }
-
-      if (!activity) {
-        const { data: created } = await supabase
-          .from('user_activity_log')
-          .insert({ user_id: userId })
-          .select()
-          .single()
-        activity = created
-      }
-
+      const response = await fetch(`https://intelasist.onrender.com/api/users/${userId}`)
+      if (!response.ok) throw new Error('Failed to fetch user activity')
+      const { user, activity } = await response.json()
       return {
-        id: (user as any)?.user?.id || userId,
-        email: (user as any)?.user?.email || '',
-        fullName: (user as any)?.user?.user_metadata?.full_name || '',
-        role: (user as any)?.user?.user_metadata?.role || 'Agente',
-        reportsCreated: activity?.reports_created || 0,
-        lastLogin: activity?.last_login,
-        lastActivity: activity?.last_activity,
-        isSuspended: activity?.is_suspended || false,
-        suspensionReason: activity?.suspension_reason,
-        suspendedAt: activity?.suspended_at,
-        suspendedBy: activity?.suspended_by,
+        id: user.id,
+        email: user.email,
+        fullName: user.nombre,
+        role: user.role,
+        reportsCreated: activity.reportsCreated || 0,
+        lastLogin: activity.lastLogin,
+        lastActivity: activity.lastActivity,
+        isSuspended: activity.isSuspended || false,
+        suspensionReason: activity.suspensionReason,
+        suspendedAt: activity.suspendedAt,
+        suspendedBy: activity.suspendedBy,
       }
     } catch (error) {
       console.error('Error getting user activity:', error)
@@ -309,26 +263,15 @@ export class UserManagementService {
    */
   static async getActivityStatistics() {
     try {
-      const { data: users, error: usersError } = await supabase.auth.admin.listUsers()
-
-      if (usersError) throw usersError
-
-      const { data: activities, error: activitiesError } = await supabase
-        .from('user_activity_log')
-        .select('*')
-
-      if (activitiesError) throw activitiesError
-
-      const totalUsers = users?.users.length || 0
-      const suspendedUsers = activities?.filter((a) => a.is_suspended).length || 0
-      const totalReports = activities?.reduce((sum, a) => sum + (a.reports_created || 0), 0) || 0
-
+      const response = await fetch('https://intelasist.onrender.com/api/users/statistics')
+      if (!response.ok) throw new Error('Failed to fetch statistics')
+      const stats = await response.json()
       return {
-        totalUsers,
-        suspendedUsers,
-        activeUsers: totalUsers - suspendedUsers,
-        totalReports,
-        avgReportsPerUser: totalUsers > 0 ? Math.round((totalReports / totalUsers) * 100) / 100 : 0,
+        totalUsers: stats.totalUsers,
+        suspendedUsers: stats.suspendedUsers,
+        activeUsers: stats.activeUsers,
+        totalReports: stats.totalReports,
+        avgReportsPerUser: stats.averageReportsPerUser,
       }
     } catch (error) {
       console.error('Error getting activity statistics:', error)

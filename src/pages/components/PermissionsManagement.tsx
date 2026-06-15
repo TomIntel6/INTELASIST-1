@@ -35,23 +35,12 @@ export default function PermissionsManagement() {
   const loadUsers = async () => {
     try {
       setLoading(true)
-      const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers()
-
-      if (authError) throw authError
-
-      const usersWithPerms: UserWithPermissions[] = []
-
-      for (const user of authUsers?.users || []) {
-        const perms = await PermissionsManagementService.getUserPermissions(user.id)
-        usersWithPerms.push({
-          id: user.id,
-          email: user.email || '',
-          fullName: user.user_metadata?.full_name || '',
-          role: user.user_metadata?.role || 'Agente',
-          permissions: perms,
-        })
-      }
-
+      
+      // Backend devuelve usuarios + permisos de una vez
+      const response = await fetch('https://intelasist.onrender.com/api/users/with-permissions')
+      if (!response.ok) throw new Error('Failed to load users')
+      
+      const usersWithPerms = await response.json()
       setUsers(usersWithPerms)
     } catch (error) {
       console.error('Error loading users:', error)
