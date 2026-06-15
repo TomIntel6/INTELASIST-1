@@ -81,7 +81,10 @@ export default function AuditLog() {
   }
 
   const formatDate = (date: string) => {
-    return new Date(date).toLocaleString('es', {
+    if (!date) return '-'
+
+    try {
+      return new Date(date).toLocaleString('es', {
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
@@ -89,13 +92,20 @@ export default function AuditLog() {
       minute: '2-digit',
       second: '2-digit',
     })
+    } catch {
+      return '-'
+    }
   }
 
   const getStatusBadge = (status: string) => {
     if (status === 'success') {
       return <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">Exitoso</Badge>
     }
-    return <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">Error</Badge>
+    if (status === 'error') {
+      return <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">Error</Badge>
+    }
+
+    return <Badge variant="outline" className="bg-slate-50 text-slate-700 border-slate-200">Pendiente</Badge>
   }
 
   const totalPages = Math.ceil(totalCount / limit)
