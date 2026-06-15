@@ -148,9 +148,9 @@ export default function AuditLog() {
                 <SelectValue placeholder="Todos" />
               </SelectTrigger>
               <SelectContent>
-                {MODULES.map(mod => (
-                  <SelectItem key={mod || 'all'} value={mod}>
-                    {mod || 'Todos'}
+                {MODULES.filter(m => m && m.trim() !== '').map(mod => (
+                  <SelectItem key={mod} value={mod}>
+                    {mod}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -169,9 +169,9 @@ export default function AuditLog() {
                 <SelectValue placeholder="Todas" />
               </SelectTrigger>
               <SelectContent>
-                {ACTIONS.map(action => (
-                  <SelectItem key={action || 'all'} value={action}>
-                    {action ? AUDIT_ACTION_LABELS[action] || action : 'Todas'}
+                {ACTIONS.filter(a => a && a.trim() !== '').map(action => (
+                  <SelectItem key={action} value={action}>
+                    {AUDIT_ACTION_LABELS[action] || action}
                   </SelectItem>
                 ))}
               </SelectContent>

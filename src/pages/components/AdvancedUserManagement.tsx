@@ -43,6 +43,7 @@ interface UserWithActivity {
 export default function AdvancedUserManagement() {
   const [users, setUsers] = React.useState<UserWithActivity[]>([])
   const [loading, setLoading] = React.useState(true)
+  const [error, setError] = React.useState<string | null>(null)
   const [actioning, setActioning] = React.useState<Record<string, boolean>>({})
   const [stats, setStats] = React.useState<any>(null)
   const [searchTerm, setSearchTerm] = React.useState('')
@@ -60,11 +61,27 @@ export default function AdvancedUserManagement() {
   const loadUsers = async () => {
     try {
       setLoading(true)
+      setError(null)
+      console.log('[AdvancedUserManagement] Loading users...')
       const data = await UserManagementService.getAllUsersWithActivity()
+      
+      // Validate data
+      if (!Array.isArray(data)) {
+        throw new Error('Respuesta inválida del servidor: se esperaba un array')
+      }
+      
+      console.log(`[AdvancedUserManagement] Loaded ${data.length} users`)
       setUsers(data)
+      
+      if (data.length === 0) {
+        setError('No se encontraron usuarios. Verifica que el endpoint /api/users/with-activity esté disponible.')
+      }
     } catch (error) {
-      console.error('Error loading users:', error)
+      const errMsg = error instanceof Error ? error.message : String(error)
+      console.error('[AdvancedUserManagement] Error loading users:', errMsg)
+      setError(`Error cargando usuarios: ${errMsg}`)
       toast.error('Error cargando usuarios')
+      setUsers([])
     } finally {
       setLoading(false)
     }
@@ -135,6 +152,23 @@ export default function AdvancedUserManagement() {
       <Card>
         <CardContent className="flex items-center justify-center py-12">
           <Spinner className="size-6" />
+        </CardContent>
+      </Card>
+    )
+  }
+
+  if (error && !users.length) {
+    return (
+      <Card>
+        <CardContent className="flex flex-col items-center justify-center py-12 gap-4">
+          <AlertTriangle className="size-8 text-red-600" />
+          <div className="text-center">
+            <p className="font-semibold text-slate-900 mb-2">Error cargando usuarios</p>
+            <p className="text-sm text-slate-600 mb-4">{error}</p>
+            <Button onClick={loadUsers} variant="outline" size="sm">
+              Reintentar
+            </Button>
+          </div>
         </CardContent>
       </Card>
     )
