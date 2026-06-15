@@ -1892,16 +1892,45 @@ app.get('/api/users/with-activity', async (req, res) => {
     console.log(`  Query params: ${JSON.stringify(req.query)}`)
     console.log(`  User: ${req.user?.email || 'anonymous'}`)
     
+    // Step 1: Verificar que la tabla usuarios existe
+    console.log(`  [1/3] Verificando esquema de tabla usuarios...`)
+    const usuariosSchema = await pool.query(`
+      SELECT column_name, data_type, is_nullable 
+      FROM information_schema.columns 
+      WHERE table_name = 'usuarios'
+      ORDER BY ordinal_position
+    `)
+    if (usuariosSchema.rows.length === 0) {
+      throw new Error('Tabla "usuarios" no encontrada')
+    }
+    console.log(`  ✓ Tabla usuarios tiene ${usuariosSchema.rows.length} columnas:`, usuariosSchema.rows.map(r => `${r.column_name}(${r.data_type})`).join(', '))
+    
+    // Step 2: Verificar que la tabla user_activity_log existe
+    console.log(`  [2/3] Verificando esquema de tabla user_activity_log...`)
+    const activitySchema = await pool.query(`
+      SELECT column_name, data_type, is_nullable 
+      FROM information_schema.columns 
+      WHERE table_name = 'user_activity_log'
+      ORDER BY ordinal_position
+    `)
+    if (activitySchema.rows.length === 0) {
+      console.warn(`  ⚠️  Tabla user_activity_log no encontrada, usando datos solo de usuarios`)
+    } else {
+      console.log(`  ✓ Tabla user_activity_log tiene ${activitySchema.rows.length} columnas:`, activitySchema.rows.map(r => `${r.column_name}(${r.data_type})`).join(', '))
+    }
+    
+    // Step 3: Ejecutar query
+    console.log(`  [3/3] Ejecutando query de usuarios...`)
     const result = await pool.query(`
       SELECT 
         u.id,
         u.correo as email,
         u.nombre,
         u.rol as role,
-        ual.reports_created as reportsCreated,
+        COALESCE(ual.reports_created, 0) as reportsCreated,
         ual.last_login as lastLogin,
         ual.last_activity as lastActivity,
-        ual.is_suspended as isSuspended,
+        COALESCE(ual.is_suspended, false) as isSuspended,
         ual.suspension_reason as suspensionReason,
         ual.suspended_at as suspendedAt,
         ual.suspended_by as suspendedBy
@@ -1910,22 +1939,30 @@ app.get('/api/users/with-activity', async (req, res) => {
       ORDER BY u.nombre ASC
     `)
     
-    const mappedData = result.rows.map(row => ({
-      id: row.id,
-      email: row.email,
-      nombre: row.nombre,
-      role: row.role,
-      reportsCreated: row.reportsCreated || 0,
-      lastLogin: row.lastLogin,
-      lastActivity: row.lastActivity,
-      isSuspended: row.isSuspended || false,
-      suspensionReason: row.suspensionReason,
-      suspendedAt: row.suspendedAt,
-      suspendedBy: row.suspendedBy,
-    }))
+    console.log(`  ✓ Query ejecutada, recuperadas ${result.rows.length} filas`)
+    
+    const mappedData = result.rows.map((row, idx) => {
+      const mapped = {
+        id: row.id,
+        email: row.email,
+        nombre: row.nombre,
+        role: row.role,
+        reportsCreated: row.reportsCreated || 0,
+        lastLogin: row.lastLogin,
+        lastActivity: row.lastActivity,
+        isSuspended: row.isSuspended || false,
+        suspensionReason: row.suspensionReason,
+        suspendedAt: row.suspendedAt,
+        suspendedBy: row.suspendedBy,
+      }
+      if (idx === 0) {
+        console.log(`  Ejemplo de fila mapeada:`, mapped)
+      }
+      return mapped
+    })
     
     const duration = Date.now() - startTime
-    console.log(`  ✅ FIN: ${result.rows.length} usuarios, ${duration}ms`)
+    console.log(`  ✅ FIN: ${result.rows.length} usuarios en ${duration}ms`)
     
     res.json(mappedData)
   } catch (err) {
@@ -1935,12 +1972,23 @@ app.get('/api/users/with-activity', async (req, res) => {
       message: err.message,
       code: err.code,
       detail: err.detail,
+      sqlState: err.sqlState,
+      position: err.position,
+      internalPosition: err.internalPosition,
+      internalQuery: err.internalQuery,
+      context: err.where,
+      file: err.file,
+      line: err.line,
+      routine: err.routine,
       stack: err.stack,
     })
     res.status(500).json({ 
       error: 'Error al obtener usuarios',
       details: err.message,
+      code: err.code,
+      sqlState: err.sqlState,
       timestamp: new Date().toISOString(),
+      hint: 'Verifique que las tablas usuarios y user_activity_log existan y tengan el esquema correcto',
     })
   }
 })

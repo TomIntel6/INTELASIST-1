@@ -22,12 +22,45 @@ export class UserManagementService {
    */
   static async getAllUsersWithActivity() {
     try {
+      console.log('[UserManagementService] Fetching users with activity...')
       const response = await fetch('https://intelasist.onrender.com/api/users/with-activity')
-      if (!response.ok) throw new Error('Failed to fetch users')
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(`HTTP ${response.status}: ${errorData.error || 'Failed to fetch users'}`)
+      }
       const users = await response.json()
-      return users
+      console.log(`[UserManagementService] Received ${Array.isArray(users) ? users.length : 0} users`)
+      
+      // Validate and map data
+      if (!Array.isArray(users)) {
+        console.warn('[UserManagementService] Response is not an array, returning empty list')
+        return []
+      }
+      
+      const mappedUsers = users.map(u => ({
+        id: String(u.id || '').trim() || 'unknown',
+        email: String(u.email || '').trim() || 'unknown@example.com',
+        fullName: String(u.nombre || u.fullName || 'Sin nombre').trim(),
+        role: String(u.role || 'Agente').trim(),
+        reportsCreated: Number(u.reportsCreated || 0),
+        lastLogin: u.lastLogin || undefined,
+        lastActivity: u.lastActivity || undefined,
+        isSuspended: Boolean(u.isSuspended || false),
+        suspensionReason: u.suspensionReason || undefined,
+        suspendedAt: u.suspendedAt || undefined,
+        suspendedBy: u.suspendedBy || undefined,
+      }))
+      
+      if (mappedUsers.length > 0) {
+        console.log('[UserManagementService] Sample mapped user:', mappedUsers[0])
+      }
+      
+      return mappedUsers
     } catch (error) {
-      console.error('Error getting users with activity:', error)
+      console.error('[UserManagementService] Error getting users with activity:', {
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      })
       return []
     }
   }
