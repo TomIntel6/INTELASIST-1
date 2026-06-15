@@ -1767,6 +1767,36 @@ app.get('/api/users', async (req, res) => {
   }
 })
 
+// GET /api/users/statistics - Estadísticas del sistema
+app.get('/api/users/statistics', async (req, res) => {
+  try {
+    const totalResult = await pool.query('SELECT COUNT(*) as count FROM usuarios')
+    const suspendedResult = await pool.query(
+      'SELECT COUNT(*) as count FROM user_activity_log WHERE is_suspended = true'
+    )
+    const reportsResult = await pool.query('SELECT COUNT(*) as count FROM reports')
+    const activeResult = await pool.query(
+      'SELECT COUNT(*) as count FROM user_activity_log WHERE is_suspended = false OR is_suspended IS NULL'
+    )
+
+    const totalUsers = parseInt(totalResult.rows[0]?.count || 0)
+    const suspendedUsers = parseInt(suspendedResult.rows[0]?.count || 0)
+    const totalReports = parseInt(reportsResult.rows[0]?.count || 0)
+    const activeUsers = parseInt(activeResult.rows[0]?.count || 0)
+
+    res.json({
+      totalUsers,
+      activeUsers,
+      suspendedUsers,
+      totalReports,
+      averageReportsPerUser: totalUsers > 0 ? (totalReports / totalUsers).toFixed(2) : 0,
+    })
+  } catch (err) {
+    console.error('Error fetching statistics:', err)
+    res.status(500).json({ error: 'Error al obtener estadísticas' })
+  }
+})
+
 // GET /api/users/:userId - Obtener usuario específico
 app.get('/api/users/:userId', async (req, res) => {
   try {
@@ -1830,36 +1860,6 @@ app.get('/api/users/:userId', async (req, res) => {
   } catch (err) {
     console.error('Error fetching user:', err)
     res.status(500).json({ error: 'Error al obtener usuario' })
-  }
-})
-
-// GET /api/users/statistics - Estadísticas del sistema
-app.get('/api/users/statistics', async (req, res) => {
-  try {
-    const totalResult = await pool.query('SELECT COUNT(*) as count FROM usuarios')
-    const suspendedResult = await pool.query(
-      'SELECT COUNT(*) as count FROM user_activity_log WHERE is_suspended = true'
-    )
-    const reportsResult = await pool.query('SELECT COUNT(*) as count FROM reports')
-    const activeResult = await pool.query(
-      'SELECT COUNT(*) as count FROM user_activity_log WHERE is_suspended = false OR is_suspended IS NULL'
-    )
-
-    const totalUsers = parseInt(totalResult.rows[0]?.count || 0)
-    const suspendedUsers = parseInt(suspendedResult.rows[0]?.count || 0)
-    const totalReports = parseInt(reportsResult.rows[0]?.count || 0)
-    const activeUsers = parseInt(activeResult.rows[0]?.count || 0)
-
-    res.json({
-      totalUsers,
-      activeUsers,
-      suspendedUsers,
-      totalReports,
-      averageReportsPerUser: totalUsers > 0 ? (totalReports / totalUsers).toFixed(2) : 0,
-    })
-  } catch (err) {
-    console.error('Error fetching statistics:', err)
-    res.status(500).json({ error: 'Error al obtener estadísticas' })
   }
 })
 

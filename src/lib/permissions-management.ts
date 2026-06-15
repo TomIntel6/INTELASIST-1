@@ -31,7 +31,7 @@ export class PermissionsManagementService {
         .from('user_permissions')
         .select('id')
         .eq('user_id', userId)
-        .single()
+        .maybeSingle()
 
       if (permError && permError.code !== 'PGRST116') {
         throw permError
@@ -86,7 +86,7 @@ export class PermissionsManagementService {
         .from('user_permissions')
         .select('id')
         .eq('user_id', userId)
-        .single()
+        .maybeSingle()
 
       if (!permRecord) {
         const { data: created } = await supabase
@@ -128,7 +128,7 @@ export class PermissionsManagementService {
         .from('user_permissions')
         .select('id')
         .eq('user_id', userId)
-        .single()
+        .maybeSingle()
 
       if (!permRecord) {
         const { data: created } = await supabase
