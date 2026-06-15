@@ -30,6 +30,11 @@ import {
 } from '@/components/ui/dialog'
 import { MONTHS, type Report, loadReportsForMonth, deleteReport, getCachedReportsForMonth } from '@/lib/supabase'
 import { useAuth, canDeleteReports } from '@/lib/auth'
+import { usePermissions } from '@/lib/permissions-context'
+import type { PermissionKey } from '@/lib/permissions'
+import { AuditService } from '@/lib/audit-service'
+import { TrashService } from '@/lib/trash-service'
+import { PERMISSIONS } from '@/lib/permissions'
 import { FilePlus, Download, Search, Eye, Trash2, Shield, AlertCircle, Clock, CheckCircle2, Zap, XCircle, FileText } from 'lucide-react'
 import * as XLSX from 'xlsx'
 
@@ -47,6 +52,7 @@ export default function ReportsList() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const { user } = useAuth()
+  const { hasPermission } = usePermissions()
 
   const currentYear = new Date().getFullYear()
   const currentMonthIdx = new Date().getMonth()
@@ -255,6 +261,14 @@ export default function ReportsList() {
       return
     }
 
+    // Check permission for soft-delete
+    if (!hasPermission(PERMISSIONS.REPORTS.DELETE as PermissionKey)) {
+      if (isMountedRef.current) {
+        setDeleteError('No tienes permisos para eliminar informes.')
+      }
+      return
+    }
+
     if (!isMountedRef.current) {
       return
     }
@@ -263,7 +277,9 @@ export default function ReportsList() {
     setDeleteError(null)
 
     try {
-      await deleteReport(reportId)
+      // Use TrashService for soft-delete with audit logging
+      await TrashService.moveToTrash(reportId, { id: reportId }, 'Manual deletion')
+      
       if (isMountedRef.current) {
         setDeletingReportId(null)
       }
@@ -299,14 +315,16 @@ export default function ReportsList() {
             <Download className="size-4" />
             Exportar Excel
           </Button>
-              <Button
-            size="sm"
-            onClick={() => navigate('/informes/nuevo')}
-            className="gap-2 bg-destructive hover:bg-destructive/90 text-white"
-          >
-            <FilePlus className="size-4" />
-            Nuevo Informe
-          </Button>
+          {hasPermission(PERMISSIONS.REPORTS.CREATE as PermissionKey) && (
+            <Button
+              size="sm"
+              onClick={() => navigate('/informes/nuevo')}
+              className="gap-2 bg-destructive hover:bg-destructive/90 text-white"
+            >
+              <FilePlus className="size-4" />
+              Nuevo Informe
+            </Button>
+          )}
         </div>
       </div>
 
@@ -465,7 +483,7 @@ export default function ReportsList() {
                           >
                             <Eye className="size-4" />
                           </Button>
-                          {canDeleteReports(user) ? (
+                          {canDeleteReports(user) && hasPermission(PERMISSIONS.REPORTS.DELETE as PermissionKey) ? (
                             <Button
                               variant="ghost"
                               size="icon-sm"
