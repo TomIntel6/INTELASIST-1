@@ -1921,6 +1921,46 @@ app.get('/api/users/with-activity', async (req, res) => {
     
     // Step 3: Ejecutar query
     console.log(`  [3/3] Ejecutando query de usuarios...`)
+    
+    // First, try a simple query without the JOIN to verify usuarios table works
+    try {
+      const checkUsarios = await pool.query('SELECT COUNT(*) as count FROM usuarios')
+      console.log(`  ✓ Tabla usuarios tiene ${checkUsarios.rows[0].count} registros`)
+    } catch (checkErr) {
+      console.warn(`  ⚠️  No se pudo contar usuarios:`, checkErr.message)
+    }
+    
+    // Try to get activity log count
+    try {
+      const checkActivity = await pool.query('SELECT COUNT(*) as count FROM user_activity_log')
+      console.log(`  ✓ Tabla user_activity_log tiene ${checkActivity.rows[0].count} registros`)
+    } catch (checkErr) {
+      console.warn(`  ⚠️  No se pudo contar activity_log:`, checkErr.message)
+    }
+    
+    // Get user id type from schema
+    const idTypeQuery = await pool.query(`
+      SELECT data_type FROM information_schema.columns 
+      WHERE table_name = 'usuarios' AND column_name = 'id'
+    `)
+    const idType = idTypeQuery.rows[0]?.data_type || 'unknown'
+    console.log(`  ℹ️  Tipo de usuarios.id: ${idType}`)
+    
+    const userIdTypeQuery = await pool.query(`
+      SELECT data_type FROM information_schema.columns 
+      WHERE table_name = 'user_activity_log' AND column_name = 'user_id'
+    `)
+    const userIdType = userIdTypeQuery.rows[0]?.data_type || 'unknown'
+    console.log(`  ℹ️  Tipo de user_activity_log.user_id: ${userIdType}`)
+    
+    // Build appropriate JOIN condition based on types
+    let joinCondition = 'u.id = ual.user_id'
+    if (idType !== userIdType) {
+      // If types don't match, cast both to text
+      joinCondition = 'u.id::text = ual.user_id::text'
+    }
+    console.log(`  ℹ️  Condición de JOIN: ${joinCondition}`)
+    
     const result = await pool.query(`
       SELECT 
         u.id,
@@ -1935,7 +1975,7 @@ app.get('/api/users/with-activity', async (req, res) => {
         ual.suspended_at as suspendedAt,
         ual.suspended_by as suspendedBy
       FROM usuarios u
-      LEFT JOIN user_activity_log ual ON u.id::text = ual.user_id::text
+      LEFT JOIN user_activity_log ual ON ${joinCondition}
       ORDER BY u.nombre ASC
     `)
     
