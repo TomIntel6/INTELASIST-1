@@ -10,19 +10,23 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
-import fetch from 'node-fetch';
+import dotenv from 'dotenv'
 
-const SUPABASE_URL = process.env.VITE_SUPABASE_URL || 'https://your-project.supabase.co';
-const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY || 'your-anon-key';
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+dotenv.config()
 
-if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-  console.error('❌ ERROR: VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY son requeridos');
-  console.error('   Asegúrate de tener un archivo .env con estas variables');
+const SUPABASE_URL = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || 'https://your-project.supabase.co';
+const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY || '';
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+
+// Preferir la service role key para operaciones admin; fallback a anon si no existe
+const SUPABASE_CLIENT_KEY = SUPABASE_SERVICE_ROLE_KEY || SUPABASE_ANON_KEY
+
+if (!SUPABASE_URL || !SUPABASE_CLIENT_KEY) {
+  console.error('❌ ERROR: Faltan SUPABASE_URL o clave de cliente en .env (VITE_SUPABASE_ANON_KEY o SUPABASE_SERVICE_KEY)');
   process.exit(1);
 }
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supabase = createClient(SUPABASE_URL, SUPABASE_CLIENT_KEY);
 
 async function syncRolesToSupabaseAuth() {
   console.log('\n🔄 INICIANDO SINCRONIZACIÓN DE ROLES A SUPABASE AUTH...\n');
@@ -69,13 +73,36 @@ async function syncRolesToSupabaseAuth() {
         );
 
         if (!authUser) {
-          console.log(`     ⚠️  Usuario no encontrado en Supabase Auth`);
-          errorCount++;
-          errors.push({
-            email: usuario.correo,
-            error: 'No encontrado en Supabase Auth'
-          });
-          continue;
+          console.log(`     ⚠️  Usuario no encontrado en Supabase Auth — creando usuario...`);
+
+          try {
+            // Generar contraseña temporal fuerte
+            const tempPassword = `Tmp!${Math.random().toString(36).slice(2)}${Date.now().toString().slice(-4)}`;
+
+            const { data: createdUser, error: createError } = await supabase.auth.admin.createUser({
+              email: usuario.correo,
+              password: tempPassword,
+              email_confirm: true,
+              user_metadata: {
+                role: usuario.rol,
+                roles: [usuario.rol],
+                full_name: usuario.nombre,
+              }
+            });
+
+            if (createError) {
+              throw createError;
+            }
+
+            console.log(`     ✅ Usuario creado en Auth (id: ${createdUser?.id || 'unknown'})`);
+            successCount++;
+            continue;
+          } catch (createErr) {
+            console.log(`     ❌ Error creando usuario: ${createErr.message || createErr}`);
+            errorCount++;
+            errors.push({ email: usuario.correo, error: createErr.message || String(createErr) });
+            continue;
+          }
         }
 
         // Actualizar custom claims

@@ -76,6 +76,8 @@ export default function PermissionsManagement() {
 
       if (success) {
         toast.success('Permisos guardados exitosamente')
+        // Refrescar la lista para asegurar estado consistente
+        await loadUsers()
       } else {
         toast.error('Error guardando permisos')
       }
