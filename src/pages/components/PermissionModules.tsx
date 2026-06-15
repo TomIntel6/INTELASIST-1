@@ -87,8 +87,8 @@ export default function PermissionModules() {
 
   const filteredUsers = users.filter(
     (user) =>
-      user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.userName.toLowerCase().includes(searchTerm.toLowerCase())
+      (user.email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (user.userName || '').toLowerCase().includes(searchTerm.toLowerCase())
   )
 
   if (loading) {
