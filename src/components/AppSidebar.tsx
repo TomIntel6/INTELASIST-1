@@ -521,7 +521,7 @@ export const AppSidebar = React.memo(function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {userRoles.includes('Support') ? (
+        {(userRoles.includes('Support') || String(user?.email).toLowerCase() === 'mbarria@intelasist.com') ? (
           <SidebarGroup className="mt-2">
             <SidebarGroupContent>
               <SidebarMenu>
