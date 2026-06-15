@@ -1884,7 +1884,14 @@ app.delete('/online-users/:userId', async (req, res) => {
 
 // GET /api/users/with-activity - Listar usuarios con actividad (SIN auth.admin)
 app.get('/api/users/with-activity', async (req, res) => {
+  const startTime = Date.now()
+  const endpoint = '/api/users/with-activity'
+  
   try {
+    console.log(`[${new Date().toISOString()}] 📊 ${endpoint} - INICIO`)
+    console.log(`  Query params: ${JSON.stringify(req.query)}`)
+    console.log(`  User: ${req.user?.email || 'anonymous'}`)
+    
     const result = await pool.query(`
       SELECT 
         u.id,
@@ -1903,7 +1910,7 @@ app.get('/api/users/with-activity', async (req, res) => {
       ORDER BY u.nombre ASC
     `)
     
-    res.json(result.rows.map(row => ({
+    const mappedData = result.rows.map(row => ({
       id: row.id,
       email: row.email,
       nombre: row.nombre,
@@ -1915,10 +1922,26 @@ app.get('/api/users/with-activity', async (req, res) => {
       suspensionReason: row.suspensionReason,
       suspendedAt: row.suspendedAt,
       suspendedBy: row.suspendedBy,
-    })))
+    }))
+    
+    const duration = Date.now() - startTime
+    console.log(`  ✅ FIN: ${result.rows.length} usuarios, ${duration}ms`)
+    
+    res.json(mappedData)
   } catch (err) {
-    console.error('Error fetching users with activity:', err)
-    res.status(500).json({ error: 'Error al obtener usuarios' })
+    const duration = Date.now() - startTime
+    console.error(`  ❌ ERROR en ${endpoint} (${duration}ms):`, {
+      name: err.name,
+      message: err.message,
+      code: err.code,
+      detail: err.detail,
+      stack: err.stack,
+    })
+    res.status(500).json({ 
+      error: 'Error al obtener usuarios',
+      details: err.message,
+      timestamp: new Date().toISOString(),
+    })
   }
 })
 
@@ -2447,6 +2470,78 @@ app.get('/api/trash', async (req, res) => {
   }
 })
 
+// POST /api/trash/empty - Vaciar papelera (DEBE IR ANTES DE /:id)
+app.post('/api/trash/empty', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      UPDATE deleted_reports 
+      SET permanently_deleted_at = NOW() 
+      WHERE permanently_deleted_at IS NULL AND restored_at IS NULL
+      RETURNING id
+    `)
+
+    res.json({ success: true, deleted_count: result.rows.length })
+  } catch (err) {
+    console.error('Error emptying trash:', err)
+    res.status(500).json({ error: 'Error al vaciar papelera' })
+  }
+})
+
+// GET /api/trash/stats - Estadísticas de papelera (DEBE IR ANTES DE /:id)
+app.get('/api/trash/stats', async (req, res) => {
+  const startTime = Date.now()
+  const endpoint = '/api/trash/stats'
+  
+  try {
+    console.log(`[${new Date().toISOString()}] 🗑️  ${endpoint} - INICIO`)
+    console.log(`  Query params: ${JSON.stringify(req.query)}`)
+    console.log(`  User: ${req.user?.email || 'anonymous'}`)
+    
+    // Verificar que la tabla existe
+    const tableCheck = await pool.query(`
+      SELECT EXISTS (
+        SELECT 1 FROM information_schema.tables 
+        WHERE table_name = 'deleted_reports'
+      )
+    `)
+    console.log(`  Tabla deleted_reports existe: ${tableCheck.rows[0].exists}`)
+    
+    const result = await pool.query(`
+      SELECT COUNT(*) as total_deleted
+      FROM deleted_reports
+      WHERE permanently_deleted_at IS NULL AND restored_at IS NULL
+    `)
+    
+    const totalDeleted = parseInt(result.rows[0]?.total_deleted || 0)
+    const duration = Date.now() - startTime
+    
+    console.log(`  ✅ FIN: ${totalDeleted} reportes en papelera, ${duration}ms`)
+    
+    res.json({ 
+      totalDeleted,
+      timestamp: new Date().toISOString(),
+      responseTime: duration,
+    })
+  } catch (err) {
+    const duration = Date.now() - startTime
+    console.error(`  ❌ ERROR en ${endpoint} (${duration}ms):`, {
+      name: err.name,
+      message: err.message,
+      code: err.code,
+      detail: err.detail,
+      hint: err.hint,
+      position: err.position,
+      stack: err.stack,
+    })
+    res.status(500).json({ 
+      error: 'Error al obtener estadísticas de papelera',
+      details: err.message,
+      errorCode: err.code,
+      timestamp: new Date().toISOString(),
+    })
+  }
+})
+
 // GET /api/trash/:id - Obtener elemento de papelera
 app.get('/api/trash/:id', async (req, res) => {
   try {
@@ -2528,39 +2623,6 @@ app.post('/api/trash/:id/delete', async (req, res) => {
   } catch (err) {
     console.error('Error deleting report:', err)
     res.status(500).json({ error: 'Error al eliminar informe' })
-  }
-})
-
-// POST /api/trash/empty - Vaciar papelera
-app.post('/api/trash/empty', async (req, res) => {
-  try {
-    const result = await pool.query(`
-      UPDATE deleted_reports 
-      SET permanently_deleted_at = NOW() 
-      WHERE permanently_deleted_at IS NULL AND restored_at IS NULL
-      RETURNING id
-    `)
-
-    res.json({ success: true, deleted_count: result.rows.length })
-  } catch (err) {
-    console.error('Error emptying trash:', err)
-    res.status(500).json({ error: 'Error al vaciar papelera' })
-  }
-})
-
-// GET /api/trash/stats - Estadísticas de papelera
-app.get('/api/trash/stats', async (req, res) => {
-  try {
-    const result = await pool.query(`
-      SELECT COUNT(*) as total_deleted
-      FROM deleted_reports
-      WHERE permanently_deleted_at IS NULL AND restored_at IS NULL
-    `)
-
-    res.json({ totalDeleted: parseInt(result.rows[0]?.total_deleted || 0) })
-  } catch (err) {
-    console.error('Error fetching trash stats:', err)
-    res.status(500).json({ error: 'Error al obtener estadísticas de papelera' })
   }
 })
 

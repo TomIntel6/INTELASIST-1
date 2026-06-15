@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { useAuth } from '@/lib/auth'
+import { useAuth, canAccessAdvancedAdmin } from '@/lib/auth'
 import { usePermissions } from '@/lib/permissions-context'
 import { useRealtimeAuditLogs } from '@/hooks/useRealtime'
 import { useNotifications } from '@/hooks/useRealtime'
@@ -22,7 +22,6 @@ const SystemHealth = React.lazy(() => import('./components/SystemHealth'))
 
 export default function AdminDashboard() {
   const { user } = useAuth()
-  const { isSupport } = usePermissions()
   const { notifications, removeNotification } = useNotifications(user?.id || '')
 
   // Subscribe to real-time audit logs
@@ -33,8 +32,8 @@ export default function AdminDashboard() {
 
   useRealtimeAuditLogs(handleAuditUpdate)
 
-  // Solo Support puede acceder
-  if (!isSupport) {
+  // Admin, Support, o mbarria@intelasist.com pueden acceder
+  if (!canAccessAdvancedAdmin(user)) {
     return <Navigate to="/dashboard" replace />
   }
 
