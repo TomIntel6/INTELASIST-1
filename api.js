@@ -9,6 +9,15 @@ import { createClient } from '@supabase/supabase-js'
 import pool from './db.js'
 
 const app = express()
+// Logging middleware para diagnóstico de rutas
+app.use((req, res, next) => {
+  try {
+    console.log(`[HTTP] ${req.method} ${req.originalUrl}`)
+  } catch (e) {
+    // ignore
+  }
+  next()
+})
 // Conjunto de clientes SSE conectados
 const sseClients = new Set()
 const ROLE_OPTIONS = ['Agente', 'Admin', 'Support', 'Gerente']

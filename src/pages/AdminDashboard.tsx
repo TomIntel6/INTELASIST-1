@@ -4,6 +4,7 @@ import { usePermissions } from '@/lib/permissions-context'
 import { useRealtimeAuditLogs } from '@/hooks/useRealtime'
 import { useNotifications } from '@/hooks/useRealtime'
 import { Navigate } from 'react-router-dom'
+import ErrorBoundary from '@/components/ErrorBoundary'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { NotificationCenter } from '@/components/NotificationCenter'
@@ -146,7 +147,9 @@ export default function AdminDashboard() {
                 </Card>
               }
             >
-              <AuditLog />
+                <ErrorBoundary>
+                  <AuditLog />
+                </ErrorBoundary>
             </React.Suspense>
           </TabsContent>
 
@@ -161,7 +164,9 @@ export default function AdminDashboard() {
                 </Card>
               }
             >
-              <AuditReports />
+                <ErrorBoundary>
+                  <AuditReports />
+                </ErrorBoundary>
             </React.Suspense>
           </TabsContent>
 

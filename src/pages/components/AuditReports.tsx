@@ -55,6 +55,11 @@ export default function AuditReports() {
 
   const handleExport = async () => {
     try {
+      if (!logs || logs.length === 0) {
+        toast.error('No hay registros para exportar')
+        return
+      }
+
       const data = logs.map((log) => ({
         fecha: new Date(log.created_at).toLocaleString('es'),
         usuario: log.user_id,
@@ -62,7 +67,7 @@ export default function AuditReports() {
         módulo: log.module,
         estado: log.status,
         entidad: log.entity_id,
-        detalles: log.details,
+        detalles: (log as any).details || JSON.stringify(log.old_values || log.new_values || {}),
       }))
 
       const csv =

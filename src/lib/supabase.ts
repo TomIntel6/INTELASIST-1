@@ -114,7 +114,8 @@ export interface EvidenceImage {
 
 export const getDefaultApiBase = () => {
   if (import.meta.env.VITE_API_BASE_URL) return import.meta.env.VITE_API_BASE_URL
-  return 'https://intelasist.onrender.com'
+  // Use same-origin relative path by default to avoid hitting production from local dev
+  return ''
 }
 const API_BASE_URL = getDefaultApiBase()
 const REPORTS_CACHE_KEY = 'intelasist-shared-reports-cache-v1'
