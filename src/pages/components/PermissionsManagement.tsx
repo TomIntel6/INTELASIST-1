@@ -90,8 +90,8 @@ export default function PermissionsManagement() {
   }
 
   const filteredUsers = users.filter(u =>
-    u.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    u.fullName.toLowerCase().includes(searchTerm.toLowerCase())
+    (u.email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (u.fullName || '').toLowerCase().includes(searchTerm.toLowerCase())
   )
 
   if (loading) {
