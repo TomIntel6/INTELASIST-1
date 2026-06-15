@@ -696,6 +696,59 @@ async function ensureAuditLogsTable() {
   `)
 }
 
+async function logAuditEvent(req, {
+  action,
+  module,
+  entityId = null,
+  entityType = null,
+  oldValues = null,
+  newValues = null,
+  status = 'success',
+  errorMessage = null,
+}) {
+  try {
+    const ipAddress = req.headers['x-forwarded-for']
+      ? String(req.headers['x-forwarded-for']).split(',')[0].trim()
+      : req.ip || null
+    const userAgent = req.headers['user-agent'] ? String(req.headers['user-agent']) : null
+
+    await pool.query(
+      `INSERT INTO audit_logs (
+        user_id,
+        user_email,
+        user_name,
+        action,
+        module,
+        entity_id,
+        entity_type,
+        old_values,
+        new_values,
+        ip_address,
+        user_agent,
+        status,
+        error_message
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
+      [
+        null,
+        null,
+        null,
+        action,
+        module,
+        entityId,
+        entityType,
+        oldValues ? JSON.stringify(oldValues) : null,
+        newValues ? JSON.stringify(newValues) : null,
+        ipAddress,
+        userAgent,
+        status,
+        errorMessage,
+      ]
+    )
+  } catch (auditError) {
+    console.error('Error logging audit event:', auditError)
+  }
+}
+
 async function ensureDeletedReportsTable() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS deleted_reports (
@@ -2297,16 +2350,64 @@ app.post('/api/trash', async (req, res) => {
       return res.status(400).json({ error: 'reportId requerido' })
     }
 
-    // Se guarda en Supabase via RPC o se inserta en BD si existe tabla deleted_reports
-    // Por ahora retornamos éxito - la lógica real está en el frontend con TrashService
+    const existingReport = await pool.query('SELECT id FROM reports WHERE id = $1', [reportId])
+    if (existingReport.rowCount === 0) {
+      return res.status(404).json({ error: 'Informe no encontrado' })
+    }
+
+    const insertResult = await pool.query(
+      `INSERT INTO deleted_reports (
+        report_id,
+        original_data,
+        deleted_by,
+        deleted_by_name,
+        deleted_by_email,
+        deleted_at,
+        reason
+      ) VALUES ($1, $2, $3, $4, $5, NOW(), $6)
+      RETURNING id`,
+      [
+        reportId,
+        originalData,
+        null,
+        null,
+        null,
+        reason,
+      ]
+    )
+
+    const deletedId = insertResult.rows[0]?.id
+
+    // También podemos borrar el informe original si así se requiere
+    await pool.query('DELETE FROM reports WHERE id = $1', [reportId])
+
+    await logAuditEvent(req, {
+      action: 'delete_report',
+      module: 'reports',
+      entityId: reportId,
+      entityType: 'report',
+      oldValues: originalData,
+      newValues: { status: 'trashed', reason },
+      status: 'success',
+    })
+
     res.json({ 
       success: true, 
-      id: `trash_${Date.now()}`, 
+      id: deletedId,
       reportId,
-      reason 
+      reason,
     })
   } catch (err) {
     console.error('Error moving to trash:', err)
+    await logAuditEvent(req, {
+      action: 'delete_report',
+      module: 'reports',
+      entityId: req.body?.reportId ?? null,
+      entityType: 'report',
+      oldValues: req.body?.originalData ?? null,
+      status: 'error',
+      errorMessage: err instanceof Error ? err.message : String(err),
+    })
     res.status(500).json({ error: 'Error al mover a papelera' })
   }
 })
