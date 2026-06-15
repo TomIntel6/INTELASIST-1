@@ -121,3 +121,61 @@ WHERE NOT EXISTS (
   SELECT 1 FROM public.user_permissions up WHERE up.user_id = u.id
 )
 ON CONFLICT (user_id) DO NOTHING;
+
+-- Initialize permission details for all users based on their role
+-- All users get create_reports, view_reports, upload_evidence, download_evidence, add_updates
+WITH user_perms AS (
+  SELECT 
+    up.id as permission_id,
+    u.id as user_id,
+    u.rol,
+    CASE 
+      WHEN perm_key IN ('create_reports', 'view_reports', 'upload_evidence', 'download_evidence', 'add_updates') THEN true
+      WHEN u.rol = 'Admin' THEN true
+      WHEN u.rol = 'Support' THEN true
+      WHEN u.rol = 'Gerente' AND perm_key IN ('view_all_reports', 'edit_reports', 'change_report_status', 'assign_reports', 'export_reports', 'view_users', 'view_alerts', 'view_audit_logs') THEN true
+      ELSE false
+    END as granted
+  FROM public.user_permissions up
+  INNER JOIN public.usuarios u ON u.id = up.user_id
+  CROSS JOIN (
+    SELECT 'create_reports' as perm_key UNION ALL
+    SELECT 'view_reports' UNION ALL
+    SELECT 'view_all_reports' UNION ALL
+    SELECT 'edit_reports' UNION ALL
+    SELECT 'delete_reports' UNION ALL
+    SELECT 'close_reports' UNION ALL
+    SELECT 'reopen_reports' UNION ALL
+    SELECT 'change_report_status' UNION ALL
+    SELECT 'assign_reports' UNION ALL
+    SELECT 'export_reports' UNION ALL
+    SELECT 'upload_evidence' UNION ALL
+    SELECT 'delete_evidence' UNION ALL
+    SELECT 'download_evidence' UNION ALL
+    SELECT 'add_updates' UNION ALL
+    SELECT 'edit_updates' UNION ALL
+    SELECT 'delete_updates' UNION ALL
+    SELECT 'view_users' UNION ALL
+    SELECT 'create_users' UNION ALL
+    SELECT 'delete_users' UNION ALL
+    SELECT 'reset_passwords' UNION ALL
+    SELECT 'change_roles' UNION ALL
+    SELECT 'view_alerts' UNION ALL
+    SELECT 'manage_alerts' UNION ALL
+    SELECT 'view_audit_logs' UNION ALL
+    SELECT 'manage_permissions' UNION ALL
+    SELECT 'suspend_users' UNION ALL
+    SELECT 'restore_users' UNION ALL
+    SELECT 'access_trash' UNION ALL
+    SELECT 'permanently_delete_reports'
+  ) AS perms(perm_key)
+)
+INSERT INTO public.user_permission_details (permission_id, permission_key, granted, created_at, updated_at)
+SELECT permission_id, perm_key, granted, now(), now()
+FROM user_perms
+WHERE NOT EXISTS (
+  SELECT 1 FROM public.user_permission_details upd 
+  WHERE upd.permission_id = user_perms.permission_id 
+  AND upd.permission_key = user_perms.perm_key
+)
+ON CONFLICT (permission_id, permission_key) DO UPDATE SET granted = EXCLUDED.granted, updated_at = now();
