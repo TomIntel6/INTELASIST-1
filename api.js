@@ -1770,26 +1770,26 @@ app.get('/api/users', async (req, res) => {
 // GET /api/users/statistics - Estadísticas del sistema
 app.get('/api/users/statistics', async (req, res) => {
   try {
-    const totalResult = await pool.query('SELECT COUNT(*) as count FROM usuarios')
-    const suspendedResult = await pool.query(
-      'SELECT COUNT(*) as count FROM user_activity_log WHERE is_suspended = true'
-    )
-    const reportsResult = await pool.query('SELECT COUNT(*) as count FROM reports')
-    const activeResult = await pool.query(
-      'SELECT COUNT(*) as count FROM user_activity_log WHERE is_suspended = false OR is_suspended IS NULL'
-    )
+    const statsResult = await pool.query(`
+      SELECT
+        (SELECT COUNT(*) FROM usuarios) AS total_users,
+        (SELECT COUNT(*) FROM user_activity_log WHERE is_suspended = true) AS suspended_users,
+        (SELECT COUNT(*) FROM reports) AS total_reports,
+        (SELECT COUNT(*) FROM user_activity_log WHERE is_suspended = false OR is_suspended IS NULL) AS active_users
+    `)
 
-    const totalUsers = parseInt(totalResult.rows[0]?.count || 0)
-    const suspendedUsers = parseInt(suspendedResult.rows[0]?.count || 0)
-    const totalReports = parseInt(reportsResult.rows[0]?.count || 0)
-    const activeUsers = parseInt(activeResult.rows[0]?.count || 0)
+    const row = statsResult.rows[0] || {}
+    const totalUsers = parseInt(row.total_users || 0)
+    const suspendedUsers = parseInt(row.suspended_users || 0)
+    const totalReports = parseInt(row.total_reports || 0)
+    const activeUsers = parseInt(row.active_users || 0)
 
     res.json({
       totalUsers,
       activeUsers,
       suspendedUsers,
       totalReports,
-      averageReportsPerUser: totalUsers > 0 ? (totalReports / totalUsers).toFixed(2) : 0,
+      averageReportsPerUser: totalUsers > 0 ? Number((totalReports / totalUsers).toFixed(2)) : 0,
     })
   } catch (err) {
     console.error('Error fetching statistics:', err)
@@ -1863,43 +1863,130 @@ app.get('/api/users/:userId', async (req, res) => {
   }
 })
 
+// GET /api/users/:userId/permissions - Permisos granulares por usuario
+app.get('/api/users/:userId/permissions', async (req, res) => {
+  try {
+    const userId = typeof req.params.userId === 'string' ? req.params.userId.trim() : ''
+    if (!userId) {
+      return res.status(400).json({ error: 'userId requerido' })
+    }
+
+    const permResult = await pool.query(
+      'SELECT id, modules_access, created_at, updated_at FROM user_permissions WHERE user_id = $1 LIMIT 1',
+      [userId]
+    )
+
+    if (permResult.rows.length === 0) {
+      return res.json({
+        permissionId: null,
+        permissions: {},
+        modules: {},
+        createdAt: null,
+        updatedAt: null,
+      })
+    }
+
+    const permission = permResult.rows[0]
+    const detailsResult = await pool.query(
+      'SELECT permission_key, granted FROM user_permission_details WHERE permission_id = $1',
+      [permission.id]
+    )
+
+    const permissions = {}
+    detailsResult.rows.forEach((row) => {
+      permissions[row.permission_key] = row.granted
+    })
+
+    res.json({
+      permissionId: permission.id,
+      permissions,
+      modules: permission.modules_access || {},
+      createdAt: permission.created_at,
+      updatedAt: permission.updated_at,
+    })
+  } catch (err) {
+    console.error('Error fetching user permissions:', err)
+    res.status(500).json({ error: 'Error al obtener permisos del usuario' })
+  }
+})
+
+// POST /api/users/:userId/suspend - Suspender usuario
+app.post('/api/users/:userId/suspend', async (req, res) => {
+  try {
+    const userId = typeof req.params.userId === 'string' ? req.params.userId.trim() : ''
+    const reason = typeof req.body?.reason === 'string' ? req.body.reason.trim() : 'Suspendido por administrador'
+
+    if (!userId) {
+      return res.status(400).json({ error: 'userId requerido' })
+    }
+
+    await pool.query(
+      'INSERT INTO user_activity_log (user_id, reports_created, is_suspended) VALUES ($1, 0, true) ON CONFLICT (user_id) DO NOTHING',
+      [userId]
+    )
+
+    await pool.query(
+      'UPDATE user_activity_log SET is_suspended = true, suspension_reason = $1, suspended_at = NOW() WHERE user_id = $2',
+      [reason, userId]
+    )
+
+    res.json({ success: true })
+  } catch (err) {
+    console.error('Error suspending user:', err)
+    res.status(500).json({ error: 'Error al suspender usuario' })
+  }
+})
+
+// POST /api/users/:userId/reactivate - Reactivar usuario
+app.post('/api/users/:userId/reactivate', async (req, res) => {
+  try {
+    const userId = typeof req.params.userId === 'string' ? req.params.userId.trim() : ''
+
+    if (!userId) {
+      return res.status(400).json({ error: 'userId requerido' })
+    }
+
+    await pool.query(
+      'INSERT INTO user_activity_log (user_id, reports_created, is_suspended) VALUES ($1, 0, false) ON CONFLICT (user_id) DO NOTHING',
+      [userId]
+    )
+
+    await pool.query(
+      'UPDATE user_activity_log SET is_suspended = false, suspension_reason = NULL, suspended_at = NULL WHERE user_id = $1',
+      [userId]
+    )
+
+    res.json({ success: true })
+  } catch (err) {
+    console.error('Error reactivating user:', err)
+    res.status(500).json({ error: 'Error al reactivar usuario' })
+  }
+})
+
 // GET /api/users/with-permissions - Usuarios + Permisos (batch)
 app.get('/api/users/with-permissions', async (req, res) => {
   try {
-    const usersResult = await pool.query(`
-      SELECT 
+    const result = await pool.query(`
+      SELECT
         u.id,
-        u.correo as email,
-        u.nombre as fullName,
-        u.rol as role
+        u.correo AS email,
+        u.nombre AS fullName,
+        u.rol AS role,
+        COALESCE(jsonb_object_agg(upd.permission_key, upd.granted) FILTER (WHERE upd.permission_key IS NOT NULL), '{}'::jsonb) AS permissions
       FROM usuarios u
+      LEFT JOIN user_permissions up ON up.user_id = u.id
+      LEFT JOIN user_permission_details upd ON upd.permission_id = up.id
+      GROUP BY u.id, u.correo, u.nombre, u.rol
       ORDER BY u.nombre ASC
     `)
 
-    const usersWithPerms = []
-
-    for (const user of usersResult.rows) {
-      const permsResult = await pool.query(`
-        SELECT permission_key, granted
-        FROM user_permission_details
-        WHERE permission_id = (
-          SELECT id FROM user_permissions WHERE user_id = $1 LIMIT 1
-        )
-      `, [user.id])
-
-      const permissions = {}
-      permsResult.rows.forEach(row => {
-        permissions[row.permission_key] = row.granted
-      })
-
-      usersWithPerms.push({
-        id: user.id,
-        email: user.email,
-        fullName: user.fullName,
-        role: user.role,
-        permissions,
-      })
-    }
+    const usersWithPerms = result.rows.map((row) => ({
+      id: row.id,
+      email: row.email,
+      fullName: row.fullName,
+      role: row.role,
+      permissions: row.permissions || {},
+    }))
 
     res.json(usersWithPerms)
   } catch (err) {
@@ -2052,6 +2139,238 @@ app.get('/api/health/auth', async (req, res) => {
       message: 'Servicio de autenticación no disponible',
       error: err instanceof Error ? err.message : 'Error desconocido',
     })
+  }
+})
+
+// ========== TRASH & AUDIT ENDPOINTS ==========
+
+// POST /api/trash - Mover informe a papelera
+app.post('/api/trash', async (req, res) => {
+  try {
+    const reportId = typeof req.body?.reportId === 'string' ? req.body.reportId.trim() : ''
+    const originalData = typeof req.body?.originalData === 'object' ? req.body.originalData : {}
+    const reason = typeof req.body?.reason === 'string' ? req.body.reason.trim() : 'Deleted by user'
+
+    if (!reportId) {
+      return res.status(400).json({ error: 'reportId requerido' })
+    }
+
+    // Se guarda en Supabase via RPC o se inserta en BD si existe tabla deleted_reports
+    // Por ahora retornamos éxito - la lógica real está en el frontend con TrashService
+    res.json({ 
+      success: true, 
+      id: `trash_${Date.now()}`, 
+      reportId,
+      reason 
+    })
+  } catch (err) {
+    console.error('Error moving to trash:', err)
+    res.status(500).json({ error: 'Error al mover a papelera' })
+  }
+})
+
+// GET /api/trash - Obtener papelera (con paginación)
+app.get('/api/trash', async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit as string) || 50
+    const offset = parseInt(req.query.offset as string) || 0
+
+    const countResult = await pool.query(`
+      SELECT COUNT(*) as count FROM deleted_reports 
+      WHERE permanently_deleted_at IS NULL AND restored_at IS NULL
+    `)
+    const totalCount = parseInt(countResult.rows[0]?.count || 0)
+
+    const dataResult = await pool.query(`
+      SELECT 
+        id, report_id, original_data, deleted_by, deleted_by_name, 
+        deleted_by_email, deleted_at, restored_at, permanently_deleted_at, 
+        reason
+      FROM deleted_reports
+      WHERE permanently_deleted_at IS NULL AND restored_at IS NULL
+      ORDER BY deleted_at DESC
+      LIMIT $1 OFFSET $2
+    `, [limit, offset])
+
+    res.json({
+      data: dataResult.rows,
+      count: totalCount,
+      limit,
+      offset,
+    })
+  } catch (err) {
+    console.error('Error fetching trash:', err)
+    res.status(500).json({ error: 'Error al obtener papelera' })
+  }
+})
+
+// GET /api/trash/:id - Obtener elemento de papelera
+app.get('/api/trash/:id', async (req, res) => {
+  try {
+    const id = typeof req.params.id === 'string' ? req.params.id.trim() : ''
+    
+    if (!id) {
+      return res.status(400).json({ error: 'ID requerido' })
+    }
+
+    const result = await pool.query(`
+      SELECT 
+        id, report_id, original_data, deleted_by, deleted_by_name, 
+        deleted_by_email, deleted_at, restored_at, permanently_deleted_at, 
+        reason
+      FROM deleted_reports
+      WHERE id = $1
+      LIMIT 1
+    `, [id])
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Elemento de papelera no encontrado' })
+    }
+
+    res.json(result.rows[0])
+  } catch (err) {
+    console.error('Error fetching trash item:', err)
+    res.status(500).json({ error: 'Error al obtener elemento de papelera' })
+  }
+})
+
+// POST /api/trash/:id/restore - Restaurar informe
+app.post('/api/trash/:id/restore', async (req, res) => {
+  try {
+    const id = typeof req.params.id === 'string' ? req.params.id.trim() : ''
+    
+    if (!id) {
+      return res.status(400).json({ error: 'ID requerido' })
+    }
+
+    const updateResult = await pool.query(`
+      UPDATE deleted_reports 
+      SET restored_at = NOW() 
+      WHERE id = $1 AND permanently_deleted_at IS NULL
+      RETURNING id, report_id
+    `, [id])
+
+    if (updateResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Elemento de papelera no encontrado' })
+    }
+
+    res.json({ success: true, restored: updateResult.rows[0] })
+  } catch (err) {
+    console.error('Error restoring report:', err)
+    res.status(500).json({ error: 'Error al restaurar informe' })
+  }
+})
+
+// POST /api/trash/:id/delete - Eliminar permanentemente
+app.post('/api/trash/:id/delete', async (req, res) => {
+  try {
+    const id = typeof req.params.id === 'string' ? req.params.id.trim() : ''
+    
+    if (!id) {
+      return res.status(400).json({ error: 'ID requerido' })
+    }
+
+    const deleteResult = await pool.query(`
+      UPDATE deleted_reports 
+      SET permanently_deleted_at = NOW() 
+      WHERE id = $1 AND restored_at IS NULL
+      RETURNING id, report_id
+    `, [id])
+
+    if (deleteResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Elemento de papelera no encontrado' })
+    }
+
+    res.json({ success: true, deleted: deleteResult.rows[0] })
+  } catch (err) {
+    console.error('Error deleting report:', err)
+    res.status(500).json({ error: 'Error al eliminar informe' })
+  }
+})
+
+// POST /api/trash/empty - Vaciar papelera
+app.post('/api/trash/empty', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      UPDATE deleted_reports 
+      SET permanently_deleted_at = NOW() 
+      WHERE permanently_deleted_at IS NULL AND restored_at IS NULL
+      RETURNING id
+    `)
+
+    res.json({ success: true, deleted_count: result.rows.length })
+  } catch (err) {
+    console.error('Error emptying trash:', err)
+    res.status(500).json({ error: 'Error al vaciar papelera' })
+  }
+})
+
+// GET /api/trash/stats - Estadísticas de papelera
+app.get('/api/trash/stats', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT COUNT(*) as total_deleted
+      FROM deleted_reports
+      WHERE permanently_deleted_at IS NULL AND restored_at IS NULL
+    `)
+
+    res.json({ totalDeleted: parseInt(result.rows[0]?.total_deleted || 0) })
+  } catch (err) {
+    console.error('Error fetching trash stats:', err)
+    res.status(500).json({ error: 'Error al obtener estadísticas de papelera' })
+  }
+})
+
+// GET /api/audit-logs - Obtener logs de auditoría
+app.get('/api/audit-logs', async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit as string) || 50
+    const offset = parseInt(req.query.offset as string) || 0
+    const userId = req.query.userId as string | undefined
+    const module = req.query.module as string | undefined
+    const action = req.query.action as string | undefined
+
+    let whereClause = ''
+    const params: any[] = []
+
+    if (userId) {
+      whereClause += `${whereClause ? ' AND' : 'WHERE'} user_id = $${params.length + 1}`
+      params.push(userId)
+    }
+    if (module) {
+      whereClause += `${whereClause ? ' AND' : 'WHERE'} module = $${params.length + 1}`
+      params.push(module)
+    }
+    if (action) {
+      whereClause += `${whereClause ? ' AND' : 'WHERE'} action = $${params.length + 1}`
+      params.push(action)
+    }
+
+    const countResult = await pool.query(`
+      SELECT COUNT(*) as count FROM audit_logs ${whereClause}
+    `, params)
+    const totalCount = parseInt(countResult.rows[0]?.count || 0)
+
+    const dataResult = await pool.query(`
+      SELECT 
+        id, user_id, user_email, user_name, action, module, 
+        entity_id, entity_type, old_values, new_values, status, 
+        error_message, created_at
+      FROM audit_logs
+      ${whereClause}
+      ORDER BY created_at DESC
+      LIMIT $${params.length + 1} OFFSET $${params.length + 2}
+    `, [...params, limit, offset])
+
+    res.json({
+      data: dataResult.rows,
+      count: totalCount,
+      limit,
+      offset,
+    })
+  } catch (err) {
+    console.error('Error fetching audit logs:', err)
+    res.status(500).json({ error: 'Error al obtener logs de auditoría' })
   }
 })
 

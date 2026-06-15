@@ -1,5 +1,8 @@
 import { supabase } from '@/lib/supabase'
+import { getDefaultApiBase } from '@/lib/supabase'
 import { AUDIT_ACTIONS_MAP, type AuditLog } from '@/lib/permissions'
+
+const API_BASE = getDefaultApiBase()
 
 export type { AuditLog } from '@/lib/permissions'
 
@@ -289,7 +292,7 @@ export class AuditService {
   }
 
   /**
-   * Fetch audit logs with filters
+   * Fetch audit logs with filters (usando backend API)
    */
   static async fetchAuditLogs(filters?: {
     userId?: string
@@ -302,47 +305,35 @@ export class AuditService {
     offset?: number
   }) {
     try {
-      let query = supabase.from('audit_logs').select('*', { count: 'exact' })
+      const params = new URLSearchParams()
+      if (filters?.limit) params.append('limit', String(filters.limit))
+      if (filters?.offset) params.append('offset', String(filters.offset))
+      if (filters?.userId) params.append('userId', filters.userId)
+      if (filters?.module) params.append('module', filters.module)
+      if (filters?.action) params.append('action', filters.action)
 
-      if (filters?.userId) {
-        query = query.eq('user_id', filters.userId)
+      const response = await fetch(`${API_BASE}/api/audit-logs?${params.toString()}`)
+      if (!response.ok) throw new Error('Failed to fetch audit logs')
+
+      const result = await response.json()
+      return {
+        data: (result.data || []).map((row: any) => ({
+          id: row.id,
+          user_id: row.user_id,
+          user_email: row.user_email,
+          user_name: row.user_name,
+          action: row.action,
+          module: row.module,
+          entity_id: row.entity_id,
+          entity_type: row.entity_type,
+          old_values: row.old_values,
+          new_values: row.new_values,
+          status: row.status,
+          error_message: row.error_message,
+          created_at: row.created_at,
+        })),
+        count: result.count || 0,
       }
-
-      if (filters?.module) {
-        query = query.eq('module', filters.module)
-      }
-
-      if (filters?.action) {
-        query = query.eq('action', filters.action)
-      }
-
-      if (filters?.entityId) {
-        query = query.eq('entity_id', filters.entityId)
-      }
-
-      if (filters?.startDate) {
-        query = query.gte('created_at', filters.startDate)
-      }
-
-      if (filters?.endDate) {
-        query = query.lte('created_at', filters.endDate)
-      }
-
-      query = query.order('created_at', { ascending: false })
-
-      if (filters?.limit) {
-        query = query.limit(filters.limit)
-      }
-
-      if (filters?.offset) {
-        query = query.range(filters.offset, filters.offset + (filters?.limit || 50) - 1)
-      }
-
-      const { data, error, count } = await query
-
-      if (error) throw error
-
-      return { data: data || [], count: count || 0 }
     } catch (error) {
       console.error('Error fetching audit logs:', error)
       return { data: [], count: 0 }

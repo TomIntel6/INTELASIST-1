@@ -1,8 +1,10 @@
-import { supabase } from '@/lib/supabase'
+import { getDefaultApiBase } from '@/lib/supabase'
 import type { PermissionKey } from '@/lib/permissions'
 import { PERMISSIONS, DEFAULT_ROLE_PERMISSIONS, getAllPermissionKeys } from '@/lib/permissions'
 import type { UserRole } from '@/lib/auth'
 import { AuditService } from '@/lib/audit-service'
+
+const API_BASE = getDefaultApiBase()
 
 export interface UserPermissionData {
   userId: string
@@ -11,7 +13,7 @@ export interface UserPermissionData {
 
 /**
  * Service for managing user permissions
- * Handles CRUD operations for granular permissions
+ * Handles CRUD operations for granular permissions via backend API
  */
 export class PermissionsManagementService {
   /**
@@ -22,52 +24,26 @@ export class PermissionsManagementService {
   }
 
   /**
-   * Get permissions for a user
+   * Get permissions for a user via backend API
    */
   static async getUserPermissions(userId: string) {
     try {
-      // Get or create permission record
-      let { data: permRecord, error: permError } = await supabase
-        .from('user_permissions')
-        .select('id')
-        .eq('user_id', userId)
-        .maybeSingle()
+      const response = await fetch(`${API_BASE}/api/users/${userId}/permissions`)
+      if (!response.ok) throw new Error('Failed to fetch permissions')
 
-      if (permError && permError.code !== 'PGRST116') {
-        throw permError
-      }
-
-      if (!permRecord) {
-        // Create default permissions
-        const { data: created, error: createError } = await supabase
-          .from('user_permissions')
-          .insert({ user_id: userId })
-          .select('id')
-          .single()
-
-        if (createError) throw createError
-        permRecord = created
-      }
-
-      // Get all permission details
-      const { data: permDetails, error: detailsError } = await supabase
-        .from('user_permission_details')
-        .select('permission_key, granted')
-        .eq('permission_id', permRecord.id)
-
-      if (detailsError) throw detailsError
-
+      const data = await response.json()
+      
       const permissions: Record<string, boolean> = {}
-
+      
       // Initialize all permissions to false
       this.getAllPermissions().forEach((perm) => {
         permissions[perm] = false
       })
 
-      // Set from database
-      permDetails?.forEach((detail: any) => {
-        permissions[detail.permission_key] = detail.granted
-      })
+      // Set from API response
+      if (data.permissions) {
+        Object.assign(permissions, data.permissions)
+      }
 
       return permissions
     } catch (error) {
@@ -81,35 +57,9 @@ export class PermissionsManagementService {
    */
   static async setUserPermission(userId: string, permission: PermissionKey, granted: boolean) {
     try {
-      // Get or create permission record
-      let { data: permRecord } = await supabase
-        .from('user_permissions')
-        .select('id')
-        .eq('user_id', userId)
-        .maybeSingle()
-
-      if (!permRecord) {
-        const { data: created } = await supabase
-          .from('user_permissions')
-          .insert({ user_id: userId })
-          .select('id')
-          .single()
-        permRecord = created
-      }
-
-      // Upsert permission detail
-      const { error } = await supabase.from('user_permission_details').upsert(
-        {
-          permission_id: (permRecord as any)?.id,
-          permission_key: permission,
-          granted,
-        },
-        { onConflict: 'permission_id,permission_key' }
-      )
-
-      if (error) throw error
-
-      return true
+      const currentPerms = await this.getUserPermissions(userId)
+      currentPerms[permission] = granted
+      return await this.updateUserPermissions(userId, currentPerms)
     } catch (error) {
       console.error('Error setting user permission:', error)
       return false
@@ -117,43 +67,21 @@ export class PermissionsManagementService {
   }
 
   /**
-   * Update all permissions for a user
+   * Update all permissions for a user via backend API
    */
   static async updateUserPermissions(userId: string, permissions: Record<PermissionKey, boolean>) {
     try {
       const oldPermissions = await this.getUserPermissions(userId)
 
-      // Get or create permission record
-      let { data: permRecord } = await supabase
-        .from('user_permissions')
-        .select('id')
-        .eq('user_id', userId)
-        .maybeSingle()
+      const response = await fetch(`${API_BASE}/api/users/${userId}/permissions`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ permissions }),
+      })
 
-      if (!permRecord) {
-        const { data: created } = await supabase
-          .from('user_permissions')
-          .insert({ user_id: userId })
-          .select('id')
-          .single()
-        permRecord = (created as any) || null
-      }
-
-      if (!permRecord) throw new Error('Failed to create or get permission record')
-
-      // Delete existing permissions
-      await supabase.from('user_permission_details').delete().eq('permission_id', (permRecord as any).id)
-
-      // Insert new permissions
-      const permDetails = Object.entries(permissions).map(([key, granted]) => ({
-        permission_id: (permRecord as any).id,
-        permission_key: key,
-        granted,
-      }))
-
-      const { error } = await supabase.from('user_permission_details').insert(permDetails)
-
-      if (error) throw error
+      if (!response.ok) throw new Error('Failed to update permissions')
 
       // Log the change
       await AuditService.logPermissionsUpdated(userId, oldPermissions, permissions)

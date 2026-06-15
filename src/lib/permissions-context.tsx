@@ -1,8 +1,10 @@
 import * as React from 'react'
-import { supabase } from '@/lib/supabase'
+import { getDefaultApiBase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth'
 import type { UserPermission, PermissionKey } from '@/lib/permissions'
 import { PERMISSIONS, DEFAULT_ROLE_PERMISSIONS, getAllPermissionKeys } from '@/lib/permissions'
+
+const API_BASE = getDefaultApiBase()
 
 interface PermissionsContextValue {
   permissions: UserPermission | null
@@ -31,18 +33,13 @@ export function PermissionProvider({ children }: { children: React.ReactNode }) 
     try {
       setLoading(true)
 
-      // Fetch user permissions from database
-      const { data: permissionRecord, error } = await supabase
-        .from('user_permissions')
-        .select('id, created_at, updated_at')
-        .eq('user_id', user.id)
-        .single()
+      // Fetch user permissions from backend API
+      const response = await fetch(`${API_BASE}/api/users/${user.id}/permissions`)
+      if (!response.ok) throw new Error('Failed to fetch permissions')
 
-      if (error && error.code !== 'PGRST116') {
-        throw error
-      }
+      const data = await response.json()
 
-      if (!permissionRecord) {
+      if (Object.keys(data.permissions || {}).length === 0) {
         // Create default permissions based on user role
         const userRole = (user.user_metadata?.role as string) || 'Agente'
         const defaultPerms = DEFAULT_ROLE_PERMISSIONS[userRole] || DEFAULT_ROLE_PERMISSIONS.Agente
@@ -53,21 +50,14 @@ export function PermissionProvider({ children }: { children: React.ReactNode }) 
         })
 
         setPermissions({
-          id: '',
+          id: data.permissionId || '',
           userId: user.id,
           permissions: permissionMap as Record<PermissionKey, boolean>,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
+          createdAt: data.createdAt || new Date().toISOString(),
+          updatedAt: data.updatedAt || new Date().toISOString(),
         })
       } else {
-        // Fetch all permission details
-        const { data: permDetails, error: permError } = await supabase
-          .from('user_permission_details')
-          .select('permission_key, granted')
-          .eq('permission_id', permissionRecord.id)
-
-        if (permError) throw permError
-
+        // Use permissions from API
         const permissionMap: Record<string, boolean> = {}
 
         // Initialize all permissions to false
@@ -75,17 +65,15 @@ export function PermissionProvider({ children }: { children: React.ReactNode }) 
           permissionMap[perm] = false
         })
 
-        // Set permissions from database
-        permDetails?.forEach((detail: any) => {
-          permissionMap[detail.permission_key] = detail.granted
-        })
+        // Set permissions from API response
+        Object.assign(permissionMap, data.permissions)
 
         setPermissions({
-          id: permissionRecord.id,
+          id: data.permissionId || '',
           userId: user.id,
-          permissions: permissionMap,
-          createdAt: permissionRecord.created_at,
-          updatedAt: permissionRecord.updated_at,
+          permissions: permissionMap as Record<PermissionKey, boolean>,
+          createdAt: data.createdAt || new Date().toISOString(),
+          updatedAt: data.updatedAt || new Date().toISOString(),
         })
       }
     } catch (error) {
