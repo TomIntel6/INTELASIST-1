@@ -1,6 +1,7 @@
 import * as React from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from '@/lib/auth'
+import { PermissionProvider } from '@/lib/permissions-context'
 const Login = React.lazy(() => import('@/pages/Login'))
 const AppLayout = React.lazy(() => import('@/components/AppLayout'))
 const Dashboard = React.lazy(() => import('@/pages/Dashboard'))
@@ -9,6 +10,7 @@ const NewReport = React.lazy(() => import('@/pages/NewReport'))
 const ReportDetail = React.lazy(() => import('@/pages/ReportDetail'))
 const AgentControl = React.lazy(() => import('@/pages/AgentControl'))
 const Usuarios = React.lazy(() => import('@/pages/Usuarios'))
+const AdminDashboard = React.lazy(() => import('@/pages/AdminDashboard'))
 import { Spinner } from '@/components/ui/spinner'
 import ErrorBoundary from '@/components/ErrorBoundary'
 import { Button } from '@/components/ui/button'
@@ -42,6 +44,7 @@ function ProtectedContent() {
         <Route path="informes/:id" element={<ReportDetail />} />
         <Route path="control-agentes" element={<AgentControl />} />
         <Route path="usuarios" element={<Usuarios />} />
+        <Route path="admin/*" element={<AdminDashboard />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Route>
     </Routes>
@@ -120,12 +123,14 @@ export default function App() {
       <GlobalErrorHandler />
       <BrowserRouter>
         <AuthProvider>
-          <React.Suspense fallback={pageFallback}>
-            <Routes>
-              <Route path="/login" element={<LoginRoute />} />
-              <Route path="/*" element={<ProtectedContent />} />
-            </Routes>
-          </React.Suspense>
+          <PermissionProvider>
+            <React.Suspense fallback={pageFallback}>
+              <Routes>
+                <Route path="/login" element={<LoginRoute />} />
+                <Route path="/*" element={<ProtectedContent />} />
+              </Routes>
+            </React.Suspense>
+          </PermissionProvider>
         </AuthProvider>
       </BrowserRouter>
     </ErrorBoundary>

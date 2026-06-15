@@ -26,7 +26,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { canManageAgents, fetchOnlineUsersFromServer, getNameColorClasses, getOnlineUsers, getRoleColorClasses, getUserRole, getUserRoles, useAuth, PRESENCE_STORAGE_KEY, PRESENCE_SYNC_STORAGE_KEY, USERS_SYNC_STORAGE_KEY } from '@/lib/auth'
 import { getDefaultApiBase } from '@/lib/supabase'
-import { LayoutDashboard, FileText, LogOut, FilePlus, Users, AlertCircle } from 'lucide-react'
+import { LayoutDashboard, FileText, LogOut, FilePlus, Users, AlertCircle, Settings } from 'lucide-react'
 
 const ONLINE_USER_FETCH_INTERVAL_MS = 60000
 const FAILED_ATTEMPTS_REFRESH_INTERVAL_MS = 60000
@@ -520,6 +520,25 @@ export const AppSidebar = React.memo(function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        {userRoles.includes('Support') ? (
+          <SidebarGroup className="mt-2">
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    tooltip="Administración Avanzada"
+                    onClick={() => navigate('/admin/permisos')}
+                    className="rounded-xl bg-purple-500/10 text-purple-600 font-medium transition-colors duration-150 hover:bg-purple-500/20 hover:text-purple-700 hover:shadow-[0_0_20px_rgba(168,85,247,0.18)]"
+                  >
+                    <Settings className="transition-transform duration-150 group-hover:scale-105" />
+                    <span className="transition-colors duration-150 group-hover:drop-shadow-[0_0_10px_rgba(168,85,247,0.28)]">⚙ Administración Avanzada</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        ) : null}
 
         <SidebarGroup className="mt-3 px-2 group-data-[collapsible=icon]:hidden">
           <div className="rounded-lg border border-sidebar-border bg-sidebar-accent/50 p-1.5 backdrop-blur-sm">

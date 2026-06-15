@@ -1,3 +1,11 @@
+import { createClient } from '@supabase/supabase-js'
+
+// Supabase client instance
+export const supabase = createClient(
+  import.meta.env.VITE_SUPABASE_URL || '',
+  import.meta.env.VITE_SUPABASE_ANON_KEY || ''
+)
+
 export type ServiceType =
   | 'Grua por Averia'
   | 'Inspeccion'

@@ -16,11 +16,16 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Spinner } from '@/components/ui/spinner'
 import { SERVICE_TYPES, REPORT_STATUSES, MONTHS, type ReportStatus, createReport, uploadEvidenceFile } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth'
+import { usePermissions } from '@/lib/permissions-context'
+import { AuditService } from '@/lib/audit-service'
+import type { PermissionKey } from '@/lib/permissions'
+import { PERMISSIONS } from '@/lib/permissions'
 import { ArrowLeft, Save, Upload, X } from 'lucide-react'
 
 export default function NewReport() {
   const navigate = useNavigate()
   const { user } = useAuth()
+  const { hasPermission } = usePermissions()
   const [saving, setSaving] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
   const [periodDate, setPeriodDate] = React.useState(() => new Date())
@@ -357,6 +362,12 @@ const [form, setForm] = React.useState<NewReportForm>({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
+    // Check permission to create reports
+    if (!hasPermission(PERMISSIONS.REPORTS.CREATE as PermissionKey)) {
+      setError('No tienes permisos para crear informes.')
+      return
+    }
+    
     // Validar campos requeridos
     const requiredFields = {
       service_type: 'tipo de servicio',
@@ -484,6 +495,20 @@ const [form, setForm] = React.useState<NewReportForm>({
       // Validar que el ID existe y es válido
       if (!createdReport?.id || typeof createdReport.id !== 'string' || createdReport.id.trim() === '') {
         throw new Error('El servidor no retornó un ID válido para el informe.')
+      }
+      
+      // Log audit event for report creation
+      try {
+        await AuditService.logReportCreated(createdReport.id, {
+          insured_name: createdReport.insured_name,
+          plate: createdReport.plate,
+          policy: createdReport.policy,
+          service_type: createdReport.service_type,
+          status: createdReport.status,
+        })
+      } catch (auditErr) {
+        console.error('Error logging audit event:', auditErr)
+        // Don't fail the operation if audit logging fails
       }
       
       setSaving(false)

@@ -18,7 +18,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { REPORT_STATUSES, type Report, type ReportStatus, type ReportUpdate, loadReportWithUpdates, addReportUpdate, getCachedReportById } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth'
-import { ArrowLeft, Send, User, Calendar, Car, FileText, Wrench, Image as ImageIcon, ZoomIn, Copy } from 'lucide-react'
+import { usePermissions } from '@/lib/permissions-context'
+import type { PermissionKey } from '@/lib/permissions'
+import { AuditService } from '@/lib/audit-service'
+import { PERMISSIONS } from '@/lib/permissions'
+import { ArrowLeft, Send, User, Calendar, Car, FileText, Wrench, Image as ImageIcon, ZoomIn, Copy, History } from 'lucide-react'
 
 const STATUS_BADGE: Record<string, string> = {
   'Caso Finalizado': 'bg-emerald-500/15 text-emerald-700 border-emerald-200',
@@ -111,12 +115,15 @@ export default function ReportDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { user } = useAuth()
+  const { hasPermission } = usePermissions()
 
   const cachedReport = id ? getCachedReportById(id) : null
   const [report, setReport] = React.useState<Report | null>(cachedReport)
   const [updates, setUpdates] = React.useState<ReportUpdate[]>(cachedReport?.report_updates ?? [])
   const [loading, setLoading] = React.useState(cachedReport === null)
   const [error, setError] = React.useState<string | null>(null)
+  const [auditEvents, setAuditEvents] = React.useState<any[]>([])
+  const [showAuditPanel, setShowAuditPanel] = React.useState(false)
 
   const [newStatus, setNewStatus] = React.useState<ReportStatus>('Seguimiento de caso')
   const [newComment, setNewComment] = React.useState('')
@@ -179,12 +186,36 @@ export default function ReportDetail() {
       void fetchData()
     }, 15000)
 
+    // Load audit events for this report
+    const loadAuditEvents = async () => {
+      try {
+        const events = await AuditService.fetchAuditLogs({
+          entityId: id,
+          module: 'REPORTS',
+        })
+        if (Array.isArray(events)) {
+          setAuditEvents(events)
+        }
+      } catch (err) {
+        console.error('Error loading audit events:', err)
+      }
+    }
+
+    void loadAuditEvents()
+
     return () => window.clearInterval(intervalId)
-  }, [report, fetchData])
+  }, [report, fetchData, id])
 
   const handleAddUpdate = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!newComment.trim()) { setSubmitError('Escribe un comentario.'); return }
+    
+    // Check permission
+    if (!hasPermission(PERMISSIONS.UPDATES.ADD as PermissionKey)) {
+      setSubmitError('No tienes permisos para agregar actualizaciones.')
+      return
+    }
+
     setSubmitting(true)
     setSubmitError(null)
 
@@ -201,8 +232,28 @@ export default function ReportDetail() {
         added_by_email: user?.email ?? '',
       })
 
+      // Log audit event
+      if (statusToSend !== report?.status) {
+        await AuditService.logStatusChanged(
+          id!,
+          report?.status || 'unknown',
+          statusToSend
+        )
+      }
+      
+      await AuditService.logUpdateAdded(id!, id!, { comment: newComment })
+
       setNewComment('')
       await fetchData()
+      
+      // Reload audit events
+      const events = await AuditService.fetchAuditLogs({
+        entityId: id,
+        module: 'REPORTS',
+      })
+      if (Array.isArray(events)) {
+        setAuditEvents(events)
+      }
     } catch (error) {
       setSubmitError(error instanceof Error ? error.message : 'No se pudo agregar la actualización.')
     }
@@ -273,23 +324,36 @@ export default function ReportDetail() {
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-5">
       {/* Header */}
-      <div className="flex items-start gap-3">
-        <Button variant="ghost" size="icon-sm" onClick={() => navigate(-1)} className="mt-0.5">
-          <ArrowLeft className="size-4" />
-        </Button>
-        <div className="flex-1 min-w-0">
-          <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-xl font-bold text-foreground truncate">{report.insured_name}</h1>
-            <Badge
-              className={`text-xs border ${STATUS_BADGE[report.status] ?? 'bg-secondary'}`}
-            >
-              {report.status}
-            </Badge>
+      <div className="flex items-start gap-3 justify-between">
+        <div className="flex items-start gap-3 flex-1">
+          <Button variant="ghost" size="icon-sm" onClick={() => navigate(-1)} className="mt-0.5">
+            <ArrowLeft className="size-4" />
+          </Button>
+          <div className="flex-1 min-w-0">
+            <div className="flex flex-wrap items-center gap-3">
+              <h1 className="text-xl font-bold text-foreground truncate">{report.insured_name}</h1>
+              <Badge
+                className={`text-xs border ${STATUS_BADGE[report.status] ?? 'bg-secondary'}`}
+              >
+                {report.status}
+              </Badge>
+            </div>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              {report.month} {report.year} &bull; Placa: <span className="font-mono font-medium text-foreground">{report.plate}</span>
+            </p>
           </div>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            {report.month} {report.year} &bull; Placa: <span className="font-mono font-medium text-foreground">{report.plate}</span>
-          </p>
         </div>
+        {hasPermission(PERMISSIONS.SYSTEM.VIEW_AUDIT_LOGS as PermissionKey) && (
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => setShowAuditPanel(!showAuditPanel)}
+            className="gap-2"
+          >
+            <History className="size-4" />
+            Historial
+          </Button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
@@ -584,6 +648,36 @@ export default function ReportDetail() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Audit Panel */}
+      {showAuditPanel && (
+        <Card className="border-amber-200 bg-amber-50/50 dark:bg-amber-950/20">
+          <CardHeader>
+            <CardTitle className="text-sm flex items-center gap-2">
+              <History className="size-4" />
+              Historial de Auditoría
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="max-h-96 overflow-y-auto space-y-2">
+            {auditEvents.length === 0 ? (
+              <p className="text-xs text-muted-foreground">No hay eventos registrados</p>
+            ) : (
+              auditEvents.map((event: any, idx: number) => (
+                <div key={idx} className="border-l-2 border-amber-300 pl-3 py-2 text-xs">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="font-semibold text-foreground">{event.action}</span>
+                    <span className="text-muted-foreground">por {event.user_name || event.user_email}</span>
+                  </div>
+                  <p className="text-muted-foreground">{new Date(event.created_at).toLocaleString('es-ES')}</p>
+                  {event.details && (
+                    <p className="text-muted-foreground mt-1 italic">{event.details}</p>
+                  )}
+                </div>
+              ))
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }
