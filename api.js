@@ -1961,21 +1961,31 @@ app.get('/api/users/with-activity', async (req, res) => {
     }
     console.log(`  ℹ️  Condición de JOIN: ${joinCondition}`)
     
+    // Verify reports table exists
+    try {
+      const checkReports = await pool.query('SELECT COUNT(*) as count FROM reports')
+      console.log(`  ✓ Tabla reports tiene ${checkReports.rows[0].count} registros`)
+    } catch (checkErr) {
+      console.warn(`  ⚠️  No se pudo contar reports:`, checkErr.message)
+    }
+    
     const result = await pool.query(`
       SELECT 
         u.id,
         u.correo as email,
         u.nombre,
         u.rol as role,
-        COALESCE(ual.reports_created, 0) as reportsCreated,
-        ual.last_login as lastLogin,
-        ual.last_activity as lastActivity,
-        COALESCE(ual.is_suspended, false) as isSuspended,
-        ual.suspension_reason as suspensionReason,
-        ual.suspended_at as suspendedAt,
-        ual.suspended_by as suspendedBy
+        COUNT(DISTINCT r.id) as reportsCreated,
+        MAX(ual.last_login) as lastLogin,
+        MAX(ual.last_activity) as lastActivity,
+        COALESCE(MAX(ual.is_suspended)::boolean, false) as isSuspended,
+        (SELECT suspension_reason FROM user_activity_log WHERE user_id = u.id::text LIMIT 1) as suspensionReason,
+        (SELECT suspended_at FROM user_activity_log WHERE user_id = u.id::text LIMIT 1) as suspendedAt,
+        (SELECT suspended_by FROM user_activity_log WHERE user_id = u.id::text LIMIT 1) as suspendedBy
       FROM usuarios u
       LEFT JOIN user_activity_log ual ON ${joinCondition}
+      LEFT JOIN reports r ON u.id::text = r.created_by
+      GROUP BY u.id, u.correo, u.nombre, u.rol
       ORDER BY u.nombre ASC
     `)
     
