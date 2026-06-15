@@ -2172,8 +2172,8 @@ app.post('/api/trash', async (req, res) => {
 // GET /api/trash - Obtener papelera (con paginación)
 app.get('/api/trash', async (req, res) => {
   try {
-    const limit = parseInt(req.query.limit as string) || 50
-    const offset = parseInt(req.query.offset as string) || 0
+    const limit = parseInt(String(req.query.limit)) || 50
+    const offset = parseInt(String(req.query.offset)) || 0
 
     const countResult = await pool.query(`
       SELECT COUNT(*) as count FROM deleted_reports 
@@ -2324,14 +2324,14 @@ app.get('/api/trash/stats', async (req, res) => {
 // GET /api/audit-logs - Obtener logs de auditoría
 app.get('/api/audit-logs', async (req, res) => {
   try {
-    const limit = parseInt(req.query.limit as string) || 50
-    const offset = parseInt(req.query.offset as string) || 0
-    const userId = req.query.userId as string | undefined
-    const module = req.query.module as string | undefined
-    const action = req.query.action as string | undefined
+    const limit = parseInt(String(req.query.limit)) || 50
+    const offset = parseInt(String(req.query.offset)) || 0
+    const userId = String(req.query.userId || '')
+    const module = String(req.query.module || '')
+    const action = String(req.query.action || '')
 
     let whereClause = ''
-    const params: any[] = []
+    const params = []
 
     if (userId) {
       whereClause += `${whereClause ? ' AND' : 'WHERE'} user_id = $${params.length + 1}`
