@@ -1,6 +1,6 @@
 import * as React from 'react'
-import { getDefaultApiBase } from '@/lib/supabase'
-import { useAuth } from '@/lib/auth'
+import { getDefaultApiBase, supabase } from '@/lib/supabase'
+import { useAuth, hasAnyRole } from '@/lib/auth'
 import type { UserPermission, PermissionKey } from '@/lib/permissions'
 import { PERMISSIONS, DEFAULT_ROLE_PERMISSIONS, getAllPermissionKeys } from '@/lib/permissions'
 
@@ -118,7 +118,7 @@ export function PermissionProvider({ children }: { children: React.ReactNode }) 
     await loadPermissions()
   }, [loadPermissions])
 
-  const isSupport = user?.user_metadata?.role === 'Support' || user?.user_metadata?.role === 'Admin'
+  const isSupport = hasAnyRole(user, ['Support', 'Admin'])
 
   const value: PermissionsContextValue = {
     permissions,
