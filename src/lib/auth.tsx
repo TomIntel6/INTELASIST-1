@@ -758,12 +758,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       })
 
+      // Listener para cambios de permisos en tiempo real
+      evtSource.addEventListener('permissions-updated', (ev: MessageEvent) => {
+        try {
+          const payload = typeof ev.data === 'string' ? JSON.parse(ev.data) : ev.data
+          if (payload?.type === 'permissions-updated' && payload?.userId) {
+            console.log('[SSE] Permisos actualizados para usuario:', payload.userId)
+            // Disparar evento personalizado para notificar a los componentes
+            window.dispatchEvent(new CustomEvent('permissions-changed', { detail: payload }))
+          }
+        } catch (err) {
+          // Ignorar payloads inválidos
+        }
+      })
+
+      // Listener para cambios de módulos en tiempo real
+      evtSource.addEventListener('modules-updated', (ev: MessageEvent) => {
+        try {
+          const payload = typeof ev.data === 'string' ? JSON.parse(ev.data) : ev.data
+          if (payload?.type === 'modules-updated' && payload?.userId) {
+            console.log('[SSE] Módulos actualizados para usuario:', payload.userId)
+            // Disparar evento personalizado para notificar a los componentes
+            window.dispatchEvent(new CustomEvent('modules-changed', { detail: payload }))
+          }
+        } catch (err) {
+          // Ignorar payloads inválidos
+        }
+      })
+
       // Fallback: mensajes genéricos
       evtSource.addEventListener('message', (ev: MessageEvent) => {
         try {
           const payload = typeof ev.data === 'string' ? JSON.parse(ev.data) : ev.data
           if (payload?.type === 'role-change' && payload?.email && Array.isArray(payload.roles)) {
             updateStoredUserRoles(String(payload.email), payload.roles)
+          } else if (payload?.type === 'permissions-updated' && payload?.userId) {
+            window.dispatchEvent(new CustomEvent('permissions-changed', { detail: payload }))
+          } else if (payload?.type === 'modules-updated' && payload?.userId) {
+            window.dispatchEvent(new CustomEvent('modules-changed', { detail: payload }))
           }
         } catch {
           // ignore

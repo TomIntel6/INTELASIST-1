@@ -103,10 +103,13 @@ export default function Dashboard() {
   )
 
   const totalReports = todayReports.length
-  const totalFinalized = todayReports.filter(r => isFinalizedStatus(r.status)).length
-  const totalPending = todayReports.filter(r => r.status === 'Seguimiento de caso').length
-  const totalValidacion = todayReports.filter(r => r.status === 'Validacion').length
-  const totalInformativo = todayReports.filter(r => r.status === 'Informativo').length
+
+  const { totalFinalized, totalPending, totalValidacion, totalInformativo } = React.useMemo(() => ({
+    totalFinalized: todayReports.filter(r => isFinalizedStatus(r.status)).length,
+    totalPending: todayReports.filter(r => r.status === 'Seguimiento de caso').length,
+    totalValidacion: todayReports.filter(r => r.status === 'Validacion').length,
+    totalInformativo: todayReports.filter(r => r.status === 'Informativo').length,
+  }), [todayReports])
 
   return (
     <div className="p-6">

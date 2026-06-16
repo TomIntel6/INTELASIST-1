@@ -20,6 +20,24 @@ const TrashBin = React.lazy(() => import('./components/TrashBin'))
 const AdvancedUserManagement = React.lazy(() => import('./components/AdvancedUserManagement'))
 const SystemHealth = React.lazy(() => import('./components/SystemHealth'))
 
+// Fallback component for lazy-loaded content
+const LoadingFallback = () => (
+  <Card>
+    <CardHeader>
+      <CardTitle>Cargando...</CardTitle>
+    </CardHeader>
+  </Card>
+)
+
+// Memoized tab content wrapper
+interface TabContentProps {
+  children: React.ReactNode
+}
+
+const MemoizedTabContent = React.memo(function MemoizedTabContent({ children }: TabContentProps) {
+  return <div className="space-y-4">{children}</div>
+})
+
 export default function AdminDashboard() {
   const { user } = useAuth()
   const { notifications, removeNotification } = useNotifications(user?.id || '')
@@ -27,7 +45,6 @@ export default function AdminDashboard() {
   // Subscribe to real-time audit logs
   const handleAuditUpdate = React.useCallback((event: any) => {
     console.log('📊 Real-time audit update:', event)
-    // The components will handle re-fetching data if needed
   }, [])
 
   useRealtimeAuditLogs(handleAuditUpdate)
@@ -91,140 +108,68 @@ export default function AdminDashboard() {
           </TabsList>
 
           {/* Overview Tab */}
-          <TabsContent value="overview" className="space-y-4">
-            <React.Suspense
-              fallback={
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Cargando...</CardTitle>
-                  </CardHeader>
-                </Card>
-              }
-            >
+          <TabsContent value="overview">
+            <React.Suspense fallback={<LoadingFallback />}>
               <AdminOverview />
             </React.Suspense>
           </TabsContent>
 
           {/* Permissions Tab */}
-          <TabsContent value="permissions" className="space-y-4">
-            <React.Suspense
-              fallback={
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Cargando...</CardTitle>
-                  </CardHeader>
-                </Card>
-              }
-            >
+          <TabsContent value="permissions">
+            <React.Suspense fallback={<LoadingFallback />}>
               <PermissionsManagement />
             </React.Suspense>
           </TabsContent>
 
           {/* Modules Tab */}
-          <TabsContent value="modules" className="space-y-4">
-            <React.Suspense
-              fallback={
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Cargando...</CardTitle>
-                  </CardHeader>
-                </Card>
-              }
-            >
+          <TabsContent value="modules">
+            <React.Suspense fallback={<LoadingFallback />}>
               <PermissionModules />
             </React.Suspense>
           </TabsContent>
 
           {/* Audit Tab */}
-          <TabsContent value="audit" className="space-y-4">
-            <React.Suspense
-              fallback={
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Cargando...</CardTitle>
-                  </CardHeader>
-                </Card>
-              }
-            >
-                <ErrorBoundary>
-                  <AuditLog />
-                </ErrorBoundary>
+          <TabsContent value="audit">
+            <React.Suspense fallback={<LoadingFallback />}>
+              <ErrorBoundary>
+                <AuditLog />
+              </ErrorBoundary>
             </React.Suspense>
           </TabsContent>
 
           {/* Reports Tab */}
-          <TabsContent value="reports" className="space-y-4">
-            <React.Suspense
-              fallback={
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Cargando...</CardTitle>
-                  </CardHeader>
-                </Card>
-              }
-            >
-                <ErrorBoundary>
-                  <AuditReports />
-                </ErrorBoundary>
+          <TabsContent value="reports">
+            <React.Suspense fallback={<LoadingFallback />}>
+              <ErrorBoundary>
+                <AuditReports />
+              </ErrorBoundary>
             </React.Suspense>
           </TabsContent>
 
           {/* Activity Tab */}
-          <TabsContent value="activity" className="space-y-4">
-            <React.Suspense
-              fallback={
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Cargando...</CardTitle>
-                  </CardHeader>
-                </Card>
-              }
-            >
+          <TabsContent value="activity">
+            <React.Suspense fallback={<LoadingFallback />}>
               <ActivityTimeline />
             </React.Suspense>
           </TabsContent>
 
           {/* Trash Tab */}
-          <TabsContent value="trash" className="space-y-4">
-            <React.Suspense
-              fallback={
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Cargando...</CardTitle>
-                  </CardHeader>
-                </Card>
-              }
-            >
+          <TabsContent value="trash">
+            <React.Suspense fallback={<LoadingFallback />}>
               <TrashBin />
             </React.Suspense>
           </TabsContent>
 
           {/* Users Tab */}
-          <TabsContent value="users" className="space-y-4">
-            <React.Suspense
-              fallback={
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Cargando...</CardTitle>
-                  </CardHeader>
-                </Card>
-              }
-            >
+          <TabsContent value="users">
+            <React.Suspense fallback={<LoadingFallback />}>
               <AdvancedUserManagement />
             </React.Suspense>
           </TabsContent>
 
           {/* Health Tab */}
-          <TabsContent value="health" className="space-y-4">
-            <React.Suspense
-              fallback={
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Cargando...</CardTitle>
-                  </CardHeader>
-                </Card>
-              }
-            >
+          <TabsContent value="health">
+            <React.Suspense fallback={<LoadingFallback />}>
               <SystemHealth />
             </React.Suspense>
           </TabsContent>
