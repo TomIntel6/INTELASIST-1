@@ -2383,7 +2383,34 @@ app.put('/api/users/:userId/permissions', async (req, res) => {
       )
     }
 
-    res.json({ success: true, message: 'Permisos actualizados' })
+    // Actualizar updated_at en user_permissions
+    await pool.query(
+      'UPDATE user_permissions SET updated_at = NOW() WHERE id = $1',
+      [permId]
+    )
+
+    // Notificar a los clientes SSE sobre el cambio de permisos en tiempo real
+    try {
+      const payload = JSON.stringify({ 
+        type: 'permissions-updated', 
+        userId, 
+        permissions,
+        timestamp: new Date().toISOString()
+      })
+      for (const client of sseClients) {
+        try {
+          client.write(`event: permissions-updated\n`)
+          client.write(`data: ${payload}\n\n`)
+        } catch (e) {
+          // Ignora clientes que fallan al escribir
+        }
+      }
+      console.log(`[SSE] Notificación de permisos actualizada para usuario: ${userId}`)
+    } catch (err) {
+      console.warn('Error notificando cambio de permisos via SSE:', err)
+    }
+
+    res.json({ success: true, message: 'Permisos actualizados', userId, permissions })
   } catch (err) {
     console.error('Error updating permissions:', err)
     res.status(500).json({ error: 'Error al actualizar permisos' })
@@ -2422,6 +2449,27 @@ app.put('/api/users/:userId/modules', async (req, res) => {
       'UPDATE user_permissions SET modules_access = $1, updated_at = NOW() WHERE id = $2',
       [modulesJson, permId]
     )
+
+    // Notificar a los clientes SSE sobre el cambio de módulos en tiempo real
+    try {
+      const payload = JSON.stringify({ 
+        type: 'modules-updated', 
+        userId, 
+        modules,
+        timestamp: new Date().toISOString()
+      })
+      for (const client of sseClients) {
+        try {
+          client.write(`event: modules-updated\n`)
+          client.write(`data: ${payload}\n\n`)
+        } catch (e) {
+          // Ignora clientes que fallan al escribir
+        }
+      }
+      console.log(`[SSE] Notificación de módulos actualizada para usuario: ${userId}`)
+    } catch (err) {
+      console.warn('Error notificando cambio de módulos via SSE:', err)
+    }
     
     res.json({ 
       success: true, 
