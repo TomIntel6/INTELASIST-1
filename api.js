@@ -2006,13 +2006,13 @@ app.get('/api/users/with-activity', async (req, res) => {
           FROM reports r
           WHERE (r.created_by IS NOT NULL AND r.created_by::text = u.id::text)
             OR (r.created_by_email IS NOT NULL AND LOWER(TRIM(r.created_by_email)) = LOWER(TRIM(u.correo)))
-        ), 0) as reportsCreated,
-        (SELECT last_login FROM user_activity_log WHERE user_id = u.id ORDER BY last_login DESC LIMIT 1) as lastLogin,
-        (SELECT last_activity FROM user_activity_log WHERE user_id = u.id ORDER BY last_activity DESC LIMIT 1) as lastActivity,
-        COALESCE((SELECT is_suspended FROM user_activity_log WHERE user_id = u.id LIMIT 1), false) as isSuspended,
-        (SELECT suspension_reason FROM user_activity_log WHERE user_id = u.id LIMIT 1) as suspensionReason,
-        (SELECT suspended_at FROM user_activity_log WHERE user_id = u.id LIMIT 1) as suspendedAt,
-        (SELECT suspended_by FROM user_activity_log WHERE user_id = u.id LIMIT 1) as suspendedBy
+        ), 0) AS "reportsCreated",
+        (SELECT last_login FROM user_activity_log WHERE user_id = u.id ORDER BY last_login DESC LIMIT 1) AS "lastLogin",
+        (SELECT last_activity FROM user_activity_log WHERE user_id = u.id ORDER BY last_activity DESC LIMIT 1) AS "lastActivity",
+        COALESCE((SELECT is_suspended FROM user_activity_log WHERE user_id = u.id LIMIT 1), false) AS "isSuspended",
+        (SELECT suspension_reason FROM user_activity_log WHERE user_id = u.id LIMIT 1) AS "suspensionReason",
+        (SELECT suspended_at FROM user_activity_log WHERE user_id = u.id LIMIT 1) AS "suspendedAt",
+        (SELECT suspended_by FROM user_activity_log WHERE user_id = u.id LIMIT 1) AS "suspendedBy"
       FROM usuarios u
       ORDER BY u.nombre ASC
     `)
@@ -2085,13 +2085,13 @@ app.get('/api/users', async (req, res) => {
           FROM reports r
           WHERE (r.created_by IS NOT NULL AND r.created_by::text = u.id::text)
             OR (r.created_by_email IS NOT NULL AND LOWER(TRIM(r.created_by_email)) = LOWER(TRIM(u.correo)))
-        ) as reportsCreated,
-        ual.last_login as lastLogin,
-        ual.last_activity as lastActivity,
-        ual.is_suspended as isSuspended,
-        ual.suspension_reason as suspensionReason,
-        ual.suspended_at as suspendedAt,
-        ual.suspended_by as suspendedBy
+        ) AS "reportsCreated",
+        ual.last_login AS "lastLogin",
+        ual.last_activity AS "lastActivity",
+        ual.is_suspended AS "isSuspended",
+        ual.suspension_reason AS "suspensionReason",
+        ual.suspended_at AS "suspendedAt",
+        ual.suspended_by AS "suspendedBy"
       FROM usuarios u
       LEFT JOIN user_activity_log ual ON u.id::text = ual.user_id
       ORDER BY u.nombre ASC
@@ -2652,6 +2652,10 @@ app.post('/api/trash', async (req, res) => {
       return res.status(404).json({ error: 'Informe no encontrado' })
     }
 
+    const deletedBy = req.user?.id ?? null
+    const deletedByEmail = req.user?.email ?? null
+    const deletedByName = req.user?.user_metadata?.full_name ?? req.user?.email ?? null
+
     const insertResult = await pool.query(
       `INSERT INTO deleted_reports (
         report_id,
@@ -2666,9 +2670,9 @@ app.post('/api/trash', async (req, res) => {
       [
         reportId,
         originalData,
-        null,
-        null,
-        null,
+        deletedBy,
+        deletedByName,
+        deletedByEmail,
         reason,
       ]
     )
