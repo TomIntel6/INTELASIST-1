@@ -88,6 +88,23 @@ export function PermissionProvider({ children }: { children: React.ReactNode }) 
     loadPermissions()
   }, [loadPermissions])
 
+  React.useEffect(() => {
+    const handlePermissionsChanged = (event: Event) => {
+      const customEvent = event as CustomEvent
+      const payload = customEvent.detail
+      if (!payload?.userId || payload.userId !== user?.id) {
+        return
+      }
+
+      void loadPermissions()
+    }
+
+    window.addEventListener('permissions-changed', handlePermissionsChanged)
+    return () => {
+      window.removeEventListener('permissions-changed', handlePermissionsChanged)
+    }
+  }, [loadPermissions, user?.id])
+
   const hasPermission = React.useCallback(
     (permission: PermissionKey): boolean => {
       // Support and Admin always have all permissions

@@ -176,6 +176,7 @@ export default function PermissionModules() {
       if (!response.ok) throw new Error('Failed to update modules')
 
       toast.success(`Módulos actualizados para ${user.email}`)
+      await loadUsers()
     } catch (error) {
       console.error('Error saving:', error)
       toast.error('Error guardando cambios')

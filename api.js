@@ -1975,7 +1975,12 @@ app.get('/api/users/with-activity', async (req, res) => {
         u.correo as email,
         u.nombre,
         u.rol as role,
-        COUNT(DISTINCT r.id) as reportsCreated,
+        COALESCE((
+          SELECT COUNT(*)
+          FROM reports r
+          WHERE r.created_by = u.id::text
+            OR (r.created_by_email IS NOT NULL AND LOWER(r.created_by_email) = LOWER(u.correo))
+        ), 0) as reportsCreated,
         (SELECT last_login FROM user_activity_log WHERE user_id = u.id ORDER BY last_login DESC LIMIT 1) as lastLogin,
         (SELECT last_activity FROM user_activity_log WHERE user_id = u.id ORDER BY last_activity DESC LIMIT 1) as lastActivity,
         COALESCE((SELECT is_suspended FROM user_activity_log WHERE user_id = u.id LIMIT 1), false) as isSuspended,
@@ -1983,8 +1988,6 @@ app.get('/api/users/with-activity', async (req, res) => {
         (SELECT suspended_at FROM user_activity_log WHERE user_id = u.id LIMIT 1) as suspendedAt,
         (SELECT suspended_by FROM user_activity_log WHERE user_id = u.id LIMIT 1) as suspendedBy
       FROM usuarios u
-      LEFT JOIN reports r ON u.id = r.created_by::integer
-      GROUP BY u.id, u.correo, u.nombre, u.rol
       ORDER BY u.nombre ASC
     `)
     
@@ -2152,22 +2155,19 @@ app.get('/api/users/with-modules', async (req, res) => {
         u.id,
         u.correo as email,
         u.nombre as userName,
-        u.rol as role
+        u.rol as role,
+        COALESCE(up.modules_access, '{}'::jsonb) as modules_access
       FROM usuarios u
+      LEFT JOIN user_permissions up ON up.user_id = u.id::text
       ORDER BY u.nombre ASC
     `)
 
-    const moduleKeys = ['reports', 'evidence', 'updates', 'users', 'system', 'admin']
-    
     const usersWithModules = usersResult.rows.map(user => ({
       userId: user.id,
       email: user.email,
       userName: user.userName,
       role: user.role,
-      modules: moduleKeys.reduce((acc, mod) => {
-        acc[mod] = true // Por defecto todos tienen acceso
-        return acc
-      }, {}),
+      modules: user.modules_access || {},
     }))
 
     res.json(usersWithModules)
