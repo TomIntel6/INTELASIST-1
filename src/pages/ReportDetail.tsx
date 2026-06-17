@@ -116,6 +116,9 @@ export default function ReportDetail() {
   const navigate = useNavigate()
   const { user } = useAuth()
   const { hasPermission } = usePermissions()
+  const canViewReports = hasPermission(PERMISSIONS.REPORTS.VIEW as PermissionKey) || hasPermission(PERMISSIONS.REPORTS.VIEW_ALL as PermissionKey)
+  const canAddUpdates = hasPermission(PERMISSIONS.UPDATES.ADD as PermissionKey)
+  const canChangeReportStatus = hasPermission(PERMISSIONS.REPORTS.CHANGE_STATUS as PermissionKey)
 
   const cachedReport = id ? getCachedReportById(id) : null
   const [report, setReport] = React.useState<Report | null>(cachedReport)
@@ -211,8 +214,13 @@ export default function ReportDetail() {
     if (!newComment.trim()) { setSubmitError('Escribe un comentario.'); return }
     
     // Check permission
-    if (!hasPermission(PERMISSIONS.UPDATES.ADD as PermissionKey)) {
+    if (!canAddUpdates) {
       setSubmitError('No tienes permisos para agregar actualizaciones.')
+      return
+    }
+
+    if (newStatus !== report?.status && !canChangeReportStatus) {
+      setSubmitError('No tienes permisos para cambiar el estado del informe.')
       return
     }
 
@@ -320,6 +328,20 @@ export default function ReportDetail() {
     : report.evidence_url
       ? [{ url: report.evidence_url, filename: report.evidence_filename ?? '', path: report.evidence_path ?? '' }]
       : []
+
+  if (!canViewReports) {
+    return (
+      <div className="p-6 max-w-4xl mx-auto text-center">
+        <p className="text-lg font-semibold text-destructive">No tienes permisos para ver este informe.</p>
+        <p className="mt-2 text-sm text-muted-foreground">Solicita acceso a un administrador para ver reportes.</p>
+        <div className="mt-4 flex justify-center">
+          <Button variant="outline" onClick={() => navigate(-1)}>
+            Volver
+          </Button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-5">
@@ -595,7 +617,7 @@ export default function ReportDetail() {
                   <Select
                     value={newStatus}
                     onValueChange={handleNewStatusChange}
-                    disabled={isReportStatusLocked(report.status)}
+                    disabled={isReportStatusLocked(report.status) || !canChangeReportStatus}
                   >
                     <SelectTrigger className="h-8 text-sm">
                       <SelectValue />
@@ -619,9 +641,12 @@ export default function ReportDetail() {
                 {submitError && (
                   <p className="text-xs text-destructive">{submitError}</p>
                 )}
+                {!canAddUpdates && (
+                  <p className="text-xs text-muted-foreground">No tienes permisos para agregar actualizaciones.</p>
+                )}
                 <Button
                   type="submit"
-                  disabled={submitting}
+                  disabled={submitting || !canAddUpdates}
                   size="sm"
                   className="w-full gap-2 bg-destructive hover:bg-destructive/90 text-white"
                 >

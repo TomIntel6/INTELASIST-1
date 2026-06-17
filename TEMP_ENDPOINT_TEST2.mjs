@@ -1,6 +1,6 @@
 const urls = [
-  'http://localhost:3000/api/users/with-permissions',
-  'http://localhost:3000/api/audit-logs?limit=1000'
+  'https://intelasist.onrender.com/api/users/with-permissions',
+  'https://intelasist.onrender.com/api/audit-logs?limit=1000'
 ]
 
 for (const url of urls) {

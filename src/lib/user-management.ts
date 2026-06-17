@@ -9,7 +9,7 @@ const getApiBase = () => {
   if (import.meta.env.VITE_API_BASE_URL) {
     return import.meta.env.VITE_API_BASE_URL
   }
-  return 'http://localhost:3000'
+  return 'https://intelasist.onrender.com'
 }
 
 const API_BASE_URL = getApiBase()

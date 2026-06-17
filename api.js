@@ -118,8 +118,6 @@ console.log('[Supabase] cliente administrativo inicializado:', supabase ? 'sí' 
 const allowedOrigins = [
   FRONTEND_ORIGIN,
   'https://intelasist-yps2-64ysydqqy-jose-rodriguez-s-projects1.vercel.app',
-  'http://localhost:3000',
-  'http://localhost:5173',  // For Vite dev server
 ]
 
 const corsOptions = {
@@ -3323,35 +3321,43 @@ app.get('/api/audit-logs', async (req, res) => {
     const params = []
 
     if (userId) {
-      whereClause += `${whereClause ? ' AND' : 'WHERE'} user_id = $${params.length + 1}`
+      whereClause += `${whereClause ? ' AND' : 'WHERE'} al.user_id = $${params.length + 1}`
       params.push(userId)
     }
     if (userEmail) {
-      whereClause += `${whereClause ? ' AND' : 'WHERE'} user_email ILIKE $${params.length + 1}`
+      whereClause += `${whereClause ? ' AND' : 'WHERE'} al.user_email ILIKE $${params.length + 1}`
       params.push(`%${userEmail}%`)
     }
     if (module) {
-      whereClause += `${whereClause ? ' AND' : 'WHERE'} module = $${params.length + 1}`
+      whereClause += `${whereClause ? ' AND' : 'WHERE'} al.module = $${params.length + 1}`
       params.push(module)
     }
     if (action) {
-      whereClause += `${whereClause ? ' AND' : 'WHERE'} action = $${params.length + 1}`
+      whereClause += `${whereClause ? ' AND' : 'WHERE'} al.action = $${params.length + 1}`
       params.push(action)
     }
 
     const countResult = await pool.query(`
-      SELECT COUNT(*) as count FROM audit_logs ${whereClause}
+      SELECT COUNT(*) as count FROM audit_logs al ${whereClause}
     `, params)
     const totalCount = parseInt(countResult.rows[0]?.count || 0)
 
     const dataResult = await pool.query(`
       SELECT 
-        id, user_id, user_email, user_name, action, module, 
-        entity_id, entity_type, old_values, new_values, status, 
-        error_message, created_at
-      FROM audit_logs
+        al.id, al.user_id, al.user_email, 
+        COALESCE(
+          NULLIF(al.user_name, ''),
+          u.nombre,
+          al.user_email,
+          'Usuario Desconocido'
+        ) as user_name,
+        al.action, al.module, 
+        al.entity_id, al.entity_type, al.old_values, al.new_values, al.status, 
+        al.error_message, al.created_at
+      FROM audit_logs al
+      LEFT JOIN usuarios u ON al.user_email = u.correo
       ${whereClause}
-      ORDER BY created_at DESC
+      ORDER BY al.created_at DESC
       LIMIT $${params.length + 1} OFFSET $${params.length + 2}
     `, [...params, limit, offset])
 
@@ -3364,6 +3370,84 @@ app.get('/api/audit-logs', async (req, res) => {
   } catch (err) {
     console.error('Error fetching audit logs:', err)
     res.status(500).json({ error: 'Error al obtener logs de auditoría' })
+  }
+})
+
+// ADMIN ENDPOINT: Llenar user_names vacíos en audit_logs (TEMPORAL)
+app.post('/api/admin/fill-audit-usernames', async (req, res) => {
+  try {
+    console.log('[FILL AUDIT] Iniciando proceso de llenar user_names...')
+
+    // 1. Obtener todos los registros con user_name vacío o nulo
+    const emptyNameResult = await pool.query(`
+      SELECT id, user_id, user_email, user_name
+      FROM audit_logs
+      WHERE user_name IS NULL OR user_name = ''
+      LIMIT 1000
+    `)
+
+    const emptyNameLogs = emptyNameResult.rows
+    console.log(`[FILL AUDIT] Se encontraron ${emptyNameLogs.length} registros con user_name vacío`)
+
+    if (emptyNameLogs.length === 0) {
+      return res.json({ success: true, message: 'No hay registros que actualizar', count: 0 })
+    }
+
+    let updated = 0
+    const updates = []
+
+    // 2. Para cada registro, obtener el nombre del usuario de la tabla usuarios
+    for (const log of emptyNameLogs) {
+      try {
+        let userName = null
+
+        if (log.user_email) {
+          // Buscar el usuario por email
+          const userResult = await pool.query(
+            'SELECT nombre FROM usuarios WHERE correo = $1 LIMIT 1',
+            [log.user_email]
+          )
+          userName = userResult.rows[0]?.nombre || log.user_email
+        } else {
+          userName = 'Usuario Desconocido'
+        }
+
+        updates.push({
+          id: log.id,
+          user_name: userName,
+        })
+      } catch (e) {
+        console.warn(`[FILL AUDIT] Error procesando log ${log.id}:`, e.message)
+        updates.push({
+          id: log.id,
+          user_name: log.user_email || 'Usuario Desconocido',
+        })
+      }
+    }
+
+    // 3. Actualizar todos los registros
+    console.log(`[FILL AUDIT] Actualizando ${updates.length} registros...`)
+    for (const update of updates) {
+      try {
+        await pool.query(
+          'UPDATE audit_logs SET user_name = $1 WHERE id = $2',
+          [update.user_name, update.id]
+        )
+        updated++
+      } catch (e) {
+        console.warn(`[FILL AUDIT] Error actualizando log ${update.id}:`, e.message)
+      }
+    }
+
+    console.log(`[FILL AUDIT] ✅ Proceso completado: ${updated}/${updates.length} actualizados`)
+    res.json({
+      success: true,
+      message: `Actualizados ${updated} registros`,
+      count: updated,
+    })
+  } catch (err) {
+    console.error('[FILL AUDIT] Error:', err)
+    res.status(500).json({ error: 'Error al llenar user_names' })
   }
 })
 
