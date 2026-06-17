@@ -712,6 +712,29 @@ async function logAuditEvent(req, {
       : req.ip || null
     const userAgent = req.headers['user-agent'] ? String(req.headers['user-agent']) : null
 
+    // Capturar información del usuario
+    const userId = req.user?.id ?? null
+    const userEmail = req.user?.email ?? null
+    let userName = req.user?.user_metadata?.full_name ?? null
+
+    // Get user name from database if email is available and name not provided
+    if (!userName && userEmail) {
+      try {
+        const userResult = await pool.query(
+          'SELECT nombre FROM usuarios WHERE correo = $1 LIMIT 1',
+          [userEmail]
+        )
+        userName = userResult.rows[0]?.nombre ?? null
+      } catch (e) {
+        console.warn('Error fetching user name for audit:', e)
+      }
+    }
+
+    // Last resort: use email if name is still empty
+    if (!userName && userEmail) {
+      userName = userEmail
+    }
+
     await pool.query(
       `INSERT INTO audit_logs (
         user_id,
@@ -729,9 +752,9 @@ async function logAuditEvent(req, {
         error_message
       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
       [
-        null,
-        null,
-        null,
+        userId,
+        userEmail,
+        userName,
         action,
         module,
         entityId,
@@ -1343,7 +1366,7 @@ app.post('/reports', async (req, res) => {
     // Garantizar que created_by está relleno con fallback a req.user
     const userId = payload.created_by ?? req.user?.id ?? null
     const userEmail = payload.created_by_email ?? req.user?.email ?? ''
-    let userName = payload.created_by_name ?? ''
+    let userName = payload.created_by_name ?? req.user?.user_metadata?.full_name ?? ''
 
     // Get user name from database if email is available and name not provided
     if (!userName && userEmail) {
@@ -1352,10 +1375,16 @@ app.post('/reports', async (req, res) => {
           'SELECT nombre FROM usuarios WHERE correo = $1 LIMIT 1',
           [userEmail]
         )
-        userName = userResult.rows[0]?.nombre ?? ''
+        userName = userResult.rows[0]?.nombre ?? req.user?.user_metadata?.full_name ?? ''
       } catch (e) {
         console.warn('Error fetching user name:', e)
+        userName = req.user?.user_metadata?.full_name ?? ''
       }
+    }
+    
+    // Last resort: use email if name is still empty
+    if (!userName) {
+      userName = userEmail || 'Usuario Desconocido'
     }
 
     console.log(`[API] Creating report with created_by fallback:`, {
@@ -2667,19 +2696,25 @@ app.post('/api/trash', async (req, res) => {
 
     const deletedBy = req.user?.id ?? null
     const deletedByEmail = req.user?.email ?? null
-    let deletedByName = null
+    let deletedByName = req.user?.user_metadata?.full_name ?? null
 
-    // Get user name from database if email is available
-    if (deletedByEmail) {
+    // Get user name from database if email is available and name not provided
+    if (!deletedByName && deletedByEmail) {
       try {
         const userResult = await pool.query(
           'SELECT nombre FROM usuarios WHERE correo = $1 LIMIT 1',
           [deletedByEmail]
         )
-        deletedByName = userResult.rows[0]?.nombre ?? null
+        deletedByName = userResult.rows[0]?.nombre ?? req.user?.user_metadata?.full_name ?? null
       } catch (e) {
         console.warn('Error fetching user name:', e)
+        deletedByName = req.user?.user_metadata?.full_name ?? null
       }
+    }
+    
+    // Last resort: use email if name is still empty
+    if (!deletedByName) {
+      deletedByName = deletedByEmail || 'Usuario Desconocido'
     }
 
     const insertResult = await pool.query(
