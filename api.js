@@ -231,8 +231,8 @@ app.post('/upload', upload.single('file'), async (req, res) => {
       if (uploadError) {
         const uploadErrorPayload = {
           message: uploadError?.message,
-          statusCode: uploadError?.statusCode ?? null,
-          error: uploadError?.error ?? null,
+          statusCode: uploadError?.statusCode || null,
+          error: uploadError?.error || null,
           full: JSON.stringify(uploadError, Object.getOwnPropertyNames(uploadError)),
         }
         console.error('[Supabase Storage] Error subiendo archivo a Supabase Storage:', uploadErrorPayload)
@@ -320,7 +320,7 @@ function normalizeRolePayload(payload) {
 }
 
 function derivePrimaryRole(roles) {
-  return roles[0] ?? 'Agente'
+  return roles[0] || 'Agente'
 }
 
 function extractRolesFromRow(row) {
@@ -375,47 +375,47 @@ function serializeReportRow(row) {
     id: String(row.id),
     month: String(row.month),
     year: Number(row.year),
-    insured_name: String(row.insured_name ?? ''),
-    plate: String(row.plate ?? ''),
-    policy: String(row.policy ?? ''),
-    service_type: String(row.service_type ?? ''),
-    coverage: row.coverage ?? null,
-    brand: String(row.brand ?? ''),
-    model: String(row.model ?? ''),
-    color: String(row.color ?? ''),
+    insured_name: String(row.insured_name || ''),
+    plate: String(row.plate || ''),
+    policy: String(row.policy || ''),
+    service_type: String(row.service_type || ''),
+    coverage: row.coverage || null,
+    brand: String(row.brand || ''),
+    model: String(row.model || ''),
+    color: String(row.color || ''),
     year_vehicle: row.year_vehicle === null ? null : Number(row.year_vehicle),
-    status: String(row.status ?? 'Seguimiento de caso'),
-    observation_comment: String(row.observation_comment ?? ''),
-    evidence_url: row.evidence_url ?? null,
-    evidence_filename: row.evidence_filename ?? null,
-    evidence_path: row.evidence_path ?? null,
+    status: String(row.status || 'Seguimiento de caso'),
+    observation_comment: String(row.observation_comment || ''),
+    evidence_url: row.evidence_url || null,
+    evidence_filename: row.evidence_filename || null,
+    evidence_path: row.evidence_path || null,
     evidence_urls: Array.isArray(row.evidence_urls)
       ? row.evidence_urls.map((item) => ({
-          url: String((item ?? {}).url ?? ''),
-          filename: String((item ?? {}).filename ?? ''),
-          path: String((item ?? {}).path ?? ''),
+          url: String((item || {}).url || ''),
+          filename: String((item || {}).filename || ''),
+          path: String((item || {}).path || ''),
         }))
       : row.evidence_urls && typeof row.evidence_urls === 'string'
         ? JSON.parse(row.evidence_urls)
         : null,
-    created_by: row.created_by ?? null,
-    created_by_name: String(row.created_by_name ?? ''),
-    created_by_email: String(row.created_by_email ?? ''),
-    created_at: formatTimestamp(row.created_at ?? new Date()),
-    updated_at: formatTimestamp(row.updated_at ?? row.created_at ?? new Date()),
+    created_by: row.created_by || null,
+    created_by_name: String(row.created_by_name || ''),
+    created_by_email: String(row.created_by_email || ''),
+    created_at: formatTimestamp(row.created_at || new Date()),
+    updated_at: formatTimestamp(row.updated_at || row.created_at || new Date()),
   }
 }
 
 function serializeUpdateRow(row) {
   return {
     id: String(row.id),
-    report_id: String(row.report_id ?? ''),
-    status: String(row.status ?? 'Seguimiento de caso'),
-    comment: String(row.comment ?? ''),
-    added_by: row.added_by ?? null,
-    added_by_name: String(row.added_by_name ?? ''),
-    added_by_email: String(row.added_by_email ?? ''),
-    created_at: formatTimestamp(row.created_at ?? new Date()),
+    report_id: String(row.report_id || ''),
+    status: String(row.status || 'Seguimiento de caso'),
+    comment: String(row.comment || ''),
+    added_by: row.added_by || null,
+    added_by_name: String(row.added_by_name || ''),
+    added_by_email: String(row.added_by_email || ''),
+    created_at: formatTimestamp(row.created_at || new Date()),
   }
 }
 
@@ -726,6 +726,9 @@ async function logAuditEvent(req, {
   newValues = null,
   status = 'success',
   errorMessage = null,
+  auditUserId = null,
+  auditUserEmail = null,
+  auditUserName = null,
 }) {
   try {
     const ipAddress = req.headers['x-forwarded-for']
@@ -733,10 +736,10 @@ async function logAuditEvent(req, {
       : req.ip || null
     const userAgent = req.headers['user-agent'] ? String(req.headers['user-agent']) : null
 
-    // Capturar información del usuario
-    const userId = req.user?.id ?? null
-    const userEmail = (req.user?.email ?? '').trim()
-    let userName = (req.user?.user_metadata?.full_name ?? '').trim()
+    // Usar datos de auditoría explícitos si se proporcionan, sino capturar de req.user
+    let userId = auditUserId || (req.user && req.user.id) || null
+    let userEmail = (auditUserEmail || (req.user && req.user.email) || '').trim()
+    let userName = (auditUserName || (req.user && req.user.user_metadata && req.user.user_metadata.full_name) || '').trim()
 
     // Get user name from database if email is available and name not provided
     if (!userName && userEmail) {
@@ -746,10 +749,9 @@ async function logAuditEvent(req, {
           [userEmail]
         )
         const dbName = userResult.rows[0]?.nombre || ''
-        userName = (dbName || req.user?.user_metadata?.full_name || '').trim()
+        userName = (dbName || '').trim()
       } catch (e) {
         console.warn('Error fetching user name for audit:', e)
-        userName = (req.user?.user_metadata?.full_name || '').trim()
       }
     }
 
@@ -757,6 +759,8 @@ async function logAuditEvent(req, {
     if (!userName) {
       userName = userEmail || 'Usuario Desconocido'
     }
+
+    console.log(`[logAuditEvent] Inserting audit:`, { action, module, userId, userEmail, userName })
 
     await pool.query(
       `INSERT INTO audit_logs (
@@ -873,13 +877,13 @@ async function loadReportsWithUpdates(query = '', values = []) {
   )
 
   const updatesByReportId = updatesResult.rows.reduce((acc, row) => {
-    acc[row.report_id] = [...(acc[row.report_id] ?? []), serializeUpdateRow(row)]
+    acc[row.report_id] = [...(acc[row.report_id] || []), serializeUpdateRow(row)]
     return acc
   }, {})
 
   return reportsResult.rows.map(row => ({
     ...serializeReportRow(row),
-    report_updates: updatesByReportId[row.id] ?? [],
+    report_updates: updatesByReportId[row.id] || [],
   }))
 }
 
@@ -931,7 +935,7 @@ async function updateUserRoleInSupabase(email, nextRole) {
 
   const { error: updateError } = await admin.auth.admin.updateUserById(targetUser.id, {
     user_metadata: {
-      ...(targetUser.user_metadata ?? {}),
+      ...(targetUser.user_metadata || {}),
       role: nextRole,
     },
   })
@@ -1060,7 +1064,7 @@ app.post('/usuarios', async (req, res) => {
 
       // Operación idempotente: devolver el usuario existente sin ruido en logs.
       res.json({
-        user: serializeUserRecord(updated.rows[0] ?? existingUser),
+        user: serializeUserRecord(updated.rows[0] || existingUser),
         existed: true,
       })
       return
@@ -1319,30 +1323,30 @@ function normalizeReportPayload(payload) {
   return {
     month,
     year,
-    insured_name: String(payload.insured_name ?? ''),
-    plate: String(payload.plate ?? ''),
-    policy: String(payload.policy ?? ''),
-    service_type: String(payload.service_type ?? ''),
-    coverage: payload.coverage ?? null,
-    brand: String(payload.brand ?? ''),
-    model: String(payload.model ?? ''),
-    color: String(payload.color ?? ''),
+    insured_name: String(payload.insured_name || ''),
+    plate: String(payload.plate || ''),
+    policy: String(payload.policy || ''),
+    service_type: String(payload.service_type || ''),
+    coverage: payload.coverage || null,
+    brand: String(payload.brand || ''),
+    model: String(payload.model || ''),
+    color: String(payload.color || ''),
     year_vehicle: payload.year_vehicle === undefined || payload.year_vehicle === null ? null : Number(payload.year_vehicle),
-    status: String(payload.status ?? 'Seguimiento de caso'),
-    observation_comment: String(payload.observation_comment ?? ''),
-    evidence_url: payload.evidence_url ?? null,
-    evidence_filename: payload.evidence_filename ?? null,
-    evidence_path: payload.evidence_path ?? null,
+    status: String(payload.status || 'Seguimiento de caso'),
+    observation_comment: String(payload.observation_comment || ''),
+    evidence_url: payload.evidence_url || null,
+    evidence_filename: payload.evidence_filename || null,
+    evidence_path: payload.evidence_path || null,
     evidence_urls: Array.isArray(payload.evidence_urls) ? payload.evidence_urls : null,
-    created_by: payload.created_by ?? null,
-    created_by_name: String(payload.created_by_name ?? ''),
-    created_by_email: String(payload.created_by_email ?? ''),
+    created_by: payload.created_by || null,
+    created_by_name: String(payload.created_by_name || ''),
+    created_by_email: String(payload.created_by_email || ''),
   }
 }
 
 app.post('/reports', async (req, res) => {
   try {
-    const payload = normalizeReportPayload(req.body ?? {})
+    const payload = normalizeReportPayload(req.body || {})
     
     // Validar campos requeridos
     const requiredFields = {
@@ -1387,9 +1391,9 @@ app.post('/reports', async (req, res) => {
     const createdAt = new Date().toISOString()
 
     // Garantizar que created_by está relleno con fallback a req.user
-    const userId = payload.created_by ?? req.user?.id ?? null
-    const userEmail = (payload.created_by_email ?? req.user?.email ?? '').trim()
-    let userName = (payload.created_by_name ?? req.user?.user_metadata?.full_name ?? '').trim()
+    const userId = payload.created_by || req.user?.id || null
+    const userEmail = (payload.created_by_email || req.user?.email || '').trim()
+    let userName = (payload.created_by_name || req.user?.user_metadata?.full_name || '').trim()
 
     // Get user name from database if email is available and name not provided
     if (!userName && userEmail) {
@@ -1434,17 +1438,17 @@ app.post('/reports', async (req, res) => {
       payload.insured_name,
       payload.plate,
       payload.policy,
-      payload.service_type ?? '',
-      payload.coverage ?? null,
-      payload.brand ?? '',
-      payload.model ?? '',
-      payload.color ?? '',
+      payload.service_type || '',
+      payload.coverage || null,
+      payload.brand || '',
+      payload.model || '',
+      payload.color || '',
       payload.year_vehicle === undefined || payload.year_vehicle === null ? null : Number(payload.year_vehicle),
-      payload.status ?? 'Seguimiento de caso',
-      payload.observation_comment ?? '',
-      payload.evidence_url ?? null,
-      payload.evidence_filename ?? null,
-      payload.evidence_path ?? null,
+      payload.status || 'Seguimiento de caso',
+      payload.observation_comment || '',
+      payload.evidence_url || null,
+      payload.evidence_filename || null,
+      payload.evidence_path || null,
       payload.evidence_urls ? JSON.stringify(payload.evidence_urls) : null,
       userId,
       userName,
@@ -1548,7 +1552,7 @@ app.post('/reports/bulk', async (req, res) => {
 
 app.patch('/reports/:id', async (req, res) => {
   try {
-    const changes = req.body ?? {}
+    const changes = req.body || {}
     const entries = Object.entries(changes)
 
     if (entries.length === 0) {
@@ -1782,7 +1786,7 @@ app.post('/reports/:id/updates', async (req, res) => {
   console.log(`[POST] /reports/${reportId}/updates - inicio`, { payload: req.body })
 
   try {
-    const payload = req.body ?? {}
+    const payload = req.body || {}
     const updateId = getReportId()
     const createdAt = new Date().toISOString()
 
@@ -1796,16 +1800,16 @@ app.post('/reports/:id/updates', async (req, res) => {
     }
 
     const isLockedStatus = report.status === 'Informativo' || report.status === 'Validacion'
-    const statusToInsert = isLockedStatus ? report.status : payload.status ?? report.status
+    const statusToInsert = isLockedStatus ? report.status : payload.status || report.status
 
     console.log(`[POST] /reports/${reportId}/updates - insertando actualización`, {
       updateId,
       reportId,
       status: statusToInsert,
-      comment: payload.comment ?? '',
-      added_by: payload.added_by ?? null,
-      added_by_name: payload.added_by_name ?? '',
-      added_by_email: payload.added_by_email ?? '',
+      comment: payload.comment || '',
+      added_by: payload.added_by || null,
+      added_by_name: payload.added_by_name || '',
+      added_by_email: payload.added_by_email || '',
       createdAt,
       lockedStatus: isLockedStatus,
     })
@@ -1818,17 +1822,17 @@ app.post('/reports/:id/updates', async (req, res) => {
       updateId,
       reportId,
       statusToInsert,
-      payload.comment ?? '',
-      payload.added_by ?? null,
-      payload.added_by_name ?? '',
-      payload.added_by_email ?? '',
+      payload.comment || '',
+      payload.added_by || null,
+      payload.added_by_name || '',
+      payload.added_by_email || '',
       createdAt,
     ])
     console.log(`[POST] /reports/${reportId}/updates - insert completado`, { updateId })
 
     const reportStatusToStore = isLockedStatus
       ? report.status
-      : payload.status ?? report.status
+      : payload.status || report.status
 
     const updateReportResult = await pool.query(
       'UPDATE reports SET status = $1, updated_at = $2 WHERE id = $3',
@@ -2720,9 +2724,21 @@ app.post('/api/trash', async (req, res) => {
       return res.status(404).json({ error: 'Informe no encontrado' })
     }
 
-    const deletedBy = req.user?.id ?? null
-    const deletedByEmail = (req.user?.email ?? '').trim()
-    let deletedByName = (req.user?.user_metadata?.full_name ?? '').trim()
+    // Capturar información del usuario - primero del body, luego de req.user
+    let deletedBy = req.body?.userId || (req.user && req.user.id) || null
+    let deletedByEmail = (req.body?.userEmail || (req.user && req.user.email) || '').trim()
+    let deletedByName = (req.body?.userName || (req.user && req.user.user_metadata && req.user.user_metadata.full_name) || '').trim()
+
+    console.log(`[POST /api/trash] User info from body:`, { 
+      bodyUserId: req.body?.userId,
+      bodyUserEmail: req.body?.userEmail,
+      bodyUserName: req.body?.userName,
+    })
+    console.log(`[POST /api/trash] User info from req.user:`, {
+      reqUserId: req.user?.id,
+      reqUserEmail: req.user?.email,
+      reqUserName: req.user?.user_metadata?.full_name,
+    })
 
     // Get user name from database if email is available and name not provided
     if (!deletedByName && deletedByEmail) {
@@ -2732,19 +2748,24 @@ app.post('/api/trash', async (req, res) => {
           [deletedByEmail]
         )
         const dbName = userResult.rows[0]?.nombre || ''
-        deletedByName = (dbName || req.user?.user_metadata?.full_name || '').trim()
+        deletedByName = (dbName || '').trim()
       } catch (e) {
         console.warn('Error fetching user name for trash:', e)
-        deletedByName = (req.user?.user_metadata?.full_name || '').trim()
       }
     }
     
-    // Fallback chain: metadata > db > email > 'Usuario Desconocido'
+    // Fallback chain
+    if (!deletedByName && deletedByEmail) {
+      deletedByName = deletedByEmail
+    }
+    if (!deletedByName && deletedBy) {
+      deletedByName = `User ${deletedBy.slice(0, 8)}`
+    }
     if (!deletedByName) {
-      deletedByName = deletedByEmail || 'Usuario Desconocido'
+      deletedByName = 'Usuario Desconocido'
     }
 
-    console.log(`[API] Trash deleted by:`, { deletedBy, deletedByEmail, deletedByName })
+    console.log(`[POST /api/trash] Final user info:`, { deletedBy, deletedByEmail, deletedByName })
 
     const insertResult = await pool.query(
       `INSERT INTO deleted_reports (
@@ -2780,6 +2801,9 @@ app.post('/api/trash', async (req, res) => {
       oldValues: originalData,
       newValues: { status: 'trashed', reason },
       status: 'success',
+      auditUserId: deletedBy,
+      auditUserEmail: deletedByEmail,
+      auditUserName: deletedByName,
     })
 
     res.json({ 
@@ -2793,11 +2817,14 @@ app.post('/api/trash', async (req, res) => {
     await logAuditEvent(req, {
       action: 'delete_report',
       module: 'reports',
-      entityId: req.body?.reportId ?? null,
+      entityId: req.body?.reportId || null,
       entityType: 'report',
-      oldValues: req.body?.originalData ?? null,
+      oldValues: req.body?.originalData || null,
       status: 'error',
       errorMessage: err instanceof Error ? err.message : String(err),
+      auditUserId: deletedBy,
+      auditUserEmail: deletedByEmail,
+      auditUserName: deletedByName,
     })
     res.status(500).json({ error: 'Error al mover a papelera' })
   }
@@ -2960,6 +2987,25 @@ app.post('/api/trash/:id/restore', async (req, res) => {
       return res.status(404).json({ error: 'Elemento de papelera no encontrado' })
     }
 
+    const restoredReportId = updateResult.rows[0]?.report_id
+    
+    // Get user info from body or req.user
+    const restoredBy = req.body?.userId || req.user?.id || null
+    const restoredByEmail = (req.body?.userEmail || req.user?.email || '').trim()
+    const restoredByName = (req.body?.userName || req.user?.user_metadata?.full_name || '').trim()
+
+    // Log the restore action
+    await logAuditEvent(req, {
+      action: 'restore_report',
+      module: 'reports',
+      entityId: restoredReportId,
+      entityType: 'report',
+      status: 'success',
+      auditUserId: restoredBy,
+      auditUserEmail: restoredByEmail,
+      auditUserName: restoredByName,
+    })
+
     res.json({ success: true, restored: updateResult.rows[0] })
   } catch (err) {
     console.error('Error restoring report:', err)
@@ -2986,6 +3032,25 @@ app.post('/api/trash/:id/delete', async (req, res) => {
     if (deleteResult.rows.length === 0) {
       return res.status(404).json({ error: 'Elemento de papelera no encontrado' })
     }
+
+    const permanentlyDeletedReportId = deleteResult.rows[0]?.report_id
+
+    // Get user info from body or req.user
+    const deletedBy = req.body?.userId || req.user?.id || null
+    const deletedByEmail = (req.body?.userEmail || req.user?.email || '').trim()
+    const deletedByName = (req.body?.userName || req.user?.user_metadata?.full_name || '').trim()
+
+    // Log the permanent delete action
+    await logAuditEvent(req, {
+      action: 'permanently_delete_report',
+      module: 'reports',
+      entityId: permanentlyDeletedReportId,
+      entityType: 'report',
+      status: 'success',
+      auditUserId: deletedBy,
+      auditUserEmail: deletedByEmail,
+      auditUserName: deletedByName,
+    })
 
     res.json({ success: true, deleted: deleteResult.rows[0] })
   } catch (err) {
@@ -3070,8 +3135,8 @@ app.post('/api/audit-logs', async (req, res) => {
       module,
       body.entityId || body.entity_id || null,
       body.entityType || body.entity_type || null,
-      body.oldValues ?? body.old_values ?? null,
-      body.newValues ?? body.new_values ?? null,
+      body.oldValues || body.old_values || null,
+      body.newValues || body.new_values || null,
       ipAddress,
       userAgent,
       body.status || 'success',

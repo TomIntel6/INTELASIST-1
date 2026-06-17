@@ -1,5 +1,5 @@
+import { supabase, getDefaultApiBase } from '@/lib/supabase'
 import { AuditService } from '@/lib/audit-service'
-import { getDefaultApiBase } from '@/lib/supabase'
 
 const API_BASE = getDefaultApiBase()
 
@@ -27,6 +27,15 @@ export class TrashService {
    */
   static async moveToTrash(reportId: string, reportData: Record<string, any>, reason?: string) {
     try {
+      // Get current user info to send to backend
+      const { data: authData } = await supabase.auth.getUser()
+      const currentUser = authData?.user
+      const userId = currentUser?.id || null
+      const userEmail = (currentUser?.email || '').trim()
+      const userName = (currentUser?.user_metadata?.full_name || '').trim()
+
+      console.log('[TrashService] moveToTrash - user info:', { userId, userEmail, userName })
+
       const response = await fetch(`${API_BASE}/api/trash`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -34,12 +43,15 @@ export class TrashService {
           reportId,
           originalData: reportData,
           reason: reason || 'Deleted by user',
+          userId,
+          userEmail,
+          userName,
         }),
       })
 
       if (!response.ok) throw new Error('Failed to move report to trash')
 
-      // Log the action
+      // Log the action (this will also be logged on backend, but frontend logs it too)
       await AuditService.logReportDeleted(reportId, reportData)
 
       return await response.json()
@@ -117,9 +129,21 @@ export class TrashService {
         throw new Error('Deleted report not found')
       }
 
+      // Get current user info to send to backend
+      const { data: authData } = await supabase.auth.getUser()
+      const currentUser = authData?.user
+      const userId = currentUser?.id || null
+      const userEmail = (currentUser?.email || '').trim()
+      const userName = (currentUser?.user_metadata?.full_name || '').trim()
+
       const response = await fetch(`${API_BASE}/api/trash/${trashId}/restore`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId,
+          userEmail,
+          userName,
+        }),
       })
 
       if (!response.ok) throw new Error('Failed to restore report')
@@ -145,9 +169,21 @@ export class TrashService {
         throw new Error('Deleted report not found')
       }
 
+      // Get current user info to send to backend
+      const { data: authData } = await supabase.auth.getUser()
+      const currentUser = authData?.user
+      const userId = currentUser?.id || null
+      const userEmail = (currentUser?.email || '').trim()
+      const userName = (currentUser?.user_metadata?.full_name || '').trim()
+
       const response = await fetch(`${API_BASE}/api/trash/${trashId}/delete`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId,
+          userEmail,
+          userName,
+        }),
       })
 
       if (!response.ok) throw new Error('Failed to permanently delete report')
