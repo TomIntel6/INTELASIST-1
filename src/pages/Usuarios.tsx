@@ -675,7 +675,7 @@ export default function Usuarios() {
                         <div onDoubleClick={() => { if (canEditUserNames) { setEditingUserId(usuario.id); setEditingUserName(displayName) } }}>
                           <p className={`truncate text-sm font-semibold text-foreground ${canEditUserNames ? 'cursor-pointer hover:text-primary' : ''} ${getNameColorClasses(displayName)}`}>
                             {displayName}
-                            {!canEditUserNames && <span className="text-xs text-muted-foreground ml-2">(sin permisos para editar)</span>}
+                            {!canEditUserNames && <span className="text-xs text-muted-foreground ml-2"></span>}
                           </p>
                           <p className="mt-1 truncate text-xs text-muted-foreground">{email}</p>
                         </div>

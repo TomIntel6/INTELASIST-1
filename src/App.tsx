@@ -34,17 +34,37 @@ function ProtectedContent() {
     return <Navigate to="/login" replace />
   }
 
+  const { hasModuleAccess } = usePermissions()
+  const canAccessReports = hasModuleAccess('reports')
+  const canAccessUsers = hasModuleAccess('users')
+  const canAccessAdmin = hasModuleAccess('admin')
+
   return (
     <Routes>
       <Route element={<AppLayout />}>
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="dashboard" element={<Dashboard />} />
-        <Route path="informes" element={<ReportsList />} />
-        <Route path="informes/nuevo" element={<NewReport />} />
-        <Route path="informes/:id" element={<ReportDetail />} />
+        <Route
+          path="informes"
+          element={canAccessReports ? <ReportsList /> : <Navigate to="/dashboard" replace />}
+        />
+        <Route
+          path="informes/nuevo"
+          element={canAccessReports ? <NewReport /> : <Navigate to="/dashboard" replace />}
+        />
+        <Route
+          path="informes/:id"
+          element={canAccessReports ? <ReportDetail /> : <Navigate to="/dashboard" replace />}
+        />
         <Route path="control-agentes" element={<AgentControl />} />
-        <Route path="usuarios" element={<Usuarios />} />
-        <Route path="admin/*" element={<AdminDashboard />} />
+        <Route
+          path="usuarios"
+          element={canAccessUsers ? <Usuarios /> : <Navigate to="/dashboard" replace />}
+        />
+        <Route
+          path="admin/*"
+          element={canAccessAdmin ? <AdminDashboard /> : <Navigate to="/dashboard" replace />}
+        />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Route>
     </Routes>

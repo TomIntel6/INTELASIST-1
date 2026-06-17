@@ -177,6 +177,30 @@ export const PERMISSION_MODULES = {
     permissions: PERMISSIONS.ADMIN,
     color: 'pink',
   },
+} as const
+
+export type ModuleKey = keyof typeof PERMISSION_MODULES
+
+export const DEFAULT_MODULE_ACCESS: Record<ModuleKey, boolean> = {
+  reports: true,
+  evidence: true,
+  updates: true,
+  users: true,
+  system: true,
+  admin: false,
+}
+
+const permissionModuleEntries = Object.entries(PERMISSION_MODULES) as Array<[ModuleKey, typeof PERMISSION_MODULES[ModuleKey]]>
+
+export const PERMISSION_TO_MODULE: Record<PermissionKey, ModuleKey> = permissionModuleEntries.reduce((map, [moduleKey, moduleData]) => {
+  Object.values(moduleData.permissions).forEach((permission) => {
+    map[permission] = moduleKey
+  })
+  return map
+}, {} as Record<PermissionKey, ModuleKey>)
+
+export function getModuleKeyForPermission(permission: PermissionKey): ModuleKey | undefined {
+  return PERMISSION_TO_MODULE[permission]
 }
 
 // Audit action types
