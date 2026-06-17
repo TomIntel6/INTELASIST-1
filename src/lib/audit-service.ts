@@ -1,5 +1,4 @@
-import { supabase } from '@/lib/supabase'
-import { getDefaultApiBase } from '@/lib/supabase'
+import { supabase, getDefaultApiBase } from '@/lib/supabase'
 import { AUDIT_ACTIONS_MAP, type AuditLog } from '@/lib/permissions'
 
 const API_BASE = getDefaultApiBase()
@@ -22,13 +21,24 @@ export interface AuditEventData {
  */
 export class AuditService {
   /**
-   * Log an audit event to the database via RPC
+   * Log an audit event. We first try the Supabase RPC, and if the RPC is missing
+   * (such as a 404 from the deployed database), we fall back to the backend API so
+   * the app keeps working and the audit trail is still recorded.
    */
   static async logEvent(data: AuditEventData) {
     try {
-      const { action, module, entityId, entityType, oldValues, newValues, status = 'success', errorMessage } = data
+      const {
+        action,
+        module,
+        entityId,
+        entityType,
+        oldValues,
+        newValues,
+        status = 'success',
+        errorMessage,
+      } = data
 
-      const { data: result, error } = await supabase.rpc('log_audit_event', {
+      const { error } = await supabase.rpc('log_audit_event', {
         p_action: AUDIT_ACTIONS_MAP[action],
         p_module: module,
         p_entity_id: entityId || null,
@@ -39,15 +49,47 @@ export class AuditService {
         p_error_message: errorMessage || null,
       })
 
-      if (error) {
-        console.error('Error logging audit event:', error)
-        return null
+      if (!error) {
+        return true
       }
 
-      return result as string
+      const errorMessageText = String(error?.message || '')
+      const isMissingRpc =
+        error?.code === 'PGRST301' ||
+        error?.code === 'PGRST404' ||
+        /not found|does not exist|function .* not found|rpc.*not found/i.test(errorMessageText)
+
+      if (!isMissingRpc) {
+        console.error('Error logging audit event via RPC:', error)
+        return false
+      }
+
+      const fallbackResponse = await fetch(`${API_BASE}/api/audit-logs`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: AUDIT_ACTIONS_MAP[action],
+          module,
+          entityId,
+          entityType,
+          oldValues,
+          newValues,
+          status,
+          errorMessage,
+        }),
+      })
+
+      if (!fallbackResponse.ok) {
+        throw new Error(`Audit fallback failed with status ${fallbackResponse.status}`)
+      }
+
+      const fallbackResult = await fallbackResponse.json().catch(() => ({}))
+      return fallbackResult?.success !== false
     } catch (error) {
       console.error('Error logging audit event:', error)
-      return null
+      return false
     }
   }
 

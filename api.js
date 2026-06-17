@@ -2930,6 +2930,61 @@ app.post('/api/trash/:id/delete', async (req, res) => {
   }
 })
 
+// POST /api/audit-logs - Guardar un evento de auditoría
+app.post('/api/audit-logs', async (req, res) => {
+  try {
+    const body = req.body || {}
+    const action = typeof body.action === 'string' && body.action.trim() ? body.action.trim() : null
+    const module = typeof body.module === 'string' && body.module.trim() ? body.module.trim() : null
+
+    if (!action || !module) {
+      return res.status(400).json({ error: 'action y module son requeridos' })
+    }
+
+    const ipAddress = req.headers['x-forwarded-for']
+      ? String(req.headers['x-forwarded-for']).split(',')[0].trim()
+      : req.ip || null
+    const userAgent = req.headers['user-agent'] ? String(req.headers['user-agent']) : null
+
+    await pool.query(`
+      INSERT INTO audit_logs (
+        user_id,
+        user_email,
+        user_name,
+        action,
+        module,
+        entity_id,
+        entity_type,
+        old_values,
+        new_values,
+        ip_address,
+        user_agent,
+        status,
+        error_message
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+    `, [
+      body.userId || body.user_id || null,
+      body.userEmail || body.user_email || null,
+      body.userName || body.user_name || null,
+      action,
+      module,
+      body.entityId || body.entity_id || null,
+      body.entityType || body.entity_type || null,
+      body.oldValues ?? body.old_values ?? null,
+      body.newValues ?? body.new_values ?? null,
+      ipAddress,
+      userAgent,
+      body.status || 'success',
+      body.errorMessage || body.error_message || null,
+    ])
+
+    res.json({ success: true })
+  } catch (err) {
+    console.error('Error saving audit log:', err)
+    res.status(500).json({ error: 'Error al guardar el log de auditoría' })
+  }
+})
+
 // GET /api/audit-logs - Obtener logs de auditoría
 app.get('/api/audit-logs', async (req, res) => {
   try {
