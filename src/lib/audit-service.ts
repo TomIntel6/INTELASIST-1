@@ -38,6 +38,13 @@ export class AuditService {
         errorMessage,
       } = data
 
+      // Get current user info for audit logging
+      const { data: authData } = await supabase.auth.getUser()
+      const currentUser = authData?.user
+      const userId = currentUser?.id || null
+      const userEmail = currentUser?.email || null
+      const userName = currentUser?.user_metadata?.full_name || null
+
       const { error } = await supabase.rpc('log_audit_event', {
         p_action: AUDIT_ACTIONS_MAP[action],
         p_module: module,
@@ -64,6 +71,7 @@ export class AuditService {
         return false
       }
 
+      // Fallback to backend API - include user info
       const fallbackResponse = await fetch(`${API_BASE}/api/audit-logs`, {
         method: 'POST',
         headers: {
@@ -78,6 +86,9 @@ export class AuditService {
           newValues,
           status,
           errorMessage,
+          userId,
+          userEmail,
+          userName,
         }),
       })
 
@@ -338,6 +349,7 @@ export class AuditService {
    */
   static async fetchAuditLogs(filters?: {
     userId?: string
+    userEmail?: string
     module?: string
     action?: string
     entityId?: string
@@ -351,6 +363,7 @@ export class AuditService {
       if (filters?.limit) params.append('limit', String(filters.limit))
       if (filters?.offset) params.append('offset', String(filters.offset))
       if (filters?.userId) params.append('userId', filters.userId)
+      if (filters?.userEmail) params.append('userEmail', filters.userEmail)
       if (filters?.module) params.append('module', filters.module)
       if (filters?.action) params.append('action', filters.action)
 

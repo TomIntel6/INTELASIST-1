@@ -2991,6 +2991,7 @@ app.get('/api/audit-logs', async (req, res) => {
     const limit = parseInt(String(req.query.limit)) || 50
     const offset = parseInt(String(req.query.offset)) || 0
     const userId = String(req.query.userId || '')
+    const userEmail = String(req.query.userEmail || '')
     const module = String(req.query.module || '')
     const action = String(req.query.action || '')
 
@@ -3000,6 +3001,10 @@ app.get('/api/audit-logs', async (req, res) => {
     if (userId) {
       whereClause += `${whereClause ? ' AND' : 'WHERE'} user_id = $${params.length + 1}`
       params.push(userId)
+    }
+    if (userEmail) {
+      whereClause += `${whereClause ? ' AND' : 'WHERE'} user_email ILIKE $${params.length + 1}`
+      params.push(`%${userEmail}%`)
     }
     if (module) {
       whereClause += `${whereClause ? ' AND' : 'WHERE'} module = $${params.length + 1}`
