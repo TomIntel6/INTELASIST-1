@@ -2203,7 +2203,12 @@ app.get('/api/users/with-modules', async (req, res) => {
       WHERE modules_access IS NOT NULL
     `)
     
-    const allModuleKeys = new Set(allModulesResult.rows.map(r => r.module_key))
+    let allModuleKeys = new Set(allModulesResult.rows.map(r => r.module_key))
+
+    // Fallback to expected module keys when DB has no stored modules_access values yet
+    if (allModuleKeys.size === 0) {
+      allModuleKeys = new Set(['reports', 'evidence', 'updates', 'users', 'system', 'admin'])
+    }
 
     const usersWithModules = usersResult.rows.map(user => {
       // Initialize complete modules object with all keys set to false
