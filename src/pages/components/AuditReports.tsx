@@ -89,13 +89,27 @@ export default function AuditReports() {
     }
   }
 
-  const handleClearFilters = () => {
+  const handleClearFilters = async () => {
     setModule('')
     setAction('')
     setStartDate('')
     setEndDate('')
     setEmail('')
     setPage(1)
+    // Forzar recarga de datos después de limpiar filtros
+    setLoading(true)
+    try {
+      const response = await AuditService.fetchAuditLogs({
+        limit: 50,
+        offset: 0,
+      })
+      setLogs((response.data || []) as AuditLog[])
+    } catch (error) {
+      console.error('Error loading logs:', error)
+      toast.error('Error cargando registros')
+    } finally {
+      setLoading(false)
+    }
   }
 
   const formatDateTime = (date: string) => {
