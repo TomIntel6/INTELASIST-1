@@ -1,18 +1,7 @@
-import { supabase } from '@/lib/supabase'
+import { getDefaultApiBase, supabase } from '@/lib/supabase'
 import { AuditService } from '@/lib/audit-service'
 
-// Get API base URL from environment or use local default
-const getApiBase = () => {
-  if (typeof window !== 'undefined' && (window as any).__API_BASE_URL) {
-    return (window as any).__API_BASE_URL
-  }
-  if (import.meta.env.VITE_API_BASE_URL) {
-    return import.meta.env.VITE_API_BASE_URL
-  }
-  return 'https://intelasist.onrender.com'
-}
-
-const API_BASE_URL = getApiBase()
+const API_BASE_URL = getDefaultApiBase()
 
 export interface UserActivityData {
   userId: string
