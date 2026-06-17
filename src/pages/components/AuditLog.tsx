@@ -17,9 +17,8 @@ import { Badge } from '@/components/ui/badge'
 import { Spinner } from '@/components/ui/spinner'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 
-const MODULES = ['', 'reports', 'users', 'evidence', 'updates', 'trash', 'system']
+const MODULES = ['reports', 'users', 'evidence', 'updates', 'trash', 'system']
 const ACTIONS = [
-  '',
   'create_report',
   'update_report',
   'delete_report',
@@ -167,7 +166,8 @@ export default function AuditLog() {
                 <SelectValue placeholder="Todos" />
               </SelectTrigger>
               <SelectContent>
-                {MODULES.filter(m => m && m.trim() !== '').map(mod => (
+                <SelectItem value="">Todos</SelectItem>
+                {MODULES.map(mod => (
                   <SelectItem key={mod} value={mod}>
                     {mod}
                   </SelectItem>
@@ -188,7 +188,8 @@ export default function AuditLog() {
                 <SelectValue placeholder="Todas" />
               </SelectTrigger>
               <SelectContent>
-                {ACTIONS.filter(a => a && a.trim() !== '').map(action => (
+                <SelectItem value="">Todas</SelectItem>
+                {ACTIONS.map(action => (
                   <SelectItem key={action} value={action}>
                     {AUDIT_ACTION_LABELS[action] || action}
                   </SelectItem>

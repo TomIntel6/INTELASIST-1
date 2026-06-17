@@ -52,7 +52,10 @@ export const PERMISSIONS = {
   },
 } as const
 
-export type PermissionKey = typeof PERMISSIONS[keyof typeof PERMISSIONS][keyof typeof PERMISSIONS[keyof typeof PERMISSIONS]]
+type PermissionCategory = typeof PERMISSIONS[keyof typeof PERMISSIONS]
+
+type PermissionValue<T> = T extends Record<string, infer V> ? V : never
+export type PermissionKey = PermissionValue<PermissionCategory>
 
 export interface UserPermission {
   id: string
@@ -192,12 +195,15 @@ export const DEFAULT_MODULE_ACCESS: Record<ModuleKey, boolean> = {
 
 const permissionModuleEntries = Object.entries(PERMISSION_MODULES) as Array<[ModuleKey, typeof PERMISSION_MODULES[ModuleKey]]>
 
-export const PERMISSION_TO_MODULE: Record<PermissionKey, ModuleKey> = permissionModuleEntries.reduce((map, [moduleKey, moduleData]) => {
+const permissionToModuleMap: Record<PermissionKey, ModuleKey> = {} as Record<PermissionKey, ModuleKey>
+permissionModuleEntries.forEach(([moduleKey, moduleData]) => {
   Object.values(moduleData.permissions).forEach((permission) => {
-    map[permission] = moduleKey
+    const permissionKey = permission as PermissionKey
+    permissionToModuleMap[permissionKey] = moduleKey
   })
-  return map
-}, {} as Record<PermissionKey, ModuleKey>)
+})
+
+export const PERMISSION_TO_MODULE: Record<PermissionKey, ModuleKey> = permissionToModuleMap
 
 export function getModuleKeyForPermission(permission: PermissionKey): ModuleKey | undefined {
   return PERMISSION_TO_MODULE[permission]

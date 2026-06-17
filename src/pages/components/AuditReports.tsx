@@ -36,9 +36,12 @@ export default function AuditReports() {
   const loadLogs = async () => {
     try {
       setLoading(true)
+      const filteredModule = module && module.toLowerCase() !== 'all' ? module : undefined
+      const filteredAction = action && action.toLowerCase() !== 'all' ? action : undefined
+
       const response = await AuditService.fetchAuditLogs({
-        module: module || undefined,
-        action: action || undefined,
+        module: filteredModule,
+        action: filteredAction,
         userEmail: email || undefined,
         startDate: startDate ? new Date(startDate).toISOString() : undefined,
         endDate: endDate ? new Date(endDate).toISOString() : undefined,
@@ -160,11 +163,11 @@ export default function AuditReports() {
                   <SelectValue placeholder="Todos los módulos" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Todos</SelectItem>
-                  <SelectItem value="REPORTS">Informes</SelectItem>
-                  <SelectItem value="USERS">Usuarios</SelectItem>
-                  <SelectItem value="SYSTEM">Sistema</SelectItem>
-                  <SelectItem value="ADMIN">Admin</SelectItem>
+                  <SelectItem value="">Todos</SelectItem>
+                  <SelectItem value="reports">Informes</SelectItem>
+                  <SelectItem value="users">Usuarios</SelectItem>
+                  <SelectItem value="system">Sistema</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -176,7 +179,7 @@ export default function AuditReports() {
                   <SelectValue placeholder="Todas las acciones" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Todas</SelectItem>
+                  <SelectItem value="">Todas</SelectItem>
                   {AUDIT_ACTIONS.map((act) => (
                     <SelectItem key={act} value={act}>
                       {AUDIT_ACTION_LABELS[act] || act}
