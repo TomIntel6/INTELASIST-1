@@ -39,6 +39,7 @@ export default function AuditReports() {
       const response = await AuditService.fetchAuditLogs({
         module: module || undefined,
         action: action || undefined,
+        userEmail: email || undefined,
         startDate: startDate ? new Date(startDate).toISOString() : undefined,
         endDate: endDate ? new Date(endDate).toISOString() : undefined,
         limit: 50,
@@ -62,7 +63,7 @@ export default function AuditReports() {
 
       const data = logs.map((log) => ({
         fecha: new Date(log.created_at).toLocaleString('es'),
-        usuario: log.user_id,
+        usuario: log.user_email || log.user_name || log.user_id || 'Desconocido',
         acción: AUDIT_ACTION_LABELS[log.action] || log.action,
         módulo: log.module,
         estado: log.status,
@@ -233,7 +234,7 @@ export default function AuditReports() {
                   {logs.map((log) => (
                     <tr key={log.id} className="border-b border-slate-200 hover:bg-slate-50">
                       <td className="px-4 py-2 text-xs">{formatDateTime(log.created_at)}</td>
-                      <td className="px-4 py-2 text-xs font-medium">{(log.user_id || '-').slice(0, 8)}...</td>
+                      <td className="px-4 py-2 text-xs font-medium">{log.user_email || log.user_name || (log.user_id || '-').slice(0, 8)}</td>
                       <td className="px-4 py-2 text-xs">
                         {AUDIT_ACTION_LABELS[log.action] || log.action}
                       </td>
