@@ -1343,7 +1343,20 @@ app.post('/reports', async (req, res) => {
     // Garantizar que created_by está relleno con fallback a req.user
     const userId = payload.created_by ?? req.user?.id ?? null
     const userEmail = payload.created_by_email ?? req.user?.email ?? ''
-    const userName = payload.created_by_name ?? req.user?.user_metadata?.full_name ?? ''
+    let userName = payload.created_by_name ?? ''
+
+    // Get user name from database if email is available and name not provided
+    if (!userName && userEmail) {
+      try {
+        const userResult = await pool.query(
+          'SELECT nombre FROM usuarios WHERE correo = $1 LIMIT 1',
+          [userEmail]
+        )
+        userName = userResult.rows[0]?.nombre ?? ''
+      } catch (e) {
+        console.warn('Error fetching user name:', e)
+      }
+    }
 
     console.log(`[API] Creating report with created_by fallback:`, {
       userId,
@@ -2151,11 +2164,11 @@ app.get('/api/users/with-permissions', async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT
-        u.id,
-        u.correo AS email,
-        u.nombre AS fullName,
-        u.rol AS role,
-        COALESCE(jsonb_object_agg(upd.permission_key, upd.granted) FILTER (WHERE upd.permission_key IS NOT NULL), '{}'::jsonb) AS permissions
+        u.id AS "id",
+        u.correo AS "email",
+        u.nombre AS "fullName",
+        u.rol AS "role",
+        COALESCE(jsonb_object_agg(upd.permission_key, upd.granted) FILTER (WHERE upd.permission_key IS NOT NULL), '{}'::jsonb) AS "permissions"
       FROM usuarios u
       LEFT JOIN user_permissions up ON up.user_id = u.id
       LEFT JOIN user_permission_details upd ON upd.permission_id = up.id
@@ -2205,11 +2218,11 @@ app.get('/api/users/with-modules', async (req, res) => {
   try {
     const usersResult = await pool.query(`
       SELECT 
-        u.id,
-        u.correo as email,
-        u.nombre as userName,
-        u.rol as role,
-        COALESCE(up.modules_access, '{}'::jsonb) as modules_access
+        u.id AS "userId",
+        u.correo AS "email",
+        u.nombre AS "userName",
+        u.rol AS "role",
+        COALESCE(up.modules_access, '{}'::jsonb) AS "modules"
       FROM usuarios u
       LEFT JOIN user_permissions up ON up.user_id = u.id::text
       ORDER BY u.nombre ASC
@@ -2237,12 +2250,12 @@ app.get('/api/users/with-modules', async (req, res) => {
       })
       
       // Override with actual user modules from database
-      if (user.modules_access && typeof user.modules_access === 'object') {
-        Object.assign(completeModules, user.modules_access)
+      if (user.modules && typeof user.modules === 'object') {
+        Object.assign(completeModules, user.modules)
       }
 
       return {
-        userId: user.id,
+        userId: user.userId,
         email: user.email,
         userName: user.userName,
         role: user.role,
@@ -2654,7 +2667,20 @@ app.post('/api/trash', async (req, res) => {
 
     const deletedBy = req.user?.id ?? null
     const deletedByEmail = req.user?.email ?? null
-    const deletedByName = req.user?.user_metadata?.full_name ?? req.user?.email ?? null
+    let deletedByName = null
+
+    // Get user name from database if email is available
+    if (deletedByEmail) {
+      try {
+        const userResult = await pool.query(
+          'SELECT nombre FROM usuarios WHERE correo = $1 LIMIT 1',
+          [deletedByEmail]
+        )
+        deletedByName = userResult.rows[0]?.nombre ?? null
+      } catch (e) {
+        console.warn('Error fetching user name:', e)
+      }
+    }
 
     const insertResult = await pool.query(
       `INSERT INTO deleted_reports (
