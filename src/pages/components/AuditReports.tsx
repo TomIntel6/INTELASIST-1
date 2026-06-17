@@ -63,7 +63,7 @@ export default function AuditReports() {
 
       const data = logs.map((log) => ({
         fecha: new Date(log.created_at).toLocaleString('es'),
-        usuario: log.user_email || log.user_name || log.user_id || 'Desconocido',
+        usuario: getAuditUserLabel(log),
         acción: AUDIT_ACTION_LABELS[log.action] || log.action,
         módulo: log.module,
         estado: log.status,
@@ -121,6 +121,11 @@ export default function AuditReports() {
       minute: '2-digit',
       second: '2-digit',
     })
+  }
+
+  const getAuditUserLabel = (log: AuditLog) => {
+    const fallback = log.user_email || (typeof log.user_id === 'string' ? log.user_id.slice(0, 8) : log.user_id || 'Desconocido')
+    return log.user_name && log.user_name !== 'Usuario Desconocido' ? log.user_name : fallback
   }
 
   const getStatusColor = (status: string | null) => {
@@ -248,7 +253,9 @@ export default function AuditReports() {
                   {logs.map((log) => (
                     <tr key={log.id} className="border-b border-slate-200 hover:bg-slate-50">
                       <td className="px-4 py-2 text-xs">{formatDateTime(log.created_at)}</td>
-                      <td className="px-4 py-2 text-xs font-medium">{log.user_email || log.user_name || (log.user_id || '-').slice(0, 8)}</td>
+                      <td className="px-4 py-2 text-xs font-medium">
+                        {getAuditUserLabel(log)}
+                      </td>
                       <td className="px-4 py-2 text-xs">
                         {AUDIT_ACTION_LABELS[log.action] || log.action}
                       </td>
