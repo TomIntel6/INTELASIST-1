@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Spinner } from '@/components/ui/spinner'
 import { Eye, EyeOff, KeyRound } from 'lucide-react'
 import { canCreateUsers, canDeleteUsers, canManageAgents, canViewPasswords, fetchOnlineUsersFromServer, getNameColorClasses, useAuth, USERS_SYNC_STORAGE_KEY, type UserRole } from '@/lib/auth'
+import { getDefaultApiBase } from '@/lib/supabase'
 
 interface Usuario {
   id: number
@@ -17,10 +18,6 @@ interface Usuario {
 }
 
 const ROLE_OPTIONS: UserRole[] = ['Agente', 'Admin', 'Support', 'Gerente']
-const getDefaultApiBase = () => {
-  if (import.meta.env.VITE_API_BASE_URL) return import.meta.env.VITE_API_BASE_URL
-  return 'https://intelasist.onrender.com'
-}
 const API_BASE_URL = getDefaultApiBase()
 const USERS_CACHE_KEY = 'intelasist-users-cache-v1'
 

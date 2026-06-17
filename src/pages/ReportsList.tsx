@@ -53,6 +53,10 @@ export default function ReportsList() {
   const [searchParams, setSearchParams] = useSearchParams()
   const { user } = useAuth()
   const { hasPermission } = usePermissions()
+  const canViewReports = hasPermission(PERMISSIONS.REPORTS.VIEW as PermissionKey) || hasPermission(PERMISSIONS.REPORTS.VIEW_ALL as PermissionKey)
+  const canCreateReports = hasPermission(PERMISSIONS.REPORTS.CREATE as PermissionKey)
+  const canExportReports = hasPermission(PERMISSIONS.REPORTS.EXPORT as PermissionKey)
+  const canDeleteReportsPermission = canDeleteReports(user) && hasPermission(PERMISSIONS.REPORTS.DELETE as PermissionKey)
 
   const currentYear = new Date().getFullYear()
   const currentMonthIdx = new Date().getMonth()
@@ -294,6 +298,25 @@ export default function ReportsList() {
 
   const years = Array.from({ length: 5 }, (_, i) => currentYear - 2 + i)
 
+  if (!canViewReports) {
+    return (
+      <div className="p-6 max-w-4xl mx-auto text-center">
+        <p className="text-lg font-semibold text-destructive">No tienes permisos para ver informes.</p>
+        <p className="mt-2 text-sm text-muted-foreground">Solicita a un administrador el permiso correspondiente.</p>
+        <div className="mt-4 flex justify-center">
+          {canCreateReports && (
+            <Button
+              variant="outline"
+              onClick={() => navigate('/informes/nuevo')}
+            >
+              Crear informe
+            </Button>
+          )}
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="p-6 space-y-5">
       {/* Header */}
@@ -305,16 +328,18 @@ export default function ReportsList() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowExportModal(true)}
-            disabled={filtered.length === 0}
-            className="gap-2"
-          >
-            <Download className="size-4" />
-            Exportar Excel
-          </Button>
+          {canExportReports && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowExportModal(true)}
+              disabled={filtered.length === 0}
+              className="gap-2"
+            >
+              <Download className="size-4" />
+              Exportar Excel
+            </Button>
+          )}
           {hasPermission(PERMISSIONS.REPORTS.CREATE as PermissionKey) && (
             <Button
               size="sm"
@@ -417,14 +442,16 @@ export default function ReportsList() {
             <div className="flex flex-col items-center justify-center py-16 text-center">
               <FilePlus className="size-12 text-muted-foreground/30 mb-3" />
               <p className="text-sm font-medium text-muted-foreground">No hay informes en {selectedMonth} {selectedYear}</p>
-              <Button
-                variant="outline"
-                size="sm"
-                className="mt-4"
-                onClick={() => navigate('/informes/nuevo')}
-              >
-                Crear informe
-              </Button>
+              {hasPermission(PERMISSIONS.REPORTS.CREATE as PermissionKey) ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-4"
+                  onClick={() => navigate('/informes/nuevo')}
+                >
+                  Crear informe
+                </Button>
+              ) : null}
             </div>
           ) : (
               <Table>
@@ -445,8 +472,8 @@ export default function ReportsList() {
                   {filtered.map(report => (
                     <TableRow
                       key={report.id}
-                      className="hover:bg-accent/40 cursor-pointer"
-                      onClick={() => navigate(`/informes/${report.id}`)}
+                      className={`hover:bg-accent/40 ${canViewReports ? 'cursor-pointer' : 'cursor-not-allowed'}`}
+                      onClick={() => canViewReports && navigate(`/informes/${report.id}`)}
                     >
                       <TableCell className="font-medium text-sm">{report.insured_name}</TableCell>
                       <TableCell className="text-sm font-mono">{report.plate}</TableCell>
@@ -480,10 +507,12 @@ export default function ReportsList() {
                             variant="ghost"
                             size="icon-sm"
                             onClick={e => { e.stopPropagation(); navigate(`/informes/${report.id}`) }}
+                            disabled={!canViewReports}
+                            title={!canViewReports ? 'No tienes permiso para ver informes' : undefined}
                           >
                             <Eye className="size-4" />
                           </Button>
-                          {canDeleteReports(user) && hasPermission(PERMISSIONS.REPORTS.DELETE as PermissionKey) ? (
+                          {canDeleteReportsPermission ? (
                             <Button
                               variant="ghost"
                               size="icon-sm"

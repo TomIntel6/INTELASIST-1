@@ -7,12 +7,9 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Spinner } from '@/components/ui/spinner'
 import { Input } from '@/components/ui/input'
 import { canManageAgents, fetchOnlineUsersFromServer, getOnlineUsers, getUserRoles, mergeOnlineUsers, updateStoredUserRoles, useAuth, type UserRole } from '@/lib/auth'
+import { getDefaultApiBase } from '@/lib/supabase'
 import { ArrowLeft, Eye, EyeOff, KeyRound, ShieldAlert, Users } from 'lucide-react'
 
-const getDefaultApiBase = () => {
-  if (import.meta.env.VITE_API_BASE_URL) return import.meta.env.VITE_API_BASE_URL
-  return 'https://intelasist.onrender.com'
-}
 const API_BASE_URL = getDefaultApiBase()
 
 interface AgentRow {

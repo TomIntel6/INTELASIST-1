@@ -3,7 +3,7 @@ import { Pool } from 'pg'
 
 dotenv.config()
 
-const API_BASE = process.env.VITE_API_BASE_URL || 'http://localhost:3000'
+const API_BASE = process.env.VITE_API_BASE_URL || 'https://intelasist.onrender.com'
 const pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } })
 
 async function pickUser() {

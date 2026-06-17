@@ -26,6 +26,8 @@ export default function NewReport() {
   const navigate = useNavigate()
   const { user } = useAuth()
   const { hasPermission } = usePermissions()
+  const canCreateReports = hasPermission(PERMISSIONS.REPORTS.CREATE as PermissionKey)
+  const canUploadEvidence = hasPermission(PERMISSIONS.EVIDENCE.UPLOAD as PermissionKey)
   const [saving, setSaving] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
   const [periodDate, setPeriodDate] = React.useState(() => new Date())
@@ -315,6 +317,11 @@ const [form, setForm] = React.useState<NewReportForm>({
   }, [form.status, form.motivo])
 
   const handleEvidenceChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!canUploadEvidence) {
+      setError('No tienes permisos para subir evidencias.')
+      return
+    }
+
     const files = event.target.files ? Array.from(event.target.files) : []
     if (files.length === 0) return
 
@@ -363,7 +370,7 @@ const [form, setForm] = React.useState<NewReportForm>({
     e.preventDefault()
     
     // Check permission to create reports
-    if (!hasPermission(PERMISSIONS.REPORTS.CREATE as PermissionKey)) {
+    if (!canCreateReports) {
       setError('No tienes permisos para crear informes.')
       return
     }
@@ -614,6 +621,20 @@ const [form, setForm] = React.useState<NewReportForm>({
     navigate(-1)
   }
 
+  if (!canCreateReports) {
+    return (
+      <div className="p-6 max-w-4xl mx-auto text-center">
+        <p className="text-lg font-semibold text-destructive">No tienes permisos para crear informes.</p>
+        <p className="mt-2 text-sm text-muted-foreground">Solicita a un administrador el permiso correspondiente.</p>
+        <div className="mt-4 flex justify-center">
+          <Button variant="outline" onClick={() => navigate(-1)}>
+            Volver
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="p-6 max-w-4xl mx-auto space-y-5">
       <div className="flex items-center gap-3">
@@ -800,12 +821,16 @@ const [form, setForm] = React.useState<NewReportForm>({
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={() => fileInputRef.current?.click()}
+                  onClick={() => canUploadEvidence ? fileInputRef.current?.click() : undefined}
+                  disabled={!canUploadEvidence}
                 >
                   <Upload className="size-4 mr-1" /> Agregar imágenes
                 </Button>
                 <span className="text-xs text-muted-foreground">Puedes seleccionar varias imágenes.</span>
               </div>
+              {!canUploadEvidence && (
+                <p className="text-xs text-muted-foreground">No tienes permisos para subir evidencias.</p>
+              )}
               <input
                 ref={fileInputRef}
                 type="file"
@@ -813,6 +838,7 @@ const [form, setForm] = React.useState<NewReportForm>({
                 multiple
                 className="hidden"
                 onChange={handleEvidenceChange}
+                disabled={!canUploadEvidence}
               />
             </div>
             {evidenceItems.length > 0 && (
