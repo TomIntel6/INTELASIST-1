@@ -1,7 +1,7 @@
 import * as React from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from '@/lib/auth'
-import { PermissionProvider } from '@/lib/permissions-context'
+import { PermissionProvider, usePermissions } from '@/lib/permissions-context'
 const Login = React.lazy(() => import('@/pages/Login'))
 const AppLayout = React.lazy(() => import('@/components/AppLayout'))
 const Dashboard = React.lazy(() => import('@/pages/Dashboard'))
