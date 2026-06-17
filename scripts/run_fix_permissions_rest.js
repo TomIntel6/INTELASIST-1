@@ -16,13 +16,13 @@ if (!SERVICE_KEY || SERVICE_KEY === PLACEHOLDER_KEY) {
   process.exit(1);
 }
 
-// Default modules: Reports and Users enabled for all, others disabled
+// Default modules: All enabled except admin
 const DEFAULT_MODULES = {
   reports: true,
-  evidence: false,
-  updates: false,
+  evidence: true,
+  updates: true,
   users: true,
-  system: false,
+  system: true,
   admin: false,
   create_reports: true,
 };
