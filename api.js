@@ -741,6 +741,9 @@ async function logAuditEvent(req, {
     let userEmail = (auditUserEmail || (req.user && req.user.email) || '').trim()
     let userName = (auditUserName || (req.user && req.user.user_metadata && req.user.user_metadata.full_name) || '').trim()
 
+    console.log(`[logAuditEvent] INICIO - Parámetros explícitos recibidos:`, { auditUserId, auditUserEmail, auditUserName })
+    console.log(`[logAuditEvent] Usuario antes de fallbacks:`, { userId, userEmail, userName })
+
     // Get user name from database if email is available and name not provided
     if (!userName && userEmail) {
       try {
@@ -749,7 +752,10 @@ async function logAuditEvent(req, {
           [userEmail]
         )
         const dbName = userResult.rows[0]?.nombre || ''
-        userName = (dbName || '').trim()
+        if (dbName) {
+          userName = (dbName || '').trim()
+          console.log(`[logAuditEvent] Nombre obtenido de BD:`, { userName })
+        }
       } catch (e) {
         console.warn('Error fetching user name for audit:', e)
       }
@@ -758,42 +764,53 @@ async function logAuditEvent(req, {
     // Fallback chain: metadata > db > email > 'Usuario Desconocido'
     if (!userName) {
       userName = userEmail || 'Usuario Desconocido'
+      console.log(`[logAuditEvent] Usando fallback de email o 'Usuario Desconocido':`, { userName })
     }
 
-    console.log(`[logAuditEvent] Inserting audit:`, { action, module, userId, userEmail, userName })
+    console.log(`[logAuditEvent] DATOS FINALES A INSERTAR:`, { 
+      action, 
+      module, 
+      userId, 
+      userEmail, 
+      userName,
+      entityId,
+      status
+    })
 
-    await pool.query(
-      `INSERT INTO audit_logs (
-        user_id,
-        user_email,
-        user_name,
-        action,
-        module,
-        entity_id,
-        entity_type,
-        old_values,
-        new_values,
-        ip_address,
-        user_agent,
-        status,
-        error_message
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
-      [
-        userId,
-        userEmail,
-        userName,
-        action,
-        module,
-        entityId,
-        entityType,
-        oldValues ? JSON.stringify(oldValues) : null,
-        newValues ? JSON.stringify(newValues) : null,
-        ipAddress,
-        userAgent,
-        status,
-        errorMessage,
-      ]
-    )
+    const insertQuery = `INSERT INTO audit_logs (
+      user_id,
+      user_email,
+      user_name,
+      action,
+      module,
+      entity_id,
+      entity_type,
+      old_values,
+      new_values,
+      ip_address,
+      user_agent,
+      status,
+      error_message
+    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING id`
+
+    const auditResult = await pool.query(insertQuery, [
+      userId,
+      userEmail,
+      userName,
+      action,
+      module,
+      entityId,
+      entityType,
+      oldValues ? JSON.stringify(oldValues) : null,
+      newValues ? JSON.stringify(newValues) : null,
+      ipAddress,
+      userAgent,
+      status,
+      errorMessage,
+    ])
+
+    const auditId = auditResult.rows[0]?.id
+    console.log(`[logAuditEvent] ✅ Audit log insertado con ID: ${auditId}`, { userId, userEmail, userName })
   } catch (auditError) {
     console.error('Error logging audit event:', auditError)
   }
@@ -3080,7 +3097,7 @@ app.post('/api/audit-logs', async (req, res) => {
     let userEmail = String(body.userEmail || body.user_email || body.email || '').trim() || null
     let userName = String(body.userName || body.user_name || body.name || '').trim()
 
-    console.log(`[API] POST /api/audit-logs - Datos recibidos:`, { userId, userEmail, userName })
+    console.log(`[POST /api/audit-logs] 📥 Datos recibidos del frontend:`, { userId, userEmail, userName, action, module })
 
     // IMPORTANTE: Siempre intentar obtener el nombre de la BD si no viene del frontend
     if (userEmail) {
@@ -3092,6 +3109,7 @@ app.post('/api/audit-logs', async (req, res) => {
         const dbName = userResult.rows[0]?.nombre || ''
         if (dbName && !userName) {
           userName = dbName.trim()
+          console.log(`[POST /api/audit-logs] 🔍 Nombre obtenido de BD:`, { userName })
         }
       } catch (e) {
         console.warn('Error fetching user name for audit log:', e)
@@ -3101,17 +3119,20 @@ app.post('/api/audit-logs', async (req, res) => {
     // Fallbacks en cadena
     if (!userName && userEmail) {
       userName = userEmail
+      console.log(`[POST /api/audit-logs] Fallback a email como nombre:`, { userName })
     }
     if (!userName && userId) {
       userName = `User ${userId.slice(0, 8)}`
+      console.log(`[POST /api/audit-logs] Fallback a user ID:`, { userName })
     }
     if (!userName) {
       userName = 'Usuario Desconocido'
+      console.log(`[POST /api/audit-logs] ⚠️ Fallback a 'Usuario Desconocido'`)
     }
 
-    console.log(`[API] POST /api/audit-logs - Datos finales:`, { action, module, userId, userEmail, userName })
+    console.log(`[POST /api/audit-logs] 📝 Datos finales a insertar:`, { userId, userEmail, userName, action, module })
 
-    await pool.query(`
+    const auditInsertQuery = `
       INSERT INTO audit_logs (
         user_id,
         user_email,
@@ -3127,7 +3148,10 @@ app.post('/api/audit-logs', async (req, res) => {
         status,
         error_message
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-    `, [
+      RETURNING id, user_id, user_email, user_name, action, module, created_at
+    `
+
+    const auditResult = await pool.query(auditInsertQuery, [
       userId,
       userEmail,
       userName,
@@ -3143,7 +3167,18 @@ app.post('/api/audit-logs', async (req, res) => {
       body.errorMessage || body.error_message || null,
     ])
 
-    res.json({ success: true })
+    const insertedAudit = auditResult.rows[0]
+    console.log(`[POST /api/audit-logs] ✅ Audit log insertado exitosamente:`, { 
+      id: insertedAudit?.id,
+      user_id: insertedAudit?.user_id,
+      user_email: insertedAudit?.user_email,
+      user_name: insertedAudit?.user_name,
+      action: insertedAudit?.action,
+      module: insertedAudit?.module,
+      created_at: insertedAudit?.created_at
+    })
+
+    res.json({ success: true, auditId: insertedAudit?.id })
   } catch (err) {
     console.error('Error saving audit log:', err)
     res.status(500).json({ error: 'Error al guardar el log de auditoría' })
