@@ -2353,64 +2353,77 @@ app.put('/api/users/:userId/permissions', async (req, res) => {
       return res.status(400).json({ error: 'userId requerido' })
     }
 
-    // Get or create permission record
-    let permResult = await pool.query(
-      'SELECT id FROM user_permissions WHERE user_id = $1',
-      [userId]
-    )
+    // Realizar las operaciones en una transacción para asegurar atomicidad
+    try {
+      await pool.query('BEGIN')
 
-    let permId = permResult.rows[0]?.id
-
-    if (!permId) {
-      const createResult = await pool.query(
-        'INSERT INTO user_permissions (user_id) VALUES ($1) RETURNING id',
+      // Get or create permission record
+      let permResult = await pool.query(
+        'SELECT id FROM user_permissions WHERE user_id = $1 FOR UPDATE',
         [userId]
       )
-      permId = createResult.rows[0].id
-    }
 
-    // Delete existing permissions
-    await pool.query(
-      'DELETE FROM user_permission_details WHERE permission_id = $1',
-      [permId]
-    )
+      let permId = permResult.rows[0]?.id
 
-    // Insert new permissions
-    for (const [key, granted] of Object.entries(permissions)) {
-      await pool.query(
-        'INSERT INTO user_permission_details (permission_id, permission_key, granted) VALUES ($1, $2, $3)',
-        [permId, key, granted]
-      )
-    }
-
-    // Actualizar updated_at en user_permissions
-    await pool.query(
-      'UPDATE user_permissions SET updated_at = NOW() WHERE id = $1',
-      [permId]
-    )
-
-    // Notificar a los clientes SSE sobre el cambio de permisos en tiempo real
-    try {
-      const payload = JSON.stringify({ 
-        type: 'permissions-updated', 
-        userId, 
-        permissions,
-        timestamp: new Date().toISOString()
-      })
-      for (const client of sseClients) {
-        try {
-          client.write(`event: permissions-updated\n`)
-          client.write(`data: ${payload}\n\n`)
-        } catch (e) {
-          // Ignora clientes que fallan al escribir
-        }
+      if (!permId) {
+        const createResult = await pool.query(
+          'INSERT INTO user_permissions (user_id) VALUES ($1) RETURNING id',
+          [userId]
+        )
+        permId = createResult.rows[0].id
       }
-      console.log(`[SSE] Notificación de permisos actualizada para usuario: ${userId}`)
-    } catch (err) {
-      console.warn('Error notificando cambio de permisos via SSE:', err)
-    }
 
-    res.json({ success: true, message: 'Permisos actualizados', userId, permissions })
+      // Delete existing permissions
+      await pool.query(
+        'DELETE FROM user_permission_details WHERE permission_id = $1',
+        [permId]
+      )
+
+      // Insert new permissions
+      for (const [key, granted] of Object.entries(permissions)) {
+        await pool.query(
+          'INSERT INTO user_permission_details (permission_id, permission_key, granted) VALUES ($1, $2, $3)',
+          [permId, key, granted]
+        )
+      }
+
+      // Actualizar updated_at en user_permissions
+      await pool.query(
+        'UPDATE user_permissions SET updated_at = NOW() WHERE id = $1',
+        [permId]
+      )
+
+      await pool.query('COMMIT')
+
+      console.log(`[API] Permisos persistidos en BD para usuario: ${userId} (permId=${permId})`)
+
+      // Notificar a los clientes SSE sobre el cambio de permisos en tiempo real (después del COMMIT)
+      try {
+        const payload = JSON.stringify({ 
+          type: 'permissions-updated', 
+          userId, 
+          permissions,
+          timestamp: new Date().toISOString()
+        })
+        for (const client of sseClients) {
+          try {
+            client.write(`event: permissions-updated\n`)
+            client.write(`data: ${payload}\n\n`)
+          } catch (e) {
+            // Ignora clientes que fallan al escribir
+          }
+        }
+        console.log(`[SSE] Notificación de permisos actualizada para usuario: ${userId}`)
+      } catch (err) {
+        console.warn('Error notificando cambio de permisos via SSE:', err)
+      }
+
+      res.json({ success: true, message: 'Permisos actualizados', userId, permissions })
+    } catch (txErr) {
+      try { await pool.query('ROLLBACK') } catch (e) { /* noop */ }
+      console.error('Error en transacción al actualizar permisos:', txErr)
+      return res.status(500).json({ error: 'Error al actualizar permisos (transacción)' })
+    }
   } catch (err) {
     console.error('Error updating permissions:', err)
     res.status(500).json({ error: 'Error al actualizar permisos' })
@@ -2427,56 +2440,69 @@ app.put('/api/users/:userId/modules', async (req, res) => {
       return res.status(400).json({ error: 'userId requerido' })
     }
 
-    // Get or create permission record
-    let permResult = await pool.query(
-      'SELECT id FROM user_permissions WHERE user_id = $1',
-      [userId]
-    )
+    // Realizar la actualización en una transacción
+    try {
+      await pool.query('BEGIN')
 
-    let permId = permResult.rows[0]?.id
-
-    if (!permId) {
-      const createResult = await pool.query(
-        'INSERT INTO user_permissions (user_id) VALUES ($1) RETURNING id',
+      // Get or create permission record (lock row)
+      let permResult = await pool.query(
+        'SELECT id FROM user_permissions WHERE user_id = $1 FOR UPDATE',
         [userId]
       )
-      permId = createResult.rows[0].id
-    }
 
-    // Update modules_access JSONB column
-    const modulesJson = JSON.stringify(modules)
-    await pool.query(
-      'UPDATE user_permissions SET modules_access = $1, updated_at = NOW() WHERE id = $2',
-      [modulesJson, permId]
-    )
+      let permId = permResult.rows[0]?.id
 
-    // Notificar a los clientes SSE sobre el cambio de módulos en tiempo real
-    try {
-      const payload = JSON.stringify({ 
-        type: 'modules-updated', 
-        userId, 
-        modules,
-        timestamp: new Date().toISOString()
-      })
-      for (const client of sseClients) {
-        try {
-          client.write(`event: modules-updated\n`)
-          client.write(`data: ${payload}\n\n`)
-        } catch (e) {
-          // Ignora clientes que fallan al escribir
-        }
+      if (!permId) {
+        const createResult = await pool.query(
+          'INSERT INTO user_permissions (user_id) VALUES ($1) RETURNING id',
+          [userId]
+        )
+        permId = createResult.rows[0].id
       }
-      console.log(`[SSE] Notificación de módulos actualizada para usuario: ${userId}`)
-    } catch (err) {
-      console.warn('Error notificando cambio de módulos via SSE:', err)
+
+      // Update modules_access JSONB column
+      const modulesJson = JSON.stringify(modules)
+      await pool.query(
+        'UPDATE user_permissions SET modules_access = $1, updated_at = NOW() WHERE id = $2',
+        [modulesJson, permId]
+      )
+
+      await pool.query('COMMIT')
+
+      console.log(`[API] Módulos persistidos en BD para usuario: ${userId} (permId=${permId})`)
+
+      // Notificar a los clientes SSE sobre el cambio de módulos en tiempo real
+      try {
+        const payload = JSON.stringify({ 
+          type: 'modules-updated', 
+          userId, 
+          modules,
+          timestamp: new Date().toISOString()
+        })
+        for (const client of sseClients) {
+          try {
+            client.write(`event: modules-updated\n`)
+            client.write(`data: ${payload}\n\n`)
+          } catch (e) {
+            // Ignora clientes que fallan al escribir
+          }
+        }
+        console.log(`[SSE] Notificación de módulos actualizada para usuario: ${userId}`)
+      } catch (err) {
+        console.warn('Error notificando cambio de módulos via SSE:', err)
+      }
+      
+      res.json({ 
+        success: true, 
+        message: 'Módulos actualizados correctamente',
+        userId,
+        modules,
+      })
+    } catch (txErr) {
+      try { await pool.query('ROLLBACK') } catch (e) { /* noop */ }
+      console.error('Error en transacción al actualizar módulos:', txErr)
+      return res.status(500).json({ error: 'Error al actualizar módulos (transacción)' })
     }
-    
-    res.json({ 
-      success: true, 
-      message: 'Módulos actualizados correctamente',
-      userId,
-      modules,
-    })
   } catch (err) {
     console.error('Error updating modules:', err)
     res.status(500).json({ error: 'Error al actualizar módulos' })
