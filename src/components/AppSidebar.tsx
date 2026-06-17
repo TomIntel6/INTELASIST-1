@@ -64,6 +64,7 @@ const navItems = [
 
 export const AppSidebar = React.memo(function AppSidebar() {
   const { user, signOut, updateCurrentUserProfile } = useAuth()
+  const { hasModuleAccess } = usePermissions()
   const navigate = useNavigate()
   const location = useLocation()
   const [profileOpen, setProfileOpen] = React.useState(false)
@@ -76,6 +77,9 @@ export const AppSidebar = React.memo(function AppSidebar() {
   const avatarUrl = user?.user_metadata?.avatar_url as string | undefined
   const userRoles = React.useMemo(() => getUserRoles(user), [user])
   const canManageAgentAccess = React.useMemo(() => canManageAgents(user), [user])
+  const canViewReportsModule = React.useMemo(() => hasModuleAccess('reports'), [hasModuleAccess])
+  const canViewUsersModule = React.useMemo(() => hasModuleAccess('users'), [hasModuleAccess])
+  const canViewAdminModule = React.useMemo(() => hasModuleAccess('admin'), [hasModuleAccess])
   const [onlineUsers, setOnlineUsers] = React.useState<ReturnType<typeof getOnlineUsers>>(() => getOnlineUsers())
   const initials = React.useMemo(() =>
     displayName
@@ -450,14 +454,16 @@ export const AppSidebar = React.memo(function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {navItems.map(({ to, label, icon: Icon }) => {
-                const active = to === '/informes'
-                  ? location.pathname === '/informes'
-                  : location.pathname.startsWith(to)
+                if ((to === '/informes' && !canViewReportsModule) || (to === '/usuarios' && !canViewUsersModule)) {
+                  return null
+                }
 
                 return (
                   <SidebarMenuItem key={to}>
                     <SidebarMenuButton
-                      isActive={active}
+                      isActive={to === '/informes'
+                        ? location.pathname === '/informes'
+                        : location.pathname.startsWith(to)}
                       tooltip={label}
                       onClick={() => navigate(to)}
                       className="rounded-xl transition-colors duration-150 hover:bg-primary/10 hover:text-primary hover:shadow-[0_0_20px_rgba(59,130,246,0.18)] data-[active=true]:bg-primary/10 data-[active=true]:text-primary"
@@ -497,7 +503,7 @@ export const AppSidebar = React.memo(function AppSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ) : null}
-              {isAdminRole ? (
+              {canAccessAdvancedAdmin(user) && canViewAdminModule ? (
                 <SidebarMenuItem>
                   <button
                     onClick={() => setAlertsOpen(true)}
@@ -521,7 +527,7 @@ export const AppSidebar = React.memo(function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {canAccessAdvancedAdmin(user) ? (
+        {canAccessAdvancedAdmin(user) && canViewAdminModule ? (
           <SidebarGroup className="mt-2">
             <SidebarGroupContent>
               <SidebarMenu>

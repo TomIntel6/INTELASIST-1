@@ -1,17 +1,19 @@
 import * as React from 'react'
 import { getDefaultApiBase, supabase } from '@/lib/supabase'
 import { useAuth, hasAnyRole } from '@/lib/auth'
-import type { UserPermission, PermissionKey } from '@/lib/permissions'
-import { PERMISSIONS, DEFAULT_ROLE_PERMISSIONS, getAllPermissionKeys } from '@/lib/permissions'
+import type { UserPermission, PermissionKey, ModuleKey } from '@/lib/permissions'
+import { PERMISSIONS, DEFAULT_MODULE_ACCESS, DEFAULT_ROLE_PERMISSIONS, getAllPermissionKeys, getModuleKeyForPermission } from '@/lib/permissions'
 
 const API_BASE = getDefaultApiBase()
 
 interface PermissionsContextValue {
   permissions: UserPermission | null
+  modules: Record<ModuleKey, boolean>
   loading: boolean
   hasPermission: (permission: PermissionKey) => boolean
   hasAnyPermission: (permissions: PermissionKey[]) => boolean
   hasAllPermissions: (permissions: PermissionKey[]) => boolean
+  hasModuleAccess: (module: ModuleKey) => boolean
   refreshPermissions: () => Promise<void>
   isSupport: boolean
 }
@@ -21,11 +23,27 @@ const PermissionsContext = React.createContext<PermissionsContextValue | undefin
 export function PermissionProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth()
   const [permissions, setPermissions] = React.useState<UserPermission | null>(null)
+  const [modules, setModules] = React.useState<Record<ModuleKey, boolean>>(() => ({ ...DEFAULT_MODULE_ACCESS }))
   const [loading, setLoading] = React.useState(true)
+
+  const normalizeModules = React.useCallback((rawModules: Record<string, any> | undefined) => {
+    const normalized: Record<ModuleKey, boolean> = { ...DEFAULT_MODULE_ACCESS }
+
+    if (rawModules && typeof rawModules === 'object') {
+      Object.entries(rawModules).forEach(([key, value]) => {
+        if (key in normalized) {
+          normalized[key as ModuleKey] = Boolean(value)
+        }
+      })
+    }
+
+    return normalized
+  }, [])
 
   const loadPermissions = React.useCallback(async () => {
     if (!user?.id) {
       setPermissions(null)
+      setModules({ ...DEFAULT_MODULE_ACCESS })
       setLoading(false)
       return
     }
@@ -38,6 +56,8 @@ export function PermissionProvider({ children }: { children: React.ReactNode }) 
       if (!response.ok) throw new Error('Failed to fetch permissions')
 
       const data = await response.json()
+
+      const modulesMap = normalizeModules(data.modules)
 
       if (Object.keys(data.permissions || {}).length === 0) {
         // Create default permissions based on user role
@@ -76,6 +96,8 @@ export function PermissionProvider({ children }: { children: React.ReactNode }) 
           updatedAt: data.updatedAt || new Date().toISOString(),
         })
       }
+
+      setModules(modulesMap)
     } catch (error) {
       console.error('Error loading permissions:', error)
       setPermissions(null)
@@ -99,14 +121,39 @@ export function PermissionProvider({ children }: { children: React.ReactNode }) 
       void loadPermissions()
     }
 
+    const handleModulesChanged = (event: Event) => {
+      const customEvent = event as CustomEvent
+      const payload = customEvent.detail
+      if (!payload?.userId || payload.userId !== user?.id) {
+        return
+      }
+
+      void loadPermissions()
+    }
+
     window.addEventListener('permissions-changed', handlePermissionsChanged)
+    window.addEventListener('modules-changed', handleModulesChanged)
+
     return () => {
       window.removeEventListener('permissions-changed', handlePermissionsChanged)
+      window.removeEventListener('modules-changed', handleModulesChanged)
     }
   }, [loadPermissions, user?.id])
 
+  const hasModuleAccess = React.useCallback(
+    (module: ModuleKey): boolean => {
+      return modules[module] ?? DEFAULT_MODULE_ACCESS[module] ?? false
+    },
+    [modules]
+  )
+
   const hasPermission = React.useCallback(
     (permission: PermissionKey): boolean => {
+      const moduleKey = getModuleKeyForPermission(permission)
+      if (moduleKey && !hasModuleAccess(moduleKey)) {
+        return false
+      }
+
       // Support and Admin always have all permissions
       if (user?.user_metadata?.role === 'Support' || user?.user_metadata?.role === 'Admin') {
         return true
@@ -114,7 +161,7 @@ export function PermissionProvider({ children }: { children: React.ReactNode }) 
       if (!permissions) return false
       return permissions.permissions[permission] ?? false
     },
-    [permissions, user?.user_metadata?.role]
+    [hasModuleAccess, permissions, user?.user_metadata?.role]
   )
 
   const hasAnyPermission = React.useCallback(
@@ -139,10 +186,12 @@ export function PermissionProvider({ children }: { children: React.ReactNode }) 
 
   const value: PermissionsContextValue = {
     permissions,
+    modules,
     loading,
     hasPermission,
     hasAnyPermission,
     hasAllPermissions,
+    hasModuleAccess,
     refreshPermissions,
     isSupport,
   }
