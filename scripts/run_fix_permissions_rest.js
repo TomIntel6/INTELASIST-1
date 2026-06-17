@@ -16,11 +16,12 @@ if (!SERVICE_KEY || SERVICE_KEY === PLACEHOLDER_KEY) {
   process.exit(1);
 }
 
+// Default modules: Reports and Users enabled for all, others disabled
 const DEFAULT_MODULES = {
   reports: true,
-  evidence: true,
-  updates: true,
-  users: false,
+  evidence: false,
+  updates: false,
+  users: true,
   system: false,
   admin: false,
   create_reports: true,
@@ -88,6 +89,9 @@ async function run() {
     let permissionId = null;
     if (Array.isArray(pRes.data) && pRes.data.length > 0) {
       permissionId = pRes.data[0].id;
+      // Update existing user's modules_access with DEFAULT_MODULES
+      const updateRes = await request(`user_permissions?id=eq.${permissionId}`, { method: 'PATCH', body: JSON.stringify({ modules_access: DEFAULT_MODULES }) });
+      console.log('Update user_permissions status:', updateRes.status);
     } else {
       const createP = await request('user_permissions', { method: 'POST', body: JSON.stringify({ user_id: uid, modules_access: DEFAULT_MODULES }) });
       console.log('Create user_permissions status:', createP.status, createP.data);
