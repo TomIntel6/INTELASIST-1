@@ -1336,6 +1336,18 @@ app.post('/reports', async (req, res) => {
     const reportId = getReportId()
     const createdAt = new Date().toISOString()
 
+    // Garantizar que created_by está relleno con fallback a req.user
+    const userId = payload.created_by ?? req.user?.id ?? null
+    const userEmail = payload.created_by_email ?? req.user?.email ?? ''
+    const userName = payload.created_by_name ?? req.user?.user_metadata?.full_name ?? ''
+
+    console.log(`[API] Creating report with created_by fallback:`, {
+      userId,
+      userEmail,
+      userName,
+      payloadProvidedUserId: payload.created_by,
+    })
+
     const result = await pool.query(`
       INSERT INTO reports (
         id, month, year, insured_name, plate, policy, service_type, coverage, brand, model, color,
@@ -1362,9 +1374,9 @@ app.post('/reports', async (req, res) => {
       payload.evidence_filename ?? null,
       payload.evidence_path ?? null,
       payload.evidence_urls ? JSON.stringify(payload.evidence_urls) : null,
-      payload.created_by ?? null,
-      payload.created_by_name ?? '',
-      payload.created_by_email ?? '',
+      userId,
+      userName,
+      userEmail,
       createdAt,
       createdAt,
     ])
@@ -1978,8 +1990,8 @@ app.get('/api/users/with-activity', async (req, res) => {
         COALESCE((
           SELECT COUNT(*)
           FROM reports r
-          WHERE r.created_by = u.id::text
-            OR (r.created_by_email IS NOT NULL AND LOWER(r.created_by_email) = LOWER(u.correo))
+          WHERE (r.created_by IS NOT NULL AND r.created_by::text = u.id::text)
+            OR (r.created_by_email IS NOT NULL AND LOWER(TRIM(r.created_by_email)) = LOWER(TRIM(u.correo)))
         ), 0) as reportsCreated,
         (SELECT last_login FROM user_activity_log WHERE user_id = u.id ORDER BY last_login DESC LIMIT 1) as lastLogin,
         (SELECT last_activity FROM user_activity_log WHERE user_id = u.id ORDER BY last_activity DESC LIMIT 1) as lastActivity,
@@ -2184,13 +2196,35 @@ app.get('/api/users/with-modules', async (req, res) => {
       ORDER BY u.nombre ASC
     `)
 
-    const usersWithModules = usersResult.rows.map(user => ({
-      userId: user.id,
-      email: user.email,
-      userName: user.userName,
-      role: user.role,
-      modules: user.modules_access || {},
-    }))
+    // Get all module keys defined in the system
+    const allModulesResult = await pool.query(`
+      SELECT DISTINCT jsonb_object_keys(modules_access) as module_key 
+      FROM user_permissions 
+      WHERE modules_access IS NOT NULL
+    `)
+    
+    const allModuleKeys = new Set(allModulesResult.rows.map(r => r.module_key))
+
+    const usersWithModules = usersResult.rows.map(user => {
+      // Initialize complete modules object with all keys set to false
+      const completeModules = {}
+      allModuleKeys.forEach(key => {
+        completeModules[key] = false
+      })
+      
+      // Override with actual user modules from database
+      if (user.modules_access && typeof user.modules_access === 'object') {
+        Object.assign(completeModules, user.modules_access)
+      }
+
+      return {
+        userId: user.id,
+        email: user.email,
+        userName: user.userName,
+        role: user.role,
+        modules: completeModules,
+      }
+    })
 
     res.json(usersWithModules)
   } catch (err) {
