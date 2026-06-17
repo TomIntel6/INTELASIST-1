@@ -1,6 +1,19 @@
 import { supabase } from '@/lib/supabase'
 import { AuditService } from '@/lib/audit-service'
 
+// Get API base URL from environment or use local default
+const getApiBase = () => {
+  if (typeof window !== 'undefined' && (window as any).__API_BASE_URL) {
+    return (window as any).__API_BASE_URL
+  }
+  if (import.meta.env.VITE_API_BASE_URL) {
+    return import.meta.env.VITE_API_BASE_URL
+  }
+  return 'http://localhost:3000'
+}
+
+const API_BASE_URL = getApiBase()
+
 export interface UserActivityData {
   userId: string
   reportsCreated: number
@@ -23,7 +36,7 @@ export class UserManagementService {
   static async getAllUsersWithActivity() {
     try {
       console.log('[UserManagementService] Fetching users with activity...')
-      const response = await fetch('https://intelasist.onrender.com/api/users/with-activity')
+      const response = await fetch(`${API_BASE_URL}/api/users/with-activity`)
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
         throw new Error(`HTTP ${response.status}: ${errorData.error || 'Failed to fetch users'}`)
@@ -70,7 +83,7 @@ export class UserManagementService {
    */
   static async getUserActivity(userId: string) {
     try {
-      const response = await fetch(`https://intelasist.onrender.com/api/users/${userId}`)
+      const response = await fetch(`${API_BASE_URL}/api/users/${userId}`)
       if (!response.ok) throw new Error('Failed to fetch user activity')
       const { user, activity } = await response.json()
       return {
@@ -296,7 +309,7 @@ export class UserManagementService {
    */
   static async getActivityStatistics() {
     try {
-      const response = await fetch('https://intelasist.onrender.com/api/users/statistics')
+      const response = await fetch(`${API_BASE_URL}/api/users/statistics`)
       if (!response.ok) throw new Error('Failed to fetch statistics')
       const stats = await response.json()
       return {

@@ -1,12 +1,16 @@
 import { randomUUID } from 'node:crypto'
 import { readFileSync, mkdirSync, writeFileSync } from 'node:fs'
-import { resolve, extname } from 'node:path'
+import { resolve, extname, join, dirname } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import express from 'express'
 import cors from 'cors'
 import bcrypt from 'bcrypt'
 import multer from 'multer'
 import { createClient } from '@supabase/supabase-js'
 import pool from './db.js'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
 
 const app = express()
 // Logging middleware para diagnóstico de rutas
@@ -113,7 +117,9 @@ console.log('[Supabase] ENV vars:', {
 console.log('[Supabase] cliente administrativo inicializado:', supabase ? 'sí' : 'no')
 const allowedOrigins = [
   FRONTEND_ORIGIN,
-  'https://intelasist-yps2-64ysydqqy-jose-rodriguez-s-projects1.vercel.app'
+  'https://intelasist-yps2-64ysydqqy-jose-rodriguez-s-projects1.vercel.app',
+  'http://localhost:3000',
+  'http://localhost:5173',  // For Vite dev server
 ]
 
 const corsOptions = {
@@ -135,6 +141,11 @@ const corsOptions = {
 app.use(express.json({ limit: '50mb' }))
 app.use(express.urlencoded({ extended: true, limit: '50mb' }))
 app.use(cors(corsOptions))
+
+// Serve static files from dist folder for the React frontend (MUST BE BEFORE API ROUTES)
+const distPath = join(__dirname, 'dist')
+console.log(`[EXPRESS] Serving static files from: ${distPath}`)
+app.use(express.static(distPath))
 
 // Middleware para capturar información del usuario desde el body o headers
 app.use((req, res, next) => {
@@ -968,9 +979,7 @@ async function updateUserRoleInSupabase(email, nextRole) {
   }
 }
 
-app.get('/', (req, res) => {
-  res.send('Servidor funcionando')
-})
+// NOTE: Root route removed - served by express.static(distPath) and SPA routing middleware
 
 app.get('/usuarios', async (req, res) => {
   try {
@@ -2163,7 +2172,7 @@ app.get('/api/users/with-activity', async (req, res) => {
         email: row.email,
         nombre: row.nombre,
         role: row.role,
-        reportsCreated: row.reportsCreated || 0,
+        reportsCreated: parseInt(row.reportsCreated || '0', 10) || 0,
         lastLogin: row.lastLogin,
         lastActivity: row.lastActivity,
         isSuspended: row.isSuspended || false,
@@ -2349,7 +2358,7 @@ app.get('/api/users/with-modules', async (req, res) => {
         u.rol AS "role",
         COALESCE(up.modules_access, '{}'::jsonb) AS "modules"
       FROM usuarios u
-      LEFT JOIN user_permissions up ON up.user_id = u.id::text
+      LEFT JOIN user_permissions up ON up.user_id::integer = u.id
       ORDER BY u.nombre ASC
     `)
 
@@ -3356,6 +3365,33 @@ app.get('/api/audit-logs', async (req, res) => {
     console.error('Error fetching audit logs:', err)
     res.status(500).json({ error: 'Error al obtener logs de auditoría' })
   }
+})
+
+// Debug middleware to ensure we reach here
+app.use((req, res, next) => {
+  if (!req.path.startsWith('/api') && !req.path.startsWith('/assets')) {
+    console.log(`[DEBUG] Unmatched route: ${req.method} ${req.path}`)
+  }
+  next()
+})
+
+// SPA Routing Middleware - MUST BE AFTER ALL SPECIFIC ROUTES (api, static files, uploads)
+// This catches all non-API requests and serves index.html for React Router
+app.use((req, res) => {
+  // If it's an API request or static asset, don't serve index.html
+  if (req.path.startsWith('/api') || req.path.startsWith('/assets') || req.path.startsWith('/uploads')) {
+    return res.status(404).json({ error: 'Not found' })
+  }
+  
+  // Serve index.html for all other requests (SPA routing)
+  const indexPath = join(distPath, 'index.html')
+  console.log(`[SPA ROUTER] Serving ${req.path} -> ${indexPath}`)
+  res.sendFile(indexPath, (err) => {
+    if (err) {
+      console.error('Error serving index.html:', err)
+      res.status(500).json({ error: 'Server error' })
+    }
+  })
 })
 
 async function startCleanupTask() {

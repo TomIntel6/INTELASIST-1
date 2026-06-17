@@ -73,11 +73,25 @@ export default function AuditLog() {
     }
   }
 
-  const handleReset = () => {
+  const handleReset = async () => {
     setModuleFilter('')
     setActionFilter('')
     setEmailFilter('')
     setPage(0)
+    // Forzar recarga de datos después de limpiar filtros
+    setLoading(true)
+    try {
+      const { data, count } = await AuditService.fetchAuditLogs({
+        limit,
+        offset: 0,
+      })
+      setLogs(data)
+      setTotalCount(count || 0)
+    } catch (error) {
+      console.error('Error loading audit logs:', error)
+    } finally {
+      setLoading(false)
+    }
   }
 
   const formatDate = (date: string) => {
