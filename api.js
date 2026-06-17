@@ -1611,16 +1611,65 @@ app.patch('/reports/:id', async (req, res) => {
 
 app.delete('/reports/:id', async (req, res) => {
   try {
-    const result = await pool.query('DELETE FROM reports WHERE id = $1 RETURNING id', [req.params.id])
+    const reportId = req.params.id
 
-    if (result.rowCount === 0) {
-      res.status(404).json({ error: 'Informe no encontrado.' })
-      return
+    // Obtener el reporte antes de eliminarlo (para auditoría)
+    const reportQuery = await pool.query('SELECT * FROM reports WHERE id = $1', [reportId])
+    if (reportQuery.rowCount === 0) {
+      return res.status(404).json({ error: 'Informe no encontrado.' })
     }
 
+    const reportData = reportQuery.rows[0]
+
+    // Obtener información del usuario
+    const userId = req.user?.id || null
+    const userEmail = (req.user?.email || '').trim()
+    const userName = (req.user?.user_metadata?.full_name || '').trim()
+
+    console.log(`[DELETE /reports/:id] Usuario:`, { userId, userEmail, userName })
+
+    // Ejecutar la eliminación
+    const result = await pool.query('DELETE FROM reports WHERE id = $1 RETURNING id', [reportId])
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'Informe no encontrado.' })
+    }
+
+    // Registrar auditoría
+    await logAuditEvent(req, {
+      action: 'delete_report',
+      module: 'reports',
+      entityId: reportId,
+      entityType: 'report',
+      oldValues: reportData,
+      status: 'success',
+      auditUserId: userId,
+      auditUserEmail: userEmail,
+      auditUserName: userName,
+    })
+
+    console.log(`[DELETE /reports/:id] ✅ Reporte ${reportId} eliminado. Auditoría registrada.`)
     res.json({ ok: true })
   } catch (error) {
-    console.error(error)
+    console.error('[DELETE /reports/:id] Error:', error)
+
+    // Registrar error en auditoría
+    const userId = req.user?.id || null
+    const userEmail = (req.user?.email || '').trim()
+    const userName = (req.user?.user_metadata?.full_name || '').trim()
+
+    await logAuditEvent(req, {
+      action: 'delete_report',
+      module: 'reports',
+      entityId: req.params.id,
+      entityType: 'report',
+      status: 'error',
+      errorMessage: error instanceof Error ? error.message : String(error),
+      auditUserId: userId,
+      auditUserEmail: userEmail,
+      auditUserName: userName,
+    })
+
     res.status(500).json({ error: 'Error al eliminar el informe' })
   }
 })
@@ -2885,6 +2934,43 @@ app.get('/api/trash', async (req, res) => {
 // POST /api/trash/empty - Vaciar papelera (DEBE IR ANTES DE /:id)
 app.post('/api/trash/empty', async (req, res) => {
   try {
+    // Capturar información del usuario
+    const userId = req.user?.id || null
+    const userEmail = (req.user?.email || '').trim()
+    const userName = (req.user?.user_metadata?.full_name || '').trim()
+
+    console.log(`[POST /api/trash/empty] INICIO - Usuario:`, { userId, userEmail, userName })
+
+    // Obtener todos los registros que serán eliminados (antes de eliminarlos)
+    const trashedReports = await pool.query(`
+      SELECT id, report_id, original_data, deleted_by, deleted_by_email, deleted_by_name
+      FROM deleted_reports 
+      WHERE permanently_deleted_at IS NULL AND restored_at IS NULL
+    `)
+
+    console.log(`[POST /api/trash/empty] Encontrados ${trashedReports.rows.length} reportes para eliminar`)
+
+    // Registrar auditoría para cada reporte eliminado
+    for (const trash of trashedReports.rows) {
+      try {
+        await logAuditEvent(req, {
+          action: 'permanent_delete_report',
+          module: 'trash',
+          entityId: trash.report_id,
+          entityType: 'report',
+          oldValues: trash.original_data,
+          status: 'success',
+          auditUserId: userId,
+          auditUserEmail: userEmail,
+          auditUserName: userName,
+        })
+        console.log(`[POST /api/trash/empty] ✅ Auditoría registrada para reporte ${trash.report_id}`)
+      } catch (auditErr) {
+        console.error(`[POST /api/trash/empty] Error registrando auditoría para ${trash.report_id}:`, auditErr)
+      }
+    }
+
+    // Ejecutar la eliminación real
     const result = await pool.query(`
       UPDATE deleted_reports 
       SET permanently_deleted_at = NOW() 
@@ -2892,9 +2978,38 @@ app.post('/api/trash/empty', async (req, res) => {
       RETURNING id
     `)
 
+    console.log(`[POST /api/trash/empty] ✅ Papelera vaciada. ${result.rows.length} reportes eliminados permanentemente`)
+
+    // Registrar evento de papelera vaciada
+    await logAuditEvent(req, {
+      action: 'empty_trash',
+      module: 'trash',
+      status: 'success',
+      newValues: { deleted_count: result.rows.length },
+      auditUserId: userId,
+      auditUserEmail: userEmail,
+      auditUserName: userName,
+    })
+
     res.json({ success: true, deleted_count: result.rows.length })
   } catch (err) {
-    console.error('Error emptying trash:', err)
+    console.error('[POST /api/trash/empty] Error emptying trash:', err)
+
+    // Registrar error en auditoría
+    const userId = req.user?.id || null
+    const userEmail = (req.user?.email || '').trim()
+    const userName = (req.user?.user_metadata?.full_name || '').trim()
+
+    await logAuditEvent(req, {
+      action: 'empty_trash',
+      module: 'trash',
+      status: 'error',
+      errorMessage: err instanceof Error ? err.message : String(err),
+      auditUserId: userId,
+      auditUserEmail: userEmail,
+      auditUserName: userName,
+    })
+
     res.status(500).json({ error: 'Error al vaciar papelera' })
   }
 })
