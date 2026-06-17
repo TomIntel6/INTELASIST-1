@@ -136,6 +136,27 @@ app.use(express.json({ limit: '50mb' }))
 app.use(express.urlencoded({ extended: true, limit: '50mb' }))
 app.use(cors(corsOptions))
 
+// Middleware para capturar información del usuario desde el body o headers
+app.use((req, res, next) => {
+  try {
+    // Si el body tiene información del usuario, la capturamos
+    if (req.body) {
+      if (req.body.userId || req.body.user_id) {
+        req.user = {
+          id: req.body.userId || req.body.user_id,
+          email: req.body.userEmail || req.body.user_email,
+          user_metadata: {
+            full_name: req.body.userName || req.body.user_name,
+          },
+        }
+      }
+    }
+  } catch (e) {
+    // ignore
+  }
+  next()
+})
+
 const authRoutes = express.Router()
 
 const uploadsDir = resolve(process.cwd(), 'uploads')
@@ -2989,6 +3010,31 @@ app.post('/api/audit-logs', async (req, res) => {
       : req.ip || null
     const userAgent = req.headers['user-agent'] ? String(req.headers['user-agent']) : null
 
+    // Capturar información del usuario con fallbacks
+    let userId = (body.userId || body.user_id || null)
+    let userEmail = ((body.userEmail || body.user_email || '').trim()) || ((body.email || '').trim()) || null
+    let userName = ((body.userName || body.user_name || '').trim()) || ((body.name || '').trim()) || null
+
+    // Fallback: si no hay nombre, buscar en la BD por email
+    if (!userName && userEmail) {
+      try {
+        const userResult = await pool.query(
+          'SELECT nombre FROM usuarios WHERE correo = $1 LIMIT 1',
+          [userEmail]
+        )
+        userName = (userResult.rows[0]?.nombre || '').trim()
+      } catch (e) {
+        console.warn('Error fetching user name for audit log:', e)
+      }
+    }
+
+    // Last resort: use email if name is still empty
+    if (!userName && userEmail) {
+      userName = userEmail
+    }
+
+    console.log(`[API] POST /api/audit-logs:`, { action, module, userId, userEmail, userName })
+
     await pool.query(`
       INSERT INTO audit_logs (
         user_id,
@@ -3006,9 +3052,9 @@ app.post('/api/audit-logs', async (req, res) => {
         error_message
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
     `, [
-      body.userId || body.user_id || null,
-      body.userEmail || body.user_email || null,
-      body.userName || body.user_name || null,
+      userId,
+      userEmail,
+      userName || 'Usuario Desconocido',
       action,
       module,
       body.entityId || body.entity_id || null,
