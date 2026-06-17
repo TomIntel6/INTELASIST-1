@@ -47,7 +47,7 @@ const getDefaultApiBase = () => {
   if (import.meta.env.VITE_API_BASE_URL) return import.meta.env.VITE_API_BASE_URL
   return 'https://intelasist.onrender.com'
 }
-const API_BASE_URL = getDefaultApiBase()
+export const API_BASE_URL = getDefaultApiBase()
 
 interface RoleSyncMessage {
   email: string
