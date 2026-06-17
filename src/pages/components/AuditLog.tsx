@@ -111,6 +111,11 @@ export default function AuditLog() {
     }
   }
 
+  const getAuditUserLabel = (log: AuditLogType) => {
+    const fallback = log.user_email || (typeof log.user_id === 'string' ? log.user_id.slice(0, 8) : log.user_id) || 'Desconocido'
+    return log.user_name && log.user_name !== 'Usuario Desconocido' ? log.user_name : fallback
+  }
+
   const getStatusBadge = (status: string) => {
     if (status === 'success') {
       return <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">Exitoso</Badge>
@@ -236,8 +241,12 @@ export default function AuditLog() {
                     </td>
                     <td className="px-4 py-2">
                       <div>
-                        <p className="font-medium text-slate-900">{log.user_name || 'Desconocido'}</p>
-                        <p className="text-xs text-slate-500">{log.user_email || '-'}</p>
+                        <p className="font-medium text-slate-900">
+                          {getAuditUserLabel(log)}
+                        </p>
+                        <p className="text-xs text-slate-500">
+                          {log.user_email || log.user_id || '-'}
+                        </p>
                       </div>
                     </td>
                     <td className="px-4 py-2">
