@@ -41,9 +41,16 @@ export class AuditService {
       // Get current user info for audit logging
       const { data: authData } = await supabase.auth.getUser()
       const currentUser = authData?.user
-      const userId = currentUser?.id || null
-      const userEmail = currentUser?.email || null
-      const userName = currentUser?.user_metadata?.full_name || null
+      let userId = currentUser?.id || null
+      let userEmail = (currentUser?.email || '').trim()
+      let userName = (currentUser?.user_metadata?.full_name || '').trim()
+
+      // Ensure we have at least the email as fallback
+      if (!userName && userEmail) {
+        userName = userEmail
+      }
+
+      console.log(`[AuditService] logEvent user info:`, { userId, userEmail, userName })
 
       const { error } = await supabase.rpc('log_audit_event', {
         p_action: AUDIT_ACTIONS_MAP[action],
