@@ -3012,28 +3012,39 @@ app.post('/api/audit-logs', async (req, res) => {
 
     // Capturar información del usuario con fallbacks
     let userId = (body.userId || body.user_id || null)
-    let userEmail = ((body.userEmail || body.user_email || '').trim()) || ((body.email || '').trim()) || null
-    let userName = ((body.userName || body.user_name || '').trim()) || ((body.name || '').trim()) || null
+    let userEmail = String(body.userEmail || body.user_email || body.email || '').trim() || null
+    let userName = String(body.userName || body.user_name || body.name || '').trim()
 
-    // Fallback: si no hay nombre, buscar en la BD por email
-    if (!userName && userEmail) {
+    console.log(`[API] POST /api/audit-logs - Datos recibidos:`, { userId, userEmail, userName })
+
+    // IMPORTANTE: Siempre intentar obtener el nombre de la BD si no viene del frontend
+    if (userEmail) {
       try {
         const userResult = await pool.query(
           'SELECT nombre FROM usuarios WHERE correo = $1 LIMIT 1',
           [userEmail]
         )
-        userName = (userResult.rows[0]?.nombre || '').trim()
+        const dbName = userResult.rows[0]?.nombre || ''
+        if (dbName && !userName) {
+          userName = dbName.trim()
+        }
       } catch (e) {
         console.warn('Error fetching user name for audit log:', e)
       }
     }
 
-    // Last resort: use email if name is still empty
+    // Fallbacks en cadena
     if (!userName && userEmail) {
       userName = userEmail
     }
+    if (!userName && userId) {
+      userName = `User ${userId.slice(0, 8)}`
+    }
+    if (!userName) {
+      userName = 'Usuario Desconocido'
+    }
 
-    console.log(`[API] POST /api/audit-logs:`, { action, module, userId, userEmail, userName })
+    console.log(`[API] POST /api/audit-logs - Datos finales:`, { action, module, userId, userEmail, userName })
 
     await pool.query(`
       INSERT INTO audit_logs (
@@ -3054,7 +3065,7 @@ app.post('/api/audit-logs', async (req, res) => {
     `, [
       userId,
       userEmail,
-      userName || 'Usuario Desconocido',
+      userName,
       action,
       module,
       body.entityId || body.entity_id || null,
