@@ -17,6 +17,36 @@ export interface AuditEventData {
 }
 
 /**
+ * Get current authenticated user info
+ */
+async function getCurrentUserInfo() {
+  try {
+    const { data: authData } = await supabase.auth.getUser()
+    const currentUser = authData?.user
+
+    if (!currentUser) {
+      console.warn('[AuditService] No authenticated user found')
+      return { userId: null, userEmail: '', userName: '' }
+    }
+
+    let userId = currentUser.id || null
+    let userEmail = (currentUser.email || '').trim()
+    let userName = (currentUser.user_metadata?.full_name || '').trim()
+
+    // Ensure we have at least the email as fallback
+    if (!userName && userEmail) {
+      userName = userEmail
+    }
+
+    console.log('[AuditService] Current user info:', { userId, userEmail, userName })
+    return { userId, userEmail, userName }
+  } catch (error) {
+    console.error('[AuditService] Error getting current user:', error)
+    return { userId: null, userEmail: '', userName: '' }
+  }
+}
+
+/**
  * Service for logging audit events to the database
  */
 export class AuditService {
@@ -39,18 +69,7 @@ export class AuditService {
       } = data
 
       // Get current user info for audit logging
-      const { data: authData } = await supabase.auth.getUser()
-      const currentUser = authData?.user
-      let userId = currentUser?.id || null
-      let userEmail = (currentUser?.email || '').trim()
-      let userName = (currentUser?.user_metadata?.full_name || '').trim()
-
-      // Ensure we have at least the email as fallback
-      if (!userName && userEmail) {
-        userName = userEmail
-      }
-
-      console.log(`[AuditService] logEvent user info:`, { userId, userEmail, userName })
+      const { userId, userEmail, userName } = await getCurrentUserInfo()
 
       const { error } = await supabase.rpc('log_audit_event', {
         p_action: AUDIT_ACTIONS_MAP[action],
@@ -79,6 +98,14 @@ export class AuditService {
       }
 
       // Fallback to backend API - include user info
+      console.log('[AuditService] Using fallback - sending to /api/audit-logs:', {
+        action,
+        module,
+        userId,
+        userEmail,
+        userName,
+      })
+
       const fallbackResponse = await fetch(`${API_BASE}/api/audit-logs`, {
         method: 'POST',
         headers: {
