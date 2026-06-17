@@ -2132,13 +2132,35 @@ app.get('/api/users/with-permissions', async (req, res) => {
       ORDER BY u.nombre ASC
     `)
 
-    const usersWithPerms = result.rows.map((row) => ({
-      id: row.id,
-      email: row.email,
-      fullName: row.fullName,
-      role: row.role,
-      permissions: row.permissions || {},
-    }))
+    // Get all permission keys defined in the system
+    const allPermissionsResult = await pool.query(`
+      SELECT DISTINCT permission_key FROM user_permission_details
+      WHERE permission_key IS NOT NULL
+      ORDER BY permission_key
+    `)
+    
+    const allPermissionKeys = new Set(allPermissionsResult.rows.map(r => r.permission_key))
+
+    const usersWithPerms = result.rows.map((row) => {
+      // Initialize complete permissions object with all keys set to false
+      const completePermissions = {}
+      allPermissionKeys.forEach(key => {
+        completePermissions[key] = false
+      })
+      
+      // Override with actual user permissions from database
+      if (row.permissions && typeof row.permissions === 'object') {
+        Object.assign(completePermissions, row.permissions)
+      }
+
+      return {
+        id: row.id,
+        email: row.email,
+        fullName: row.fullName,
+        role: row.role,
+        permissions: completePermissions,
+      }
+    })
 
     res.json(usersWithPerms)
   } catch (err) {
@@ -2272,14 +2294,29 @@ app.get('/api/users/:userId/permissions', async (req, res) => {
       [permission.id]
     )
 
-    const permissions = {}
+    // Get all permission keys defined in the system
+    const allPermissionsResult = await pool.query(`
+      SELECT DISTINCT permission_key FROM user_permission_details
+      WHERE permission_key IS NOT NULL
+      ORDER BY permission_key
+    `)
+    
+    const allPermissionKeys = new Set(allPermissionsResult.rows.map(r => r.permission_key))
+
+    // Initialize complete permissions object with all keys set to false
+    const completePermissions = {}
+    allPermissionKeys.forEach(key => {
+      completePermissions[key] = false
+    })
+
+    // Override with actual user permissions from database
     detailsResult.rows.forEach((row) => {
-      permissions[row.permission_key] = row.granted
+      completePermissions[row.permission_key] = row.granted
     })
 
     res.json({
       permissionId: permission.id,
-      permissions,
+      permissions: completePermissions,
       modules: permission.modules_access || {},
       createdAt: permission.created_at,
       updatedAt: permission.updated_at,
