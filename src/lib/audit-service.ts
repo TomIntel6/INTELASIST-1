@@ -171,6 +171,8 @@ export class AuditService {
 
   /**
    * Log a report deletion
+   * @deprecated La auditoría ahora se registra exclusivamente desde el backend.
+   * No utilizar en código nuevo.
    */
   static async logReportDeleted(reportId: string, reportData: Record<string, any>) {
     return this.logEvent({
@@ -345,6 +347,8 @@ export class AuditService {
 
   /**
    * Log report restore
+   * @deprecated La auditoría ahora se registra exclusivamente desde el backend.
+   * No utilizar en código nuevo.
    */
   static async logReportRestored(reportId: string) {
     return this.logEvent({
@@ -357,6 +361,8 @@ export class AuditService {
 
   /**
    * Log permanent report deletion
+   * @deprecated La auditoría ahora se registra exclusivamente desde el backend.
+   * No utilizar en código nuevo.
    */
   static async logReportPermanentlyDeleted(reportId: string) {
     return this.logEvent({
