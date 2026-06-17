@@ -60,8 +60,8 @@ export default function AdminDashboard() {
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-2">
-            <Settings className="size-8 text-purple-600" />
-            <h1 className="text-4xl font-bold text-slate-900">Administración Avanzada</h1>
+            <Settings className="" />
+            <h1 className="text-4xl font-bold text-slate-900">Configuracion</h1>
           </div>
           <p className="text-slate-600">Panel de control completo del sistema con todas las herramientas de administración</p>
         </div>

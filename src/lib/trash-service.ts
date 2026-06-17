@@ -51,8 +51,8 @@ export class TrashService {
 
       if (!response.ok) throw new Error('Failed to move report to trash')
 
-      // Log the action (this will also be logged on backend, but frontend logs it too)
-      await AuditService.logReportDeleted(reportId, reportData)
+      // Backend is handling audit logging, no need to duplicate here
+      console.log('[TrashService] Report moved to trash. Audit logged by backend.')
 
       return await response.json()
     } catch (error) {
@@ -148,8 +148,8 @@ export class TrashService {
 
       if (!response.ok) throw new Error('Failed to restore report')
 
-      // Log the action
-      await AuditService.logReportRestored(trash.reportId)
+      // Backend is handling audit logging, no need to duplicate here
+      console.log('[TrashService] Report restored. Audit logged by backend.')
 
       return { success: true }
     } catch (error) {
@@ -188,8 +188,8 @@ export class TrashService {
 
       if (!response.ok) throw new Error('Failed to permanently delete report')
 
-      // Log the action
-      await AuditService.logReportPermanentlyDeleted(trash.reportId)
+      // Backend is handling audit logging, no need to duplicate here
+      console.log('[TrashService] Report permanently deleted. Audit logged by backend.')
 
       return { success: true }
     } catch (error) {
