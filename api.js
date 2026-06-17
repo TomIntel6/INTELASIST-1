@@ -714,8 +714,8 @@ async function logAuditEvent(req, {
 
     // Capturar información del usuario
     const userId = req.user?.id ?? null
-    const userEmail = req.user?.email ?? null
-    let userName = req.user?.user_metadata?.full_name ?? null
+    const userEmail = (req.user?.email ?? '').trim()
+    let userName = (req.user?.user_metadata?.full_name ?? '').trim()
 
     // Get user name from database if email is available and name not provided
     if (!userName && userEmail) {
@@ -724,15 +724,17 @@ async function logAuditEvent(req, {
           'SELECT nombre FROM usuarios WHERE correo = $1 LIMIT 1',
           [userEmail]
         )
-        userName = userResult.rows[0]?.nombre ?? null
+        const dbName = userResult.rows[0]?.nombre || ''
+        userName = (dbName || req.user?.user_metadata?.full_name || '').trim()
       } catch (e) {
         console.warn('Error fetching user name for audit:', e)
+        userName = (req.user?.user_metadata?.full_name || '').trim()
       }
     }
 
-    // Last resort: use email if name is still empty
-    if (!userName && userEmail) {
-      userName = userEmail
+    // Fallback chain: metadata > db > email > 'Usuario Desconocido'
+    if (!userName) {
+      userName = userEmail || 'Usuario Desconocido'
     }
 
     await pool.query(
@@ -1365,8 +1367,8 @@ app.post('/reports', async (req, res) => {
 
     // Garantizar que created_by está relleno con fallback a req.user
     const userId = payload.created_by ?? req.user?.id ?? null
-    const userEmail = payload.created_by_email ?? req.user?.email ?? ''
-    let userName = payload.created_by_name ?? req.user?.user_metadata?.full_name ?? ''
+    const userEmail = (payload.created_by_email ?? req.user?.email ?? '').trim()
+    let userName = (payload.created_by_name ?? req.user?.user_metadata?.full_name ?? '').trim()
 
     // Get user name from database if email is available and name not provided
     if (!userName && userEmail) {
@@ -1375,17 +1377,20 @@ app.post('/reports', async (req, res) => {
           'SELECT nombre FROM usuarios WHERE correo = $1 LIMIT 1',
           [userEmail]
         )
-        userName = userResult.rows[0]?.nombre ?? req.user?.user_metadata?.full_name ?? ''
+        const dbName = userResult.rows[0]?.nombre || ''
+        userName = (dbName || req.user?.user_metadata?.full_name || '').trim()
       } catch (e) {
         console.warn('Error fetching user name:', e)
-        userName = req.user?.user_metadata?.full_name ?? ''
+        userName = (req.user?.user_metadata?.full_name || '').trim()
       }
     }
     
-    // Last resort: use email if name is still empty
+    // Fallback chain: metadata > email > 'Usuario Desconocido'
     if (!userName) {
       userName = userEmail || 'Usuario Desconocido'
     }
+
+    console.log(`[API] Audit user captured:`, { userId, userEmail, userName })
 
     console.log(`[API] Creating report with created_by fallback:`, {
       userId,
@@ -2695,8 +2700,8 @@ app.post('/api/trash', async (req, res) => {
     }
 
     const deletedBy = req.user?.id ?? null
-    const deletedByEmail = req.user?.email ?? null
-    let deletedByName = req.user?.user_metadata?.full_name ?? null
+    const deletedByEmail = (req.user?.email ?? '').trim()
+    let deletedByName = (req.user?.user_metadata?.full_name ?? '').trim()
 
     // Get user name from database if email is available and name not provided
     if (!deletedByName && deletedByEmail) {
@@ -2705,17 +2710,20 @@ app.post('/api/trash', async (req, res) => {
           'SELECT nombre FROM usuarios WHERE correo = $1 LIMIT 1',
           [deletedByEmail]
         )
-        deletedByName = userResult.rows[0]?.nombre ?? req.user?.user_metadata?.full_name ?? null
+        const dbName = userResult.rows[0]?.nombre || ''
+        deletedByName = (dbName || req.user?.user_metadata?.full_name || '').trim()
       } catch (e) {
-        console.warn('Error fetching user name:', e)
-        deletedByName = req.user?.user_metadata?.full_name ?? null
+        console.warn('Error fetching user name for trash:', e)
+        deletedByName = (req.user?.user_metadata?.full_name || '').trim()
       }
     }
     
-    // Last resort: use email if name is still empty
+    // Fallback chain: metadata > db > email > 'Usuario Desconocido'
     if (!deletedByName) {
       deletedByName = deletedByEmail || 'Usuario Desconocido'
     }
+
+    console.log(`[API] Trash deleted by:`, { deletedBy, deletedByEmail, deletedByName })
 
     const insertResult = await pool.query(
       `INSERT INTO deleted_reports (
