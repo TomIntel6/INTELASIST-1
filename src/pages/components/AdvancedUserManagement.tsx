@@ -58,6 +58,26 @@ export default function AdvancedUserManagement() {
     loadStats()
   }, [])
 
+  // Rellena reportsCreated llamando por usuario en caso de que falte el campo
+  const fillMissingReportCounts = async (loadedUsers: UserWithActivity[]) => {
+    try {
+      const missing = loadedUsers.filter(u => u.reportsCreated === undefined || u.reportsCreated === null)
+      if (missing.length === 0) return
+
+      const results = await Promise.all(missing.map(u => UserManagementService.getUserActivity(u.id)))
+
+      setUsers(prev => prev.map(p => {
+        const found = results.find(r => r && String(r.id) === String(p.id))
+        if (found && typeof found.reportsCreated !== 'undefined') {
+          return { ...p, reportsCreated: Number(found.reportsCreated || 0) }
+        }
+        return p
+      }))
+    } catch (err) {
+      console.error('[AdvancedUserManagement] Error rellenando reportsCreated:', err)
+    }
+  }
+
   const loadUsers = async () => {
     try {
       setLoading(true)
@@ -72,6 +92,8 @@ export default function AdvancedUserManagement() {
       
       console.log(`[AdvancedUserManagement] Loaded ${data.length} users`)
       setUsers(data)
+      // Si algunos usuarios no traen el conteo, rellenar haciendo llamadas por usuario
+      void fillMissingReportCounts(data)
       
       if (data.length === 0) {
         setError('No se encontraron usuarios. Verifica que el endpoint /api/users/with-activity esté disponible.')
