@@ -183,7 +183,7 @@ export default function TrashBin() {
                       </div>
                       <div>
                         <p className="font-medium text-slate-700">Eliminado por:</p>
-                        <p>{item.deletedByName || 'Sistema'}</p>
+                        <p>{item.deletedByName || item.deletedByEmail || 'Sistema'}</p>
                       </div>
                       <div>
                         <p className="font-medium text-slate-700">Fecha de eliminación:</p>
