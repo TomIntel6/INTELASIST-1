@@ -321,6 +321,7 @@ function normalizeReport(raw: Record<string, unknown>): Report {
 
 async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
   try {
+    console.info('[requestJson] fetch', { url: `${API_BASE_URL}${path}`, method: init?.method || 'GET' })
     const response = await fetch(`${API_BASE_URL}${path}`, {
       headers: {
         'Content-Type': 'application/json',
@@ -462,8 +463,10 @@ export async function loadAllReports(): Promise<Report[]> {
 
 export async function loadReportsForMonth(month: string, year: number): Promise<Report[]> {
   try {
+    console.info('[supabase] loadReportsForMonth', { month, year })
     const payload = await requestJson<{ reports: unknown[] }>(`/reports?month=${encodeURIComponent(month)}&year=${encodeURIComponent(String(year))}`)
     const reports = payload.reports.map(item => normalizeReport(item as Record<string, unknown>))
+    console.info('[supabase] loadReportsForMonth result', { count: reports.length, month, year })
     writeCache(reports, { replaceMonth: true })
     return sortReports(reports)
   } catch (error) {

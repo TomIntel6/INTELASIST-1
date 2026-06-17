@@ -811,6 +811,8 @@ async function loadReportsWithUpdates(query = '', values = []) {
     values
   )
 
+  console.log('[API] loadReportsWithUpdates', { query: query.trim(), values, count: reportsResult.rows.length })
+
   if (reportsResult.rows.length === 0) {
     return []
   }
@@ -1189,6 +1191,8 @@ app.get('/reports', async (req, res) => {
     const month = typeof req.query.month === 'string' ? req.query.month.trim() : ''
     const year = typeof req.query.year === 'string' && req.query.year.trim() ? Number(req.query.year) : null
 
+    console.log('[API] GET /reports request', { month, year, query: req.query })
+
     const conditions = []
     const values = []
 
@@ -1384,6 +1388,16 @@ app.post('/reports', async (req, res) => {
     const report = {
       ...serializeReportRow(result.rows[0]),
       report_updates: [],
+    }
+
+    if (userId) {
+      await pool.query(`
+        INSERT INTO user_activity_log (user_id, reports_created, last_activity, is_suspended)
+        VALUES ($1, 1, NOW(), false)
+        ON CONFLICT (user_id) DO UPDATE
+          SET reports_created = COALESCE(user_activity_log.reports_created, 0) + 1,
+              last_activity = NOW()
+      `, [userId])
     }
 
     res.status(201).json({ report })
@@ -2066,7 +2080,12 @@ app.get('/api/users', async (req, res) => {
         u.correo as email,
         u.nombre,
         u.rol as role,
-        ual.reports_created as reportsCreated,
+        (
+          SELECT COUNT(*)
+          FROM reports r
+          WHERE (r.created_by IS NOT NULL AND r.created_by::text = u.id::text)
+            OR (r.created_by_email IS NOT NULL AND LOWER(TRIM(r.created_by_email)) = LOWER(TRIM(u.correo)))
+        ) as reportsCreated,
         ual.last_login as lastLogin,
         ual.last_activity as lastActivity,
         ual.is_suspended as isSuspended,
@@ -2263,6 +2282,13 @@ app.get('/api/users/:userId', async (req, res) => {
       return res.status(404).json({ error: 'Usuario no encontrado' })
     }
 
+    const reportsCountResult = await pool.query(`
+      SELECT COUNT(*) AS reports_created
+      FROM reports
+      WHERE (created_by IS NOT NULL AND created_by::text = $1)
+        OR (created_by_email IS NOT NULL AND LOWER(TRIM(created_by_email)) = LOWER(TRIM($2)))
+    `, [userId, userResult.rows[0].email])
+
     const activityResult = await pool.query(`
       SELECT 
         reports_created,
@@ -2279,6 +2305,7 @@ app.get('/api/users/:userId', async (req, res) => {
 
     const user = userResult.rows[0]
     const activity = activityResult.rows[0] || {}
+    const reportsCount = parseInt(reportsCountResult.rows[0]?.reports_created || 0, 10)
 
     res.json({
       user: {
@@ -2289,7 +2316,7 @@ app.get('/api/users/:userId', async (req, res) => {
         roles: user.roles ? JSON.parse(user.roles) : [user.role],
       },
       activity: {
-        reportsCreated: activity.reports_created || 0,
+        reportsCreated: reportsCount,
         lastLogin: activity.last_login,
         lastActivity: activity.last_activity,
         isSuspended: activity.is_suspended || false,
