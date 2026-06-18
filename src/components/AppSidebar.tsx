@@ -24,8 +24,9 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { canManageAgents, fetchOnlineUsersFromServer, getNameColorClasses, getOnlineUsers, getRoleColorClasses, getUserRole, getUserRoles, useAuth, PRESENCE_STORAGE_KEY, PRESENCE_SYNC_STORAGE_KEY, USERS_SYNC_STORAGE_KEY, canAccessAdvancedAdmin } from '@/lib/auth'
+import { canManageAgents, fetchOnlineUsersFromServer, getNameColorClasses, getOnlineUsers, getRoleColorClasses, getUserRole, getUserRoles, useAuth, PRESENCE_STORAGE_KEY, PRESENCE_SYNC_STORAGE_KEY, USERS_SYNC_STORAGE_KEY } from '@/lib/auth'
 import { getDefaultApiBase } from '@/lib/supabase'
+import { PERMISSIONS } from '@/lib/permissions'
 import { usePermissions } from '@/lib/permissions-context'
 import { LayoutDashboard, FileText, LogOut, FilePlus, Users, AlertCircle, Settings } from 'lucide-react'
 
@@ -65,7 +66,7 @@ const navItems = [
 
 export const AppSidebar = React.memo(function AppSidebar() {
   const { user, signOut, updateCurrentUserProfile } = useAuth()
-  const { hasModuleAccess } = usePermissions()
+  const { hasModuleAccess, hasPermission } = usePermissions()
   const navigate = useNavigate()
   const location = useLocation()
   const [profileOpen, setProfileOpen] = React.useState(false)
@@ -80,7 +81,10 @@ export const AppSidebar = React.memo(function AppSidebar() {
   const canManageAgentAccess = React.useMemo(() => canManageAgents(user), [user])
   const canViewReportsModule = React.useMemo(() => hasModuleAccess('reports'), [hasModuleAccess])
   const canViewUsersModule = React.useMemo(() => hasModuleAccess('users'), [hasModuleAccess])
-  const canViewAdminModule = React.useMemo(() => hasModuleAccess('admin'), [hasModuleAccess])
+  const canViewAdminModule = React.useMemo(
+    () => hasPermission(PERMISSIONS.SYSTEM.MANAGE_PERMISSIONS),
+    [hasPermission]
+  )
   const [onlineUsers, setOnlineUsers] = React.useState<ReturnType<typeof getOnlineUsers>>(() => getOnlineUsers())
   const initials = React.useMemo(() =>
     displayName

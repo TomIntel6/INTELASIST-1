@@ -1,6 +1,7 @@
 import * as React from 'react'
-import { useAuth, canAccessAdvancedAdmin } from '@/lib/auth'
+import { useAuth } from '@/lib/auth'
 import { usePermissions } from '@/lib/permissions-context'
+import { PERMISSIONS } from '@/lib/permissions'
 import { useRealtimeAuditLogs } from '@/hooks/useRealtime'
 import { useNotifications } from '@/hooks/useRealtime'
 import { Navigate } from 'react-router-dom'
@@ -40,6 +41,7 @@ const MemoizedTabContent = React.memo(function MemoizedTabContent({ children }: 
 
 export default function AdminDashboard() {
   const { user } = useAuth()
+  const { hasPermission } = usePermissions()
   const { notifications, removeNotification } = useNotifications(user?.id || '')
 
   // Subscribe to real-time audit logs
@@ -49,8 +51,7 @@ export default function AdminDashboard() {
 
   useRealtimeAuditLogs(handleAuditUpdate)
 
-  // Admin, Support, o mbarria@intelasist.com pueden acceder
-  if (!canAccessAdvancedAdmin(user)) {
+  if (!hasPermission(PERMISSIONS.SYSTEM.MANAGE_PERMISSIONS)) {
     return <Navigate to="/dashboard" replace />
   }
 
