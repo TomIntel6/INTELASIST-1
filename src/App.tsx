@@ -2,6 +2,7 @@ import * as React from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from '@/lib/auth'
 import { PermissionProvider, usePermissions } from '@/lib/permissions-context'
+import { PERMISSIONS } from '@/lib/permissions'
 const Login = React.lazy(() => import('@/pages/Login'))
 const AppLayout = React.lazy(() => import('@/components/AppLayout'))
 const Dashboard = React.lazy(() => import('@/pages/Dashboard'))
@@ -34,10 +35,10 @@ function ProtectedContent() {
     return <Navigate to="/login" replace />
   }
 
-  const { hasModuleAccess } = usePermissions()
+  const { hasModuleAccess, hasPermission } = usePermissions()
   const canAccessReports = hasModuleAccess('reports')
   const canAccessUsers = hasModuleAccess('users')
-  const canAccessAdmin = hasModuleAccess('admin')
+  const canAccessAdmin = hasPermission(PERMISSIONS.SYSTEM.MANAGE_PERMISSIONS)
 
   return (
     <Routes>

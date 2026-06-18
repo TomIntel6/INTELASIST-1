@@ -154,8 +154,8 @@ export function PermissionProvider({ children }: { children: React.ReactNode }) 
         return false
       }
 
-      // Support and Admin always have all permissions
-      if (user?.user_metadata?.role === 'Support' || user?.user_metadata?.role === 'Admin') {
+      // Admin users keep full permission access, Support users must be authorized explicitly.
+      if (user?.user_metadata?.role === 'Admin') {
         return true
       }
       if (!permissions) return false
