@@ -239,7 +239,7 @@ export default function PermissionsManagement() {
                               onChange={(e) => applyRoleToUser(user.id, e.target.value)}
                               defaultValue=""
                             >
-                              <option value="">-- Seleccionar rol --</option>
+                              <option value="">Selecionar Permiso</option>
                               {roleOptions.map(r => (
                                 <option key={r} value={r}>{r}</option>
                               ))}

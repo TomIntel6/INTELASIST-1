@@ -542,12 +542,12 @@ export const AppSidebar = React.memo(function AppSidebar() {
               <SidebarMenu>
                 <SidebarMenuItem>
                   <SidebarMenuButton
-                    tooltip="Administración Avanzada"
+                    tooltip="Gestion de Permisos"
                     onClick={() => navigate('/admin/permisos')}
                     className="rounded-xl bg-purple-500/10 text-purple-600 font-medium transition-colors duration-150 hover:bg-purple-500/20 hover:text-purple-700 hover:shadow-[0_0_20px_rgba(168,85,247,0.18)]"
                   >
                     <Settings className="transition-transform duration-150 group-hover:scale-105" />
-                    <span className="transition-colors duration-150 group-hover:drop-shadow-[0_0_10px_rgba(168,85,247,0.28)]">⚙ Administración Avanzada</span>
+                    <span className="transition-colors duration-150 group-hover:drop-shadow-[0_0_10px_rgba(168,85,247,0.28)]"> Gestion de Permisos</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               </SidebarMenu>
