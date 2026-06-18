@@ -141,11 +141,6 @@ export default function ReportsList() {
     return `${datePart} ${timePart}`
   }
 
-  const handleClearFilters = React.useCallback(() => {
-    setSearch('')
-    setSearchParams({ month: MONTHS[currentMonthIdx], year: String(currentYear) })
-  }, [currentMonthIdx, currentYear, setSearchParams])
-
   const getDaysInMonth = (month: string, year: number): number => {
     const monthIndex = MONTHS.indexOf(month)
     return new Date(year, monthIndex + 1, 0).getDate()
@@ -424,9 +419,6 @@ export default function ReportsList() {
             ))}
           </SelectContent>
         </Select>
-        <Button variant="outline" size="sm" onClick={handleClearFilters}>
-          Limpiar filtros
-        </Button>
       </div>
 
       {/* Table */}

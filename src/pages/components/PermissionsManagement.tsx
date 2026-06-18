@@ -1,8 +1,5 @@
 import * as React from 'react'
-import { getDefaultApiBase } from '@/lib/supabase'
 import { PermissionsManagementService } from '@/lib/permissions-management'
-
-const API_BASE = getDefaultApiBase()
 import { PERMISSIONS, PERMISSION_LABELS, PERMISSION_MODULES } from '@/lib/permissions'
 import type { PermissionKey } from '@/lib/permissions'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -39,10 +36,7 @@ export default function PermissionsManagement() {
       setLoading(true)
       
       // Backend devuelve usuarios + permisos de una vez
-      const response = await fetch(`${API_BASE}/api/users/with-permissions`)
-      if (!response.ok) throw new Error('Failed to load users')
-      
-      const usersWithPerms = await response.json()
+      const usersWithPerms = await PermissionsManagementService.getUsersWithPermissions()
       setUsers(usersWithPerms)
     } catch (error) {
       console.error('Error loading users:', error)

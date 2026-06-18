@@ -1,6 +1,6 @@
 import * as React from 'react'
-import { getDefaultApiBase } from '@/lib/supabase'
 import { PERMISSION_MODULES } from '@/lib/permissions'
+import { PermissionsManagementService } from '@/lib/permissions-management'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -11,7 +11,6 @@ import { Label } from '@/components/ui/label'
 import { ChevronDown, ChevronUp, Save } from 'lucide-react'
 import { toast } from 'sonner'
 
-const API_BASE = getDefaultApiBase()
 
 interface UserModuleAccess {
   userId: string
@@ -36,11 +35,7 @@ export default function PermissionModules() {
     try {
       setLoading(true)
       
-      // Backend devuelve usuarios + módulos accesibles
-      const response = await fetch(`${API_BASE}/api/users/with-modules`)
-      if (!response.ok) throw new Error('Failed to load users')
-      
-      const usersData = await response.json()
+      const usersData = await PermissionsManagementService.getUsersWithModules()
       setUsers(usersData)
     } catch (error) {
       console.error('Error loading users:', error)
@@ -65,20 +60,9 @@ export default function PermissionModules() {
       const user = users.find((u) => u.userId === userId)
       if (!user) return
 
-      // Call backend to update modules
-      const response = await fetch(`${API_BASE}/api/users/${userId}/modules`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ modules: user.modules }),
-      })
-      
-      if (!response.ok) throw new Error('Failed to update modules')
+      const success = await PermissionsManagementService.updateUserModules(userId, user.modules)
 
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('modules-changed', {
-          detail: { userId, modules: user.modules, timestamp: new Date().toISOString() },
-        }))
-      }
+      if (!success) throw new Error('Failed to update modules')
 
       toast.success(`Módulos actualizados para ${user.email}`)
       // Refrescar la lista para asegurar estado consistente en la UI
