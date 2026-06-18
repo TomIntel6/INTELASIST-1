@@ -50,7 +50,7 @@ export class PermissionsManagementService {
   /**
    * Get permissions for a user via backend API
    */
-  static async getUserPermissions(userId: string) {
+  static async getUserPermissions(userId: string): Promise<Record<PermissionKey, boolean>> {
     try {
       const response = await fetch(`${API_BASE}/api/users/${userId}/permissions`)
       if (!response.ok) throw new Error('Failed to fetch permissions')
@@ -60,7 +60,7 @@ export class PermissionsManagementService {
       return normalizePermissionMap(data.permissions)
     } catch (error) {
       console.error('Error getting user permissions:', error)
-      return {}
+      return {} as Record<PermissionKey, boolean>
     }
   }
 
