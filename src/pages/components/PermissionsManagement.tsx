@@ -8,6 +8,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
+import PermissionsEditor from '@/components/PermissionsEditor'
+import { DEFAULT_ROLE_PERMISSIONS } from '@/lib/permissions'
 import { Spinner } from '@/components/ui/spinner'
 import { toast } from 'sonner'
 import { ChevronDown, ChevronUp, Save } from 'lucide-react'
@@ -87,14 +89,31 @@ export default function PermissionsManagement() {
       const user = users.find(u => u.id === userId)
       if (!user) return
 
+      // Guardado optimista: ya tenemos los permisos en estado local.
+      const oldPermissions = await PermissionsManagementService.getUserPermissions(userId)
+
+      // Llamada API para persistir
       const success = await PermissionsManagementService.updateUserPermissions(userId, user.permissions)
 
       if (success) {
-        toast.success('Permisos guardados exitosamente')
-        // Refrescar la lista para asegurar estado consistente
-        await loadUsers()
+        toast.success('Permisos guardados. Puedes deshacer en 10s si fue un error')
+
+        // Añadir posibilidad de deshacer durante 10s
+        const timer = window.setTimeout(() => {
+          // after timeout nothing to do, undo window closed
+          setPendingUndo((prev) => {
+            const next = { ...prev }
+            delete next[userId]
+            return next
+          })
+        }, 10000)
+
+        setPendingUndo((prev) => ({ ...prev, [userId]: { old: oldPermissions, timer } }))
       } else {
         toast.error('Error guardando permisos')
+        // revertir al estado anterior desde API
+        const fresh = await PermissionsManagementService.getUserPermissions(userId)
+        setUsers(prev => prev.map(u => u.id === userId ? { ...u, permissions: fresh } : u))
       }
     } catch (error) {
       console.error('Error saving permissions:', error)
@@ -102,6 +121,44 @@ export default function PermissionsManagement() {
     } finally {
       setSaving(prev => ({ ...prev, [userId]: false }))
     }
+  }
+
+  const [pendingUndo, setPendingUndo] = React.useState<Record<string, { old: Record<PermissionKey, boolean>, timer: number }>>({})
+
+  const handleUndo = async (userId: string) => {
+    const entry = pendingUndo[userId]
+    if (!entry) return
+
+    // cancelar timeout
+    clearTimeout(entry.timer)
+
+    try {
+      setSaving(prev => ({ ...prev, [userId]: true }))
+      const success = await PermissionsManagementService.updateUserPermissions(userId, entry.old)
+      if (success) {
+        setUsers(prev => prev.map(u => u.id === userId ? { ...u, permissions: entry.old } : u))
+        toast.success('Cambio revertido')
+      } else {
+        toast.error('No fue posible revertir los cambios')
+      }
+    } catch (err) {
+      console.error(err)
+      toast.error('Error al revertir')
+    } finally {
+      setSaving(prev => ({ ...prev, [userId]: false }))
+      setPendingUndo(prev => {
+        const next = { ...prev }
+        delete next[userId]
+        return next
+      })
+    }
+  }
+
+  const roleOptions = Object.keys(DEFAULT_ROLE_PERMISSIONS)
+
+  const applyRoleToUser = (userId: string, roleKey: string) => {
+    const rolePerms = DEFAULT_ROLE_PERMISSIONS[roleKey as keyof typeof DEFAULT_ROLE_PERMISSIONS] || []
+    setUsers(prev => prev.map(u => u.id === userId ? { ...u, permissions: Object.fromEntries((Object.keys(u.permissions) as PermissionKey[]).map(k => [k, rolePerms.includes(k)])) as Record<PermissionKey, boolean> } : u))
   }
 
   const filteredUsers = users.filter(u =>
@@ -142,7 +199,7 @@ export default function PermissionsManagement() {
           </div>
 
           <div className="space-y-2">
-            {filteredUsers.length === 0 ? (
+              {filteredUsers.length === 0 ? (
               <p className="text-sm text-slate-500 py-4 text-center">
                 {searchTerm ? 'No hay usuarios que coincidan' : 'No hay usuarios'}
               </p>
@@ -170,82 +227,56 @@ export default function PermissionsManagement() {
                     )}
                   </button>
 
-                  {/* User Permissions */}
+                  {/* User Permissions: editor reutilizable + controles */}
                   {expandedUser === user.id && (
                     <div className="bg-slate-50 px-4 py-4 border-t space-y-6">
-                      {Object.entries(PERMISSION_MODULES).map(([moduleKey, module]) => {
-                        const colorMap: Record<string, string> = {
-                          blue: 'bg-blue-100 text-blue-700 border-blue-200',
-                          green: 'bg-green-100 text-green-700 border-green-200',
-                          purple: 'bg-purple-100 text-purple-700 border-purple-200',
-                          orange: 'bg-orange-100 text-orange-700 border-orange-200',
-                          red: 'bg-red-100 text-red-700 border-red-200',
-                          pink: 'bg-pink-100 text-pink-700 border-pink-200',
-                        }
-
-                        return (
-                          <div key={moduleKey}>
-                            <div className="flex items-center justify-between mb-3">
-                              <h4 className="font-medium text-sm text-slate-900">
-                                <span className={`inline-flex items-center gap-2 px-2 py-0.5 rounded text-xs ${colorMap[module.color as string] || 'bg-slate-100 text-slate-700'}`}>
-                                  {module.label}
-                                </span>
-                              </h4>
-                              <button
-                                className="text-sm text-slate-500 hover:text-slate-700"
-                                onClick={() => handleToggleModuleAll(user.id, moduleKey)}
-                                type="button"
-                              >
-                                Seleccionar todos
-                              </button>
-                            </div>
-
-                            <div className="space-y-2 ml-2">
-                              {Object.entries(module.permissions).map(([permKey, permission]) => {
-                                const perm = permission as PermissionKey
-                                const label = PERMISSION_LABELS[perm]
-                                const granted = user.permissions[perm] ?? false
-
-                                return (
-                                  <label
-                                    key={perm}
-                                    htmlFor={`${user.id}-${perm}`}
-                                    className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 px-2 py-1 rounded transition-colors"
-                                  >
-                                    <Checkbox
-                                      id={`${user.id}-${perm}`}
-                                      checked={granted}
-                                      onCheckedChange={(v) => handlePermissionChange(user.id, perm, Boolean(v))}
-                                    />
-                                    <span className="text-sm text-slate-700">{label}</span>
-                                  </label>
-                                )
-                              })}
-                            </div>
+                      <div className="flex items-center gap-3">
+                        <div className="flex-1">
+                          <Label className="text-sm">Aplicar plantilla de rol</Label>
+                          <div className="flex gap-2 mt-2">
+                            <select
+                              className="rounded border px-2 py-1 text-sm"
+                              onChange={(e) => applyRoleToUser(user.id, e.target.value)}
+                              defaultValue=""
+                            >
+                              <option value="">-- Seleccionar rol --</option>
+                              {roleOptions.map(r => (
+                                <option key={r} value={r}>{r}</option>
+                              ))}
+                            </select>
                           </div>
-                        )
-                      })}
-
-                      {/* Save Button */}
-                      <div className="flex justify-end pt-4 border-t">
-                        <Button
-                          onClick={() => handleSaveUser(user.id)}
-                          disabled={saving[user.id]}
-                          className="flex items-center gap-2"
-                        >
-                          {saving[user.id] ? (
-                            <>
-                              <Spinner className="size-4" />
-                              Guardando...
-                            </>
-                          ) : (
-                            <>
-                              <Save className="size-4" />
-                              Guardar Permisos
-                            </>
-                          )}
-                        </Button>
+                        </div>
+                        <div>
+                          <Button onClick={() => handleSaveUser(user.id)} disabled={saving[user.id]} className="flex items-center gap-2">
+                            {saving[user.id] ? (
+                              <>
+                                <Spinner className="size-4" />
+                                Guardando...
+                              </>
+                            ) : (
+                              <>
+                                <Save className="size-4" />
+                                Guardar Permisos
+                              </>
+                            )}
+                          </Button>
+                        </div>
                       </div>
+
+                      <PermissionsEditor
+                        userId={user.id}
+                        permissions={user.permissions}
+                        onChange={(perm, value) => handlePermissionChange(user.id, perm, value)}
+                      />
+
+                      {pendingUndo[user.id] && (
+                        <div className="flex items-center justify-between bg-yellow-50 border border-yellow-200 p-3 rounded">
+                          <div className="text-sm text-yellow-800">Acción aplicada recientemente.</div>
+                          <div>
+                            <button onClick={() => handleUndo(user.id)} className="text-sm text-yellow-800 underline">Deshacer</button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
