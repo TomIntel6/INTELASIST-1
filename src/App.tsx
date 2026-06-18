@@ -9,7 +9,6 @@ const Dashboard = React.lazy(() => import('@/pages/Dashboard'))
 const ReportsList = React.lazy(() => import('@/pages/ReportsList'))
 const NewReport = React.lazy(() => import('@/pages/NewReport'))
 const ReportDetail = React.lazy(() => import('@/pages/ReportDetail'))
-const AgentControl = React.lazy(() => import('@/pages/AgentControl'))
 const Usuarios = React.lazy(() => import('@/pages/Usuarios'))
 const AdminDashboard = React.lazy(() => import('@/pages/AdminDashboard'))
 import { Spinner } from '@/components/ui/spinner'
@@ -57,7 +56,7 @@ function ProtectedContent() {
           path="informes/:id"
           element={canAccessReports ? <ReportDetail /> : <Navigate to="/dashboard" replace />}
         />
-        <Route path="control-agentes" element={<AgentControl />} />
+        <Route path="control-agentes" element={<Navigate to="/admin" replace />} />
         <Route
           path="usuarios"
           element={canAccessUsers ? <Usuarios /> : <Navigate to="/dashboard" replace />}
