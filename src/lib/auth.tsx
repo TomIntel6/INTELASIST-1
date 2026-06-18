@@ -606,9 +606,9 @@ export function canCreateUsers(user: LocalUser | null): boolean {
 }
 
 export function canAccessAdvancedAdmin(user: LocalUser | null): boolean {
-  const isSupport = hasAnyRole(user, ['Support'])
+  const isAdminOrSupport = hasAnyRole(user, ['Admin', 'Support'])
   const isMbarria = String(user?.email).toLowerCase() === 'mbarria@intelasist.com'
-  return isSupport || isMbarria
+  return isAdminOrSupport || isMbarria
 }
 
 export function passwordChangeRequired(user: LocalUser | null): boolean {
