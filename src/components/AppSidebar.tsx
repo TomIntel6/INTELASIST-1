@@ -24,7 +24,7 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { canManageAgents, fetchOnlineUsersFromServer, getNameColorClasses, getOnlineUsers, getRoleColorClasses, getUserRole, getUserRoles, useAuth, PRESENCE_STORAGE_KEY, PRESENCE_SYNC_STORAGE_KEY, USERS_SYNC_STORAGE_KEY, canAccessAdvancedAdmin } from '@/lib/auth'
+import { fetchOnlineUsersFromServer, getNameColorClasses, getOnlineUsers, getRoleColorClasses, getUserRole, getUserRoles, useAuth, PRESENCE_STORAGE_KEY, PRESENCE_SYNC_STORAGE_KEY, USERS_SYNC_STORAGE_KEY, canAccessAdvancedAdmin } from '@/lib/auth'
 import { getDefaultApiBase } from '@/lib/supabase'
 import { PERMISSIONS } from '@/lib/permissions'
 import { usePermissions } from '@/lib/permissions-context'
@@ -78,7 +78,6 @@ export const AppSidebar = React.memo(function AppSidebar() {
   const displayName = profileName || rawDisplayName
   const avatarUrl = user?.user_metadata?.avatar_url as string | undefined
   const userRoles = React.useMemo(() => getUserRoles(user), [user])
-  const canManageAgentAccess = React.useMemo(() => canManageAgents(user), [user])
   const canViewReportsModule = React.useMemo(() => hasModuleAccess('reports'), [hasModuleAccess])
   const canViewUsersModule = React.useMemo(() => hasModuleAccess('users'), [hasModuleAccess])
   const canViewAdminModule = React.useMemo(
@@ -513,18 +512,6 @@ export const AppSidebar = React.memo(function AppSidebar() {
                   <span className="transition-colors duration-150 group-hover:drop-shadow-[0_0_10px_rgba(244,63,94,0.22)]">Nuevo Informe</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
-              {canManageAgentAccess ? (
-                <SidebarMenuItem>
-                  <SidebarMenuButton
-                    tooltip="Control de agentes"
-                    onClick={() => navigate('/control-agentes')}
-                    className="rounded-xl font-medium transition-colors duration-150 hover:bg-primary/10 hover:text-primary hover:shadow-[0_0_20px_rgba(59,130,246,0.18)]"
-                  >
-                    <Users className="transition-transform duration-150 group-hover:scale-105" />
-                    <span className="transition-colors duration-150 group-hover:drop-shadow-[0_0_10px_rgba(59,130,246,0.28)]">Control de agentes</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ) : null}
               {canViewAlerts ? (
                 <SidebarMenuItem>
                   <button

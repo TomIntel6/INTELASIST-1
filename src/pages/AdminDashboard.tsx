@@ -9,7 +9,7 @@ import ErrorBoundary from '@/components/ErrorBoundary'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { NotificationCenter } from '@/components/NotificationCenter'
-import { Settings, BarChart3, Trash2, Users as UsersIcon, Activity, Zap, Lock, FileText } from 'lucide-react'
+import { Settings, BarChart3, Trash2, Users as UsersIcon, Activity, Zap, Lock, FileText, UserPlus } from 'lucide-react'
 
 const AdminOverview = React.lazy(() => import('./components/AdminOverview'))
 const PermissionsManagement = React.lazy(() => import('./components/PermissionsManagement'))
@@ -19,6 +19,7 @@ const AuditReports = React.lazy(() => import('./components/AuditReports'))
 const ActivityTimeline = React.lazy(() => import('./components/ActivityTimeline'))
 const TrashBin = React.lazy(() => import('./components/TrashBin'))
 const AdvancedUserManagement = React.lazy(() => import('./components/AdvancedUserManagement'))
+const AgentControl = React.lazy(() => import('@/pages/AgentControl'))
 const SystemHealth = React.lazy(() => import('./components/SystemHealth'))
 
 // Fallback component for lazy-loaded content
@@ -69,7 +70,7 @@ export default function AdminDashboard() {
 
         {/* Tabs */}
         <Tabs defaultValue="overview" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 lg:grid-cols-9 mb-6 h-auto flex-wrap gap-2">
+          <TabsList className="grid w-full grid-cols-3 lg:grid-cols-10 mb-6 h-auto flex-wrap gap-2">
             <TabsTrigger value="overview" className="flex items-center gap-2 text-xs sm:text-sm">
               <Zap className="size-4" />
               <span className="hidden sm:inline">Resumen</span>
@@ -81,6 +82,10 @@ export default function AdminDashboard() {
             <TabsTrigger value="modules" className="flex items-center gap-2 text-xs sm:text-sm">
               <Settings className="size-4" />
               <span className="hidden sm:inline">Módulos</span>
+            </TabsTrigger>
+            <TabsTrigger value="agents" className="flex items-center gap-2 text-xs sm:text-sm">
+              <UserPlus className="size-4" />
+              <span className="hidden sm:inline">Agentes</span>
             </TabsTrigger>
             <TabsTrigger value="audit" className="flex items-center gap-2 text-xs sm:text-sm">
               <BarChart3 className="size-4" />
@@ -126,6 +131,13 @@ export default function AdminDashboard() {
           <TabsContent value="modules">
             <React.Suspense fallback={<LoadingFallback />}>
               <PermissionModules />
+            </React.Suspense>
+          </TabsContent>
+
+          {/* Agents Tab */}
+          <TabsContent value="agents">
+            <React.Suspense fallback={<LoadingFallback />}>
+              <AgentControl />
             </React.Suspense>
           </TabsContent>
 
