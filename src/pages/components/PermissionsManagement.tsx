@@ -22,109 +22,6 @@ interface UserWithPermissions {
   permissions: Record<PermissionKey, boolean>
 }
 
-interface UserCardProps {
-  user: UserWithPermissions
-  isExpanded: boolean
-  isSaving: boolean
-  onToggleExpand: () => void
-  onPermissionChange: (permission: PermissionKey, granted: boolean) => void
-  onSave: () => void
-}
-
-// Memoized user card component to prevent unnecessary re-renders
-const UserPermissionCard = React.memo(function UserPermissionCard({
-  user,
-  isExpanded,
-  isSaving,
-  onToggleExpand,
-  onPermissionChange,
-  onSave,
-}: UserCardProps) {
-  return (
-    <div className="border rounded-lg overflow-hidden">
-      <button
-        onClick={onToggleExpand}
-        className="w-full px-4 py-3 flex items-center justify-between hover:bg-slate-50 transition-colors"
-      >
-        <div className="flex items-center gap-3 flex-1 text-left">
-          <div>
-            <p className="font-medium text-slate-900">{user.fullName || user.email}</p>
-            <p className="text-sm text-slate-500">{user.email}</p>
-          </div>
-          <Badge variant="outline">{user.role}</Badge>
-        </div>
-        {isExpanded ? (
-          <ChevronUp className="size-4 text-slate-500" />
-        ) : (
-          <ChevronDown className="size-4 text-slate-500" />
-        )}
-      </button>
-
-      {isExpanded && (
-        <div className="bg-slate-50 px-4 py-4 border-t space-y-6">
-          {Object.entries(PERMISSION_MODULES).map(([moduleKey, module]) => (
-            <div key={moduleKey}>
-              <h4 className="font-medium text-sm text-slate-900 mb-3">
-                {module.label}
-              </h4>
-              <div className="space-y-2 ml-2">
-                {Object.entries(module.permissions).map(([permKey, permission]) => {
-                  const perm = permission as PermissionKey
-                  const label = PERMISSION_LABELS[perm]
-                  const granted = user.permissions[perm] ?? false
-
-                  return (
-                    <label
-                      key={perm}
-                      className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 px-2 py-1 rounded transition-colors"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={granted}
-                        onChange={(e) => onPermissionChange(perm, e.target.checked)}
-                        className="rounded border-slate-300"
-                      />
-                      <span className="text-sm text-slate-700">{label}</span>
-                    </label>
-                  )
-                })}
-              </div>
-            </div>
-          ))}
-
-          <div className="flex justify-end pt-4 border-t">
-            <Button
-              onClick={onSave}
-              disabled={isSaving}
-              className="flex items-center gap-2"
-            >
-              {isSaving ? (
-                <>
-                  <Spinner className="size-4" />
-                  Guardando...
-                </>
-              ) : (
-                <>
-                  <Save className="size-4" />
-                  Guardar Permisos
-                </>
-              )}
-            </Button>
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}, (prevProps, nextProps) => {
-  // Custom comparison for better memoization
-  return (
-    prevProps.user.id === nextProps.user.id &&
-    prevProps.isExpanded === nextProps.isExpanded &&
-    prevProps.isSaving === nextProps.isSaving &&
-    JSON.stringify(prevProps.user.permissions) === JSON.stringify(nextProps.user.permissions)
-  )
-})
-
 export default function PermissionsManagement() {
   const [users, setUsers] = React.useState<UserWithPermissions[]>([])
   const [loading, setLoading] = React.useState(true)
@@ -137,30 +34,11 @@ export default function PermissionsManagement() {
     loadUsers()
   }, [])
 
-  // Escuchar cambios de permisos en tiempo real desde el backend
-  React.useEffect(() => {
-    const handlePermissionsChanged = (event: Event) => {
-      const customEvent = event as CustomEvent
-      const payload = customEvent.detail
-      console.log('[Real-time] Permisos actualizados:', payload)
-      
-      if (payload?.userId) {
-        loadUsers()
-        toast.success(`Permisos actualizados en tiempo real para el usuario`)
-      }
-    }
-
-    window.addEventListener('permissions-changed', handlePermissionsChanged)
-    
-    return () => {
-      window.removeEventListener('permissions-changed', handlePermissionsChanged)
-    }
-  }, [])
-
-  const loadUsers = React.useCallback(async () => {
+  const loadUsers = async () => {
     try {
       setLoading(true)
       
+      // Backend devuelve usuarios + permisos de una vez
       const response = await fetch(`${API_BASE}/api/users/with-permissions`)
       if (!response.ok) throw new Error('Failed to load users')
       
@@ -172,9 +50,9 @@ export default function PermissionsManagement() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }
 
-  const handlePermissionChange = React.useCallback((userId: string, permission: PermissionKey, granted: boolean) => {
+  const handlePermissionChange = (userId: string, permission: PermissionKey, granted: boolean) => {
     setUsers(prevUsers =>
       prevUsers.map(u =>
         u.id === userId
@@ -185,9 +63,9 @@ export default function PermissionsManagement() {
           : u
       )
     )
-  }, [])
+  }
 
-  const handleSaveUser = React.useCallback(async (userId: string) => {
+  const handleSaveUser = async (userId: string) => {
     try {
       setSaving(prev => ({ ...prev, [userId]: true }))
 
@@ -198,6 +76,7 @@ export default function PermissionsManagement() {
 
       if (success) {
         toast.success('Permisos guardados exitosamente')
+        // Refrescar la lista para asegurar estado consistente
         await loadUsers()
       } else {
         toast.error('Error guardando permisos')
@@ -208,14 +87,11 @@ export default function PermissionsManagement() {
     } finally {
       setSaving(prev => ({ ...prev, [userId]: false }))
     }
-  }, [users])
+  }
 
-  const filteredUsers = React.useMemo(() =>
-    users.filter(u =>
-      (u.email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (u.fullName || '').toLowerCase().includes(searchTerm.toLowerCase())
-    ),
-    [users, searchTerm]
+  const filteredUsers = users.filter(u =>
+    (u.email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (u.fullName || '').toLowerCase().includes(searchTerm.toLowerCase())
   )
 
   if (loading) {
@@ -257,15 +133,86 @@ export default function PermissionsManagement() {
               </p>
             ) : (
               filteredUsers.map(user => (
-                <UserPermissionCard
-                  key={user.id}
-                  user={user}
-                  isExpanded={expandedUser === user.id}
-                  isSaving={saving[user.id] || false}
-                  onToggleExpand={() => setExpandedUser(expandedUser === user.id ? null : user.id)}
-                  onPermissionChange={(permission, granted) => handlePermissionChange(user.id, permission, granted)}
-                  onSave={() => handleSaveUser(user.id)}
-                />
+                <div key={user.id} className="border rounded-lg overflow-hidden">
+                  {/* User Header */}
+                  <button
+                    onClick={() =>
+                      setExpandedUser(expandedUser === user.id ? null : user.id)
+                    }
+                    className="w-full px-4 py-3 flex items-center justify-between hover:bg-slate-50 transition-colors"
+                  >
+                    <div className="flex items-center gap-3 flex-1 text-left">
+                      <div>
+                        <p className="font-medium text-slate-900">{user.fullName || user.email}</p>
+                        <p className="text-sm text-slate-500">{user.email}</p>
+                      </div>
+                      <Badge variant="outline">{user.role}</Badge>
+                    </div>
+                    {expandedUser === user.id ? (
+                      <ChevronUp className="size-4 text-slate-500" />
+                    ) : (
+                      <ChevronDown className="size-4 text-slate-500" />
+                    )}
+                  </button>
+
+                  {/* User Permissions */}
+                  {expandedUser === user.id && (
+                    <div className="bg-slate-50 px-4 py-4 border-t space-y-6">
+                      {Object.entries(PERMISSION_MODULES).map(([moduleKey, module]) => (
+                        <div key={moduleKey}>
+                          <h4 className="font-medium text-sm text-slate-900 mb-3">
+                            {module.label}
+                          </h4>
+                          <div className="space-y-2 ml-2">
+                            {Object.entries(module.permissions).map(([permKey, permission]) => {
+                              const perm = permission as PermissionKey
+                              const label = PERMISSION_LABELS[perm]
+                              const granted = user.permissions[perm] ?? false
+
+                              return (
+                                <label
+                                  key={perm}
+                                  className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 px-2 py-1 rounded transition-colors"
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={granted}
+                                    onChange={(e) =>
+                                      handlePermissionChange(user.id, perm, e.target.checked)
+                                    }
+                                    className="rounded border-slate-300"
+                                  />
+                                  <span className="text-sm text-slate-700">{label}</span>
+                                </label>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      ))}
+
+                      {/* Save Button */}
+                      <div className="flex justify-end pt-4 border-t">
+                        <Button
+                          onClick={() => handleSaveUser(user.id)}
+                          disabled={saving[user.id]}
+                          className="flex items-center gap-2"
+                        >
+                          {saving[user.id] ? (
+                            <>
+                              <Spinner className="size-4" />
+                              Guardando...
+                            </>
+                          ) : (
+                            <>
+                              <Save className="size-4" />
+                              Guardar Permisos
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               ))
             )}
           </div>
