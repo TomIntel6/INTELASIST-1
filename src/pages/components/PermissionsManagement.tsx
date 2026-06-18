@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Spinner } from '@/components/ui/spinner'
 import { toast } from 'sonner'
 import { ChevronDown, ChevronUp, Save } from 'lucide-react'
@@ -56,6 +57,26 @@ export default function PermissionsManagement() {
             }
           : u
       )
+    )
+  }
+
+  const handleToggleModuleAll = (userId: string, moduleKey: string) => {
+    setUsers(prevUsers =>
+      prevUsers.map(u => {
+        if (u.id !== userId) return u
+
+        // Determine if we should select or deselect all
+        const mk = moduleKey as keyof typeof PERMISSION_MODULES
+        const modulePermissions = Object.values(PERMISSION_MODULES[mk].permissions) as PermissionKey[]
+        const allSelected = modulePermissions.every((p) => u.permissions[p])
+
+        const updatedPermissions = { ...u.permissions }
+        modulePermissions.forEach((p) => {
+          updatedPermissions[p] = !allSelected
+        })
+
+        return { ...u, permissions: updatedPermissions }
+      })
     )
   }
 
@@ -152,37 +173,58 @@ export default function PermissionsManagement() {
                   {/* User Permissions */}
                   {expandedUser === user.id && (
                     <div className="bg-slate-50 px-4 py-4 border-t space-y-6">
-                      {Object.entries(PERMISSION_MODULES).map(([moduleKey, module]) => (
-                        <div key={moduleKey}>
-                          <h4 className="font-medium text-sm text-slate-900 mb-3">
-                            {module.label}
-                          </h4>
-                          <div className="space-y-2 ml-2">
-                            {Object.entries(module.permissions).map(([permKey, permission]) => {
-                              const perm = permission as PermissionKey
-                              const label = PERMISSION_LABELS[perm]
-                              const granted = user.permissions[perm] ?? false
+                      {Object.entries(PERMISSION_MODULES).map(([moduleKey, module]) => {
+                        const colorMap: Record<string, string> = {
+                          blue: 'bg-blue-100 text-blue-700 border-blue-200',
+                          green: 'bg-green-100 text-green-700 border-green-200',
+                          purple: 'bg-purple-100 text-purple-700 border-purple-200',
+                          orange: 'bg-orange-100 text-orange-700 border-orange-200',
+                          red: 'bg-red-100 text-red-700 border-red-200',
+                          pink: 'bg-pink-100 text-pink-700 border-pink-200',
+                        }
 
-                              return (
-                                <label
-                                  key={perm}
-                                  className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 px-2 py-1 rounded transition-colors"
-                                >
-                                  <input
-                                    type="checkbox"
-                                    checked={granted}
-                                    onChange={(e) =>
-                                      handlePermissionChange(user.id, perm, e.target.checked)
-                                    }
-                                    className="rounded border-slate-300"
-                                  />
-                                  <span className="text-sm text-slate-700">{label}</span>
-                                </label>
-                              )
-                            })}
+                        return (
+                          <div key={moduleKey}>
+                            <div className="flex items-center justify-between mb-3">
+                              <h4 className="font-medium text-sm text-slate-900">
+                                <span className={`inline-flex items-center gap-2 px-2 py-0.5 rounded text-xs ${colorMap[module.color as string] || 'bg-slate-100 text-slate-700'}`}>
+                                  {module.label}
+                                </span>
+                              </h4>
+                              <button
+                                className="text-sm text-slate-500 hover:text-slate-700"
+                                onClick={() => handleToggleModuleAll(user.id, moduleKey)}
+                                type="button"
+                              >
+                                Seleccionar todos
+                              </button>
+                            </div>
+
+                            <div className="space-y-2 ml-2">
+                              {Object.entries(module.permissions).map(([permKey, permission]) => {
+                                const perm = permission as PermissionKey
+                                const label = PERMISSION_LABELS[perm]
+                                const granted = user.permissions[perm] ?? false
+
+                                return (
+                                  <label
+                                    key={perm}
+                                    htmlFor={`${user.id}-${perm}`}
+                                    className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 px-2 py-1 rounded transition-colors"
+                                  >
+                                    <Checkbox
+                                      id={`${user.id}-${perm}`}
+                                      checked={granted}
+                                      onCheckedChange={(v) => handlePermissionChange(user.id, perm, Boolean(v))}
+                                    />
+                                    <span className="text-sm text-slate-700">{label}</span>
+                                  </label>
+                                )
+                              })}
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        )
+                      })}
 
                       {/* Save Button */}
                       <div className="flex justify-end pt-4 border-t">
