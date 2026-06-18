@@ -1,6 +1,6 @@
 import { getDefaultApiBase } from '@/lib/supabase'
 import type { PermissionKey } from '@/lib/permissions'
-import { PERMISSIONS, DEFAULT_ROLE_PERMISSIONS, getAllPermissionKeys } from '@/lib/permissions'
+import { PERMISSIONS, DEFAULT_ROLE_PERMISSIONS, DEFAULT_MODULE_ACCESS, getAllPermissionKeys, getModuleKeyForPermission } from '@/lib/permissions'
 import type { UserRole } from '@/lib/auth'
 import { AuditService } from '@/lib/audit-service'
 
@@ -9,6 +9,30 @@ const API_BASE = getDefaultApiBase()
 export interface UserPermissionData {
   userId: string
   permissions: Record<PermissionKey, boolean>
+}
+
+function normalizePermissionMap(rawPermissions: Record<string, any> | undefined): Record<PermissionKey, boolean> {
+  const normalized: Record<PermissionKey, boolean> = {} as Record<PermissionKey, boolean>
+
+  getAllPermissionKeys().forEach((permission) => {
+    normalized[permission] = Boolean(rawPermissions?.[permission])
+  })
+
+  return normalized
+}
+
+function normalizeModuleMap(rawModules: Record<string, any> | undefined) {
+  const normalized = { ...DEFAULT_MODULE_ACCESS }
+
+  if (rawModules && typeof rawModules === 'object') {
+    Object.entries(rawModules).forEach(([key, value]) => {
+      if (key in normalized) {
+        normalized[key as keyof typeof normalized] = Boolean(value)
+      }
+    })
+  }
+
+  return normalized
 }
 
 /**
@@ -33,23 +57,41 @@ export class PermissionsManagementService {
 
       const data = await response.json()
       
-      const permissions: Record<string, boolean> = {}
-      
-      // Initialize all permissions to false
-      this.getAllPermissions().forEach((perm) => {
-        permissions[perm] = false
-      })
-
-      // Set from API response
-      if (data.permissions) {
-        Object.assign(permissions, data.permissions)
-      }
-
-      return permissions
+      return normalizePermissionMap(data.permissions)
     } catch (error) {
       console.error('Error getting user permissions:', error)
       return {}
     }
+  }
+
+  static async getUsersWithPermissions() {
+    const response = await fetch(`${API_BASE}/api/users/with-permissions`)
+    if (!response.ok) throw new Error('Failed to fetch users with permissions')
+
+    const users = await response.json()
+    return users.map((user: any) => ({
+      ...user,
+      permissions: normalizePermissionMap(user.permissions),
+    }))
+  }
+
+  static async getUsersWithModules() {
+    const response = await fetch(`${API_BASE}/api/users/with-modules`)
+    if (!response.ok) throw new Error('Failed to fetch users with modules')
+
+    const users = await response.json()
+    return users.map((user: any) => ({
+      ...user,
+      modules: normalizeModuleMap(user.modules),
+    }))
+  }
+
+  static async getUserModules(userId: string) {
+    const response = await fetch(`${API_BASE}/api/users/${userId}/permissions`)
+    if (!response.ok) throw new Error('Failed to fetch user modules')
+
+    const data = await response.json()
+    return normalizeModuleMap(data.modules)
   }
 
   /**
@@ -90,11 +132,40 @@ export class PermissionsManagementService {
         window.dispatchEvent(new CustomEvent('permissions-changed', {
           detail: { userId, permissions, timestamp: new Date().toISOString() },
         }))
+        window.dispatchEvent(new CustomEvent('modules-changed', {
+          detail: { userId, modules: await this.getUserModules(userId), timestamp: new Date().toISOString() },
+        }))
       }
 
       return true
     } catch (error) {
       console.error('Error updating user permissions:', error)
+      return false
+    }
+  }
+
+  static async updateUserModules(userId: string, modules: Record<string, boolean>) {
+    try {
+      const response = await fetch(`${API_BASE}/api/users/${userId}/modules`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ modules }),
+      })
+
+      if (!response.ok) throw new Error('Failed to update modules')
+
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('modules-changed', {
+          detail: { userId, modules, timestamp: new Date().toISOString() },
+        }))
+        window.dispatchEvent(new CustomEvent('permissions-changed', {
+          detail: { userId, permissions: await this.getUserPermissions(userId), timestamp: new Date().toISOString() },
+        }))
+      }
+
+      return true
+    } catch (error) {
+      console.error('Error updating user modules:', error)
       return false
     }
   }
