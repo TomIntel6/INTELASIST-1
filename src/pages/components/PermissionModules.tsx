@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import { Input } from '@/components/ui/input'
-import { Checkbox } from '@/components/ui/checkbox'
+import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { ChevronDown, ChevronUp, Save } from 'lucide-react'
 import { toast } from 'sonner'
@@ -175,17 +175,15 @@ export default function PermissionModules() {
                     }
 
                     return (
-                      <div key={moduleKey} className="flex items-center gap-2">
-                        <Checkbox
-                          id={`${user.userId}-${moduleKey}`}
-                          checked={user.modules[moduleKey] || false}
-                          onCheckedChange={() => handleModuleToggle(user.userId, moduleKey)}
-                        />
-                        <label htmlFor={`${user.userId}-${moduleKey}`} className="cursor-pointer text-sm inline-flex items-center gap-2">
-                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs ${colorMap[(moduleData as any).color as string] || 'bg-slate-100 text-slate-700'}`}>
-                            {moduleData.label}
-                          </span>
-                        </label>
+                    <div key={moduleKey} className="flex items-center justify-between gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 shadow-sm transition-colors hover:border-slate-300">
+                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs ${colorMap[(moduleData as any).color as string] || 'bg-slate-100 text-slate-700'}`}>
+                        {moduleData.label}
+                      </span>
+                      <Switch
+                        id={`${user.userId}-${moduleKey}`}
+                        checked={user.modules[moduleKey] || false}
+                        onCheckedChange={() => handleModuleToggle(user.userId, moduleKey)}
+                      />
                       </div>
                     )
                   })}
