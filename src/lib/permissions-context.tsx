@@ -142,10 +142,6 @@ export function PermissionProvider({ children }: { children: React.ReactNode }) 
 
   const hasModuleAccess = React.useCallback(
     (module: ModuleKey): boolean => {
-      if (hasAnyRole(user, ['Admin'])) {
-        return true
-      }
-
       return modules[module] ?? DEFAULT_MODULE_ACCESS[module] ?? false
     },
     [modules]
@@ -153,12 +149,6 @@ export function PermissionProvider({ children }: { children: React.ReactNode }) 
 
   const hasPermission = React.useCallback(
     (permission: PermissionKey): boolean => {
-      // Admin users must keep full access, even if granular module/permission
-      // toggles are changed in the advanced administration panel.
-      if (hasAnyRole(user, ['Admin'])) {
-        return true
-      }
-
       const moduleKey = getModuleKeyForPermission(permission)
       if (moduleKey && !hasModuleAccess(moduleKey)) {
         return false
