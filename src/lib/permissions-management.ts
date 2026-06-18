@@ -86,6 +86,12 @@ export class PermissionsManagementService {
       // Log the change
       await AuditService.logPermissionsUpdated(userId, oldPermissions, permissions)
 
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('permissions-changed', {
+          detail: { userId, permissions, timestamp: new Date().toISOString() },
+        }))
+      }
+
       return true
     } catch (error) {
       console.error('Error updating user permissions:', error)

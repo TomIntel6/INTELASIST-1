@@ -74,6 +74,12 @@ export default function PermissionModules() {
       
       if (!response.ok) throw new Error('Failed to update modules')
 
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('modules-changed', {
+          detail: { userId, modules: user.modules, timestamp: new Date().toISOString() },
+        }))
+      }
+
       toast.success(`Módulos actualizados para ${user.email}`)
       // Refrescar la lista para asegurar estado consistente en la UI
       await loadUsers()
