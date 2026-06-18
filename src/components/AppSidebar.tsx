@@ -66,7 +66,7 @@ const navItems = [
 
 export const AppSidebar = React.memo(function AppSidebar() {
   const { user, signOut, updateCurrentUserProfile } = useAuth()
-  const { hasModuleAccess, hasPermission } = usePermissions()
+  const { permissions, hasModuleAccess, hasPermission } = usePermissions()
   const navigate = useNavigate()
   const location = useLocation()
   const [profileOpen, setProfileOpen] = React.useState(false)
@@ -84,6 +84,22 @@ export const AppSidebar = React.memo(function AppSidebar() {
   const canViewAdminModule = React.useMemo(
     () => hasPermission(PERMISSIONS.SYSTEM.MANAGE_PERMISSIONS),
     [hasPermission]
+  )
+  const rawSystemPermissions = React.useMemo<Record<string, boolean>>(
+    () => permissions?.permissions ?? {},
+    [permissions]
+  )
+  const canViewAlerts = React.useMemo(
+    () => Boolean(rawSystemPermissions[PERMISSIONS.SYSTEM.VIEW_ALERTS])
+      || Boolean(rawSystemPermissions[PERMISSIONS.SYSTEM.MANAGE_ALERTS])
+      || hasPermission(PERMISSIONS.SYSTEM.VIEW_ALERTS)
+      || hasPermission(PERMISSIONS.SYSTEM.MANAGE_ALERTS),
+    [rawSystemPermissions, hasPermission]
+  )
+  const canManageAlerts = React.useMemo(
+    () => Boolean(rawSystemPermissions[PERMISSIONS.SYSTEM.MANAGE_ALERTS])
+      || hasPermission(PERMISSIONS.SYSTEM.MANAGE_ALERTS),
+    [rawSystemPermissions, hasPermission]
   )
   const [onlineUsers, setOnlineUsers] = React.useState<ReturnType<typeof getOnlineUsers>>(() => getOnlineUsers())
   const initials = React.useMemo(() =>
@@ -154,6 +170,7 @@ export const AppSidebar = React.memo(function AppSidebar() {
   }>>([])
   const [alertsOpen, setAlertsOpen] = React.useState(false)
   const isAdminRole = userRoles.includes('Admin') || userRoles.includes('Support') || userRoles.includes('Gerente')
+  const canAccessFailedAlerts = canViewAlerts || isAdminRole
 
   React.useEffect(() => {
     setProfileName(rawDisplayName)
@@ -229,7 +246,7 @@ export const AppSidebar = React.memo(function AppSidebar() {
 
   // Función para cargar intentos fallidos (fuera del useEffect para ser reutilizable)
   const loadFailedAttempts = React.useCallback(async () => {
-    if (!isAdminRole || document.visibilityState !== 'visible') {
+    if (!canAccessFailedAlerts || document.visibilityState !== 'visible') {
       return
     }
 
@@ -257,11 +274,11 @@ export const AppSidebar = React.memo(function AppSidebar() {
     } catch (error) {
       console.error('✗ Error al cargar intentos fallidos (raw):', error)
     }
-  }, [isAdminRole])
+  }, [canAccessFailedAlerts])
 
   // Efecto para cargar intentos fallidos inicialmente y configurar intervalos
   React.useEffect(() => {
-    if (!isAdminRole) {
+    if (!canAccessFailedAlerts) {
       setFailedAttempts([])
       return
     }
@@ -319,15 +336,15 @@ export const AppSidebar = React.memo(function AppSidebar() {
       window.removeEventListener('storage', onStorage, true)
       window.removeEventListener('visibilitychange', handleVisibilityChange)
     }
-  }, [isAdminRole, loadFailedAttempts])
+  }, [canAccessFailedAlerts, loadFailedAttempts])
 
   // Efecto para recargar alertas cuando se abre el diálogo
   React.useEffect(() => {
-    if (alertsOpen && isAdminRole) {
+    if (alertsOpen && canAccessFailedAlerts) {
       console.log('📋 Diálogo de alertas abierto, recargando...')
       loadFailedAttempts()
     }
-  }, [alertsOpen, isAdminRole, loadFailedAttempts])
+  }, [alertsOpen, canAccessFailedAlerts, loadFailedAttempts])
 
   const visibleUsers = React.useMemo(() => {
     const list = onlineUsers.map(user => ({
@@ -508,7 +525,7 @@ export const AppSidebar = React.memo(function AppSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ) : null}
-              {canAccessAdvancedAdmin(user) && canViewAdminModule ? (
+              {canViewAlerts ? (
                 <SidebarMenuItem>
                   <button
                     onClick={() => setAlertsOpen(true)}
@@ -709,7 +726,16 @@ export const AppSidebar = React.memo(function AppSidebar() {
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-muted-foreground">{new Date(attempt.attemptedAt).toLocaleString('es-ES')}</span>
-                        <Button variant="outline" size="sm" onClick={() => handleDeleteAttempt(attempt.id)} className="ml-2">Borrar</Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDeleteAttempt(attempt.id)}
+                          className="ml-2"
+                          disabled={!canManageAlerts}
+                          title={canManageAlerts ? 'Borrar alerta' : 'No tienes permiso para borrar alertas'}
+                        >
+                          Borrar
+                        </Button>
                       </div>
                     </div>
                   </div>
