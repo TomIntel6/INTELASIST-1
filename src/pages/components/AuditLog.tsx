@@ -159,14 +159,15 @@ export default function AuditLog() {
               Módulo
             </Label>
             <Select value={moduleFilter} onValueChange={(value) => {
-              setModuleFilter(value)
+              const v = value === '__all__' ? '' : value
+              setModuleFilter(v)
               setPage(0)
             }}>
               <SelectTrigger id="module-filter">
                 <SelectValue placeholder="Todos" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Todos</SelectItem>
+                <SelectItem value="__all__">Todos</SelectItem>
                 {MODULES.map(mod => (
                   <SelectItem key={mod} value={mod}>
                     {mod}
@@ -181,14 +182,15 @@ export default function AuditLog() {
               Acción
             </Label>
             <Select value={actionFilter} onValueChange={(value) => {
-              setActionFilter(value)
+              const v = value === '__all__' ? '' : value
+              setActionFilter(v)
               setPage(0)
             }}>
               <SelectTrigger id="action-filter">
                 <SelectValue placeholder="Todas" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Todas</SelectItem>
+                <SelectItem value="__all__">Todas</SelectItem>
                 {ACTIONS.map(action => (
                   <SelectItem key={action} value={action}>
                     {AUDIT_ACTION_LABELS[action] || action}
