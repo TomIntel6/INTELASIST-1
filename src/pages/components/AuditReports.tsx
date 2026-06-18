@@ -158,12 +158,12 @@ export default function AuditReports() {
 
             <div className="space-y-2">
               <Label htmlFor="module">Módulo</Label>
-              <Select value={module} onValueChange={setModule}>
+              <Select value={module} onValueChange={(v) => setModule(v === '__all__' ? '' : v)}>
                 <SelectTrigger id="module">
                   <SelectValue placeholder="Todos los módulos" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todos</SelectItem>
+                  <SelectItem value="__all__">Todos</SelectItem>
                   <SelectItem value="reports">Informes</SelectItem>
                   <SelectItem value="users">Usuarios</SelectItem>
                   <SelectItem value="system">Sistema</SelectItem>
@@ -174,12 +174,12 @@ export default function AuditReports() {
 
             <div className="space-y-2">
               <Label htmlFor="action">Acción</Label>
-              <Select value={action} onValueChange={setAction}>
+              <Select value={action} onValueChange={(v) => setAction(v === '__all__' ? '' : v)}>
                 <SelectTrigger id="action">
                   <SelectValue placeholder="Todas las acciones" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todas</SelectItem>
+                  <SelectItem value="__all__">Todas</SelectItem>
                   {AUDIT_ACTIONS.map((act) => (
                     <SelectItem key={act} value={act}>
                       {AUDIT_ACTION_LABELS[act] || act}
