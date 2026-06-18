@@ -154,10 +154,12 @@ export function PermissionProvider({ children }: { children: React.ReactNode }) 
         return false
       }
 
-      // Admin users keep full permission access, Support users must be authorized explicitly.
-      if (user?.user_metadata?.role === 'Admin') {
+      // Admin users keep full permission access, even when granular permissions
+      // are stored for other roles. This preserves the expected admin behavior.
+      if (hasAnyRole(user, ['Admin'])) {
         return true
       }
+
       if (!permissions) return false
       return permissions.permissions[permission] ?? false
     },
