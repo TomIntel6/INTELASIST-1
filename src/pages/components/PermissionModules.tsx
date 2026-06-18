@@ -53,6 +53,24 @@ export default function PermissionModules() {
     )
   }
 
+  const handleToggleAllModulesForUser = (userId: string) => {
+    setUsers((prevUsers) =>
+      prevUsers.map((user) => {
+        if (user.userId !== userId) return user
+
+        const moduleKeys = Object.keys(PERMISSION_MODULES) as Array<keyof typeof PERMISSION_MODULES>
+        const allSelected = moduleKeys.every((k) => user.modules[k])
+
+        const updatedModules: Record<string, boolean> = { ...user.modules }
+        moduleKeys.forEach((k) => {
+          updatedModules[k] = !allSelected
+        })
+
+        return { ...user, modules: updatedModules }
+      })
+    )
+  }
+
   const handleSave = async (userId: string) => {
     try {
       setSaving((prev) => ({ ...prev, [userId]: true }))
@@ -125,6 +143,16 @@ export default function PermissionModules() {
               </div>
               <div className="flex items-center gap-2">
                 <Badge variant="outline">{user.role}</Badge>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleToggleAllModulesForUser(user.userId)
+                  }}
+                  type="button"
+                  className="text-sm text-slate-500 hover:text-slate-700 mr-2"
+                >
+                  Seleccionar todos
+                </button>
                 {expandedUser === user.userId ? (
                   <ChevronUp className="size-5 text-slate-400" />
                 ) : (
@@ -136,18 +164,31 @@ export default function PermissionModules() {
             {expandedUser === user.userId && (
               <CardContent className="pt-0 border-t">
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-4">
-                  {Object.entries(PERMISSION_MODULES).map(([moduleKey, moduleData]) => (
-                    <div key={moduleKey} className="flex items-center gap-2">
-                      <Checkbox
-                        id={`${user.userId}-${moduleKey}`}
-                        checked={user.modules[moduleKey] || false}
-                        onCheckedChange={() => handleModuleToggle(user.userId, moduleKey)}
-                      />
-                      <Label htmlFor={`${user.userId}-${moduleKey}`} className="cursor-pointer text-sm">
-                        {moduleData.label}
-                      </Label>
-                    </div>
-                  ))}
+                  {Object.entries(PERMISSION_MODULES).map(([moduleKey, moduleData]) => {
+                    const colorMap: Record<string, string> = {
+                      blue: 'bg-blue-100 text-blue-700 border-blue-200',
+                      green: 'bg-green-100 text-green-700 border-green-200',
+                      purple: 'bg-purple-100 text-purple-700 border-purple-200',
+                      orange: 'bg-orange-100 text-orange-700 border-orange-200',
+                      red: 'bg-red-100 text-red-700 border-red-200',
+                      pink: 'bg-pink-100 text-pink-700 border-pink-200',
+                    }
+
+                    return (
+                      <div key={moduleKey} className="flex items-center gap-2">
+                        <Checkbox
+                          id={`${user.userId}-${moduleKey}`}
+                          checked={user.modules[moduleKey] || false}
+                          onCheckedChange={() => handleModuleToggle(user.userId, moduleKey)}
+                        />
+                        <label htmlFor={`${user.userId}-${moduleKey}`} className="cursor-pointer text-sm inline-flex items-center gap-2">
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs ${colorMap[(moduleData as any).color as string] || 'bg-slate-100 text-slate-700'}`}>
+                            {moduleData.label}
+                          </span>
+                        </label>
+                      </div>
+                    )
+                  })}
                 </div>
 
                 <div className="mt-4 flex justify-end">
