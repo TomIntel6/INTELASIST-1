@@ -129,7 +129,7 @@ export const AppSidebar = React.memo(function AppSidebar() {
       const nextStyles = await PermissionsManagementService.getPresenceStyles()
       setPresenceStyles(nextStyles)
     } catch {
-      setPresenceStyles({})
+      setPresenceStyles(prev => prev)
     }
   }, [])
 
@@ -210,6 +210,7 @@ export const AppSidebar = React.memo(function AppSidebar() {
 
     const handlePresenceStyleChanged = () => {
       void refreshPresenceStyles()
+      refreshOnlineUsers()
     }
 
     const handleUsersSync = (event: Event) => {
@@ -365,6 +366,22 @@ export const AppSidebar = React.memo(function AppSidebar() {
 
   React.useEffect(() => {
     void refreshPresenceStyles()
+  }, [refreshPresenceStyles])
+
+  React.useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        void refreshPresenceStyles()
+      }
+    }
+
+    window.addEventListener('focus', handleVisibilityChange)
+    window.addEventListener('visibilitychange', handleVisibilityChange)
+
+    return () => {
+      window.removeEventListener('focus', handleVisibilityChange)
+      window.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
   }, [refreshPresenceStyles])
 
   const visibleUsers = React.useMemo(() => {
