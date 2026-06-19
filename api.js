@@ -2615,11 +2615,14 @@ app.put('/api/users/:userId/permissions', async (req, res) => {
 
       // Get or create permission record
       let permResult = await pool.query(
-        'SELECT id FROM user_permissions WHERE user_id = $1 FOR UPDATE',
+        'SELECT id, modules_access FROM user_permissions WHERE user_id = $1 FOR UPDATE',
         [userId]
       )
 
       let permId = permResult.rows[0]?.id
+      const existingModulesAccess = permResult.rows[0]?.modules_access && typeof permResult.rows[0].modules_access === 'object'
+        ? { ...permResult.rows[0].modules_access }
+        : {}
 
       if (!permId) {
         const createResult = await pool.query(
