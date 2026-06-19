@@ -315,43 +315,54 @@
 
 @keyframes presence-glow-breathe {
   0%, 100% {
-    box-shadow: inset 0 0 0 1px rgba(56, 189, 248, 0.35), 0 0 0 0 rgba(56, 189, 248, 0.18);
+    box-shadow: inset 0 0 0 1.5px rgba(56, 189, 248, 0.7), 0 0 0 0 rgba(56, 189, 248, 0.2), 0 0 12px rgba(56, 189, 248, 0.16);
+    transform: translateY(0);
   }
 
   50% {
-    box-shadow: inset 0 0 0 1px rgba(56, 189, 248, 0.7), 0 0 0 4px rgba(56, 189, 248, 0.12), 0 0 20px rgba(56, 189, 248, 0.22);
+    box-shadow: inset 0 0 0 2px rgba(56, 189, 248, 0.95), 0 0 0 5px rgba(56, 189, 248, 0.16), 0 0 22px rgba(56, 189, 248, 0.35), 0 0 34px rgba(56, 189, 248, 0.18);
+    transform: translateY(-1px);
   }
 }
 
 @keyframes presence-pulse-wave {
   0%, 100% {
-    box-shadow: inset 0 0 0 1px rgba(244, 63, 94, 0.35), 0 0 0 0 rgba(244, 63, 94, 0.16);
+    box-shadow: inset 0 0 0 1.5px rgba(244, 63, 94, 0.7), 0 0 0 0 rgba(244, 63, 94, 0.2);
     transform: scale(1);
   }
 
   50% {
-    box-shadow: inset 0 0 0 1px rgba(244, 63, 94, 0.75), 0 0 0 4px rgba(244, 63, 94, 0.12), 0 0 18px rgba(244, 63, 94, 0.18);
-    transform: scale(1.01);
+    box-shadow: inset 0 0 0 2px rgba(244, 63, 94, 0.95), 0 0 0 6px rgba(244, 63, 94, 0.16), 0 0 24px rgba(244, 63, 94, 0.32), 0 0 36px rgba(244, 63, 94, 0.18);
+    transform: scale(1.02);
   }
 }
 
 @keyframes presence-rainbow-rotate {
   0% {
-    filter: hue-rotate(0deg);
+    filter: hue-rotate(0deg) saturate(1.1);
+    box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.36), 0 0 0 0 rgba(255, 255, 255, 0.1);
+  }
+
+  50% {
+    filter: hue-rotate(180deg) saturate(1.35);
+    box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.5), 0 0 0 5px rgba(255, 255, 255, 0.08), 0 0 24px rgba(255,255,255,0.2);
   }
 
   100% {
-    filter: hue-rotate(360deg);
+    filter: hue-rotate(360deg) saturate(1.1);
+    box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.36), 0 0 0 0 rgba(255, 255, 255, 0.1);
   }
 }
 
 @keyframes presence-orbit-spin {
   0%, 100% {
-    box-shadow: inset 0 0 0 1px rgba(129, 140, 248, 0.35), 0 0 0 0 rgba(129, 140, 248, 0.16);
+    box-shadow: inset 0 0 0 1.5px rgba(129, 140, 248, 0.7), 0 0 0 0 rgba(129, 140, 248, 0.2);
+    transform: rotate(0deg);
   }
 
   50% {
-    box-shadow: inset 0 0 0 1px rgba(129, 140, 248, 0.75), 0 0 0 3px rgba(129, 140, 248, 0.12), 0 0 18px rgba(129, 140, 248, 0.2);
+    box-shadow: inset 0 0 0 2px rgba(129, 140, 248, 0.95), 0 0 0 5px rgba(129, 140, 248, 0.16), 0 0 24px rgba(129, 140, 248, 0.3);
+    transform: rotate(2deg);
   }
 }
 
@@ -361,17 +372,17 @@
 }
 
 .presence-badge-glow {
-  animation: presence-glow-breathe 1.8s ease-in-out infinite;
+  animation: presence-glow-breathe 1.2s ease-in-out infinite;
 }
 
 .presence-badge-pulse {
-  animation: presence-pulse-wave 1.35s ease-in-out infinite;
+  animation: presence-pulse-wave 1s ease-in-out infinite;
 }
 
 .presence-badge-rainbow {
-  animation: presence-rainbow-rotate 2.4s linear infinite;
+  animation: presence-rainbow-rotate 1.6s linear infinite;
 }
 
 .presence-badge-orbit {
-  animation: presence-orbit-spin 2.1s linear infinite;
+  animation: presence-orbit-spin 1.4s ease-in-out infinite;
 }
