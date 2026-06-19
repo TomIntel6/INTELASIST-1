@@ -13,13 +13,24 @@ import { DEFAULT_ROLE_PERMISSIONS } from '@/lib/permissions'
 import { Spinner } from '@/components/ui/spinner'
 import { toast } from 'sonner'
 import { ChevronDown, ChevronUp, Save } from 'lucide-react'
+import { getUserRoles, useAuth } from '@/lib/auth'
 
 interface UserWithPermissions {
   id: string
   email: string
   fullName: string
   role: string
+  presenceStyle: string
   permissions: Record<PermissionKey, boolean>
+}
+
+interface UserWithPermissionsPayload {
+  id?: string
+  email?: string
+  fullName?: string
+  role?: string
+  presenceStyle?: string
+  permissions?: Record<string, unknown>
 }
 
 export default function PermissionsManagement() {
@@ -28,6 +39,8 @@ export default function PermissionsManagement() {
   const [saving, setSaving] = React.useState<Record<string, boolean>>({})
   const [expandedUser, setExpandedUser] = React.useState<string | null>(null)
   const [searchTerm, setSearchTerm] = React.useState('')
+  const { user } = useAuth()
+  const canAssignPresenceStyles = React.useMemo(() => getUserRoles(user).includes('Support'), [user])
 
   // Load users on mount
   React.useEffect(() => {
@@ -40,7 +53,14 @@ export default function PermissionsManagement() {
       
       // Backend devuelve usuarios + permisos de una vez
       const usersWithPerms = await PermissionsManagementService.getUsersWithPermissions()
-      setUsers(usersWithPerms)
+      setUsers(usersWithPerms.map((user: UserWithPermissionsPayload) => ({
+        id: user.id || '',
+        email: user.email || '',
+        fullName: user.fullName || '',
+        role: user.role || '',
+        presenceStyle: user.presenceStyle || 'none',
+        permissions: (user.permissions || {}) as Record<PermissionKey, boolean>,
+      })))
     } catch (error) {
       console.error('Error loading users:', error)
       toast.error('Error cargando usuarios')
@@ -93,7 +113,7 @@ export default function PermissionsManagement() {
       const oldPermissions = await PermissionsManagementService.getUserPermissions(userId)
 
       // Llamada API para persistir
-      const success = await PermissionsManagementService.updateUserPermissions(userId, user.permissions)
+      const success = await PermissionsManagementService.updateUserPermissions(userId, user.permissions, user.presenceStyle)
 
       if (success) {
         toast.success('Permisos guardados. Puedes deshacer en 10s si fue un error')
@@ -155,10 +175,23 @@ export default function PermissionsManagement() {
   }
 
   const roleOptions = Object.keys(DEFAULT_ROLE_PERMISSIONS)
+  const presenceStyleOptions = [
+    { value: 'none', label: 'Sin animación' },
+    { value: 'glow', label: 'Brillo' },
+    { value: 'pulse', label: 'Pulso' },
+    { value: 'rainbow', label: 'Arcoíris' },
+    { value: 'orbit', label: 'Orbital' },
+  ]
 
   const applyRoleToUser = (userId: string, roleKey: string) => {
     const rolePerms = DEFAULT_ROLE_PERMISSIONS[roleKey as keyof typeof DEFAULT_ROLE_PERMISSIONS] || []
     setUsers(prev => prev.map(u => u.id === userId ? { ...u, permissions: Object.fromEntries((Object.keys(u.permissions) as PermissionKey[]).map(k => [k, rolePerms.includes(k)])) as Record<PermissionKey, boolean> } : u))
+  }
+
+  const handlePresenceStyleChange = (userId: string, presenceStyle: string) => {
+    setUsers(prevUsers =>
+      prevUsers.map(u => u.id === userId ? { ...u, presenceStyle } : u)
+    )
   }
 
   const filteredUsers = users.filter(u =>
@@ -260,6 +293,32 @@ export default function PermissionsManagement() {
                               </>
                             )}
                           </Button>
+                        </div>
+                      </div>
+
+                      <div className="rounded-lg border border-slate-200 bg-white p-4 space-y-3">
+                        <div className="flex items-center justify-between gap-3">
+                          <div>
+                            <Label className="text-sm">Animación en usuarios conectados</Label>
+                            <p className="text-xs text-slate-500 mt-1">
+                              {canAssignPresenceStyles
+                                ? 'Se mostrará a todos los usuarios en el panel “Conectados”.'
+                                : 'Solo el rol Support puede asignar esta configuración.'}
+                            </p>
+                          </div>
+                          {canAssignPresenceStyles ? (
+                            <select
+                              className="rounded border px-2 py-1 text-sm bg-white"
+                              value={user.presenceStyle || 'none'}
+                              onChange={(event) => handlePresenceStyleChange(user.id, event.target.value)}
+                            >
+                              {presenceStyleOptions.map(option => (
+                                <option key={option.value} value={option.value}>{option.label}</option>
+                              ))}
+                            </select>
+                          ) : (
+                            <span className="text-xs text-slate-500">Solo Support</span>
+                          )}
                         </div>
                       </div>
 

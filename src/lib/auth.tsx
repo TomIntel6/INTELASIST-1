@@ -39,6 +39,7 @@ export const PRESENCE_STORAGE_KEY = 'intelasist-online-users'
 export const PRESENCE_SYNC_STORAGE_KEY = 'intelasist-presence-sync'
 export const ROLE_SYNC_STORAGE_KEY = 'intelasist-role-sync'
 export const USERS_SYNC_STORAGE_KEY = 'intelasist-users-sync'
+export const PRESENCE_STYLE_STORAGE_KEY = 'intelasist-presence-styles'
 const PRESENCE_TTL_MS = 1000 * 45
 // El heartbeat debe ser claramente más frecuente que el TTL para evitar que el
 // usuario "expire" entre un latido y el siguiente (antes: 60s > 45s -> parpadeo).
@@ -193,6 +194,7 @@ interface StoredPresenceUser {
   role: UserRole
   roles: UserRole[]
   lastSeen: number
+  presenceStyle?: string
 }
 
 type OnlineUserSeed = {
@@ -200,6 +202,7 @@ type OnlineUserSeed = {
   email?: string
   fullName?: string
   role?: UserRole
+  presenceStyle?: string
   user_metadata?: {
     full_name?: string
     role?: UserRole
@@ -582,6 +585,54 @@ export function getRoleColorClasses(role: UserRole, fullName?: string | null) {
     case 'Agente':
     default:
       return 'agente-animated font-bold bg-transparent border-0'
+  }
+}
+
+export type PresenceStyleKey = 'none' | 'glow' | 'pulse' | 'rainbow' | 'orbit'
+
+export function normalizePresenceStyle(style: unknown): PresenceStyleKey {
+  const normalized = typeof style === 'string' ? style.trim().toLowerCase() : 'none'
+
+  switch (normalized) {
+    case 'glow':
+    case 'pulse':
+    case 'rainbow':
+    case 'orbit':
+      return normalized
+    default:
+      return 'none'
+  }
+}
+
+export function getPresenceStyleLabel(style: unknown): string {
+  switch (normalizePresenceStyle(style)) {
+    case 'glow':
+      return 'Brillo'
+    case 'pulse':
+      return 'Pulso'
+    case 'rainbow':
+      return 'Arcoíris'
+    case 'orbit':
+      return 'Orbital'
+    case 'none':
+    default:
+      return 'Sin animación'
+  }
+}
+
+export function getPresenceStyleClasses(style: unknown): string {
+  switch (normalizePresenceStyle(style)) {
+    case 'glow':
+      return 'presence-badge-glow'
+    case 'pulse':
+      return 'presence-badge-pulse'
+    case 'rainbow':
+      return 'presence-badge-rainbow'
+    case 'orbit':
+      return 'presence-badge-orbit'
+    case 'none':
+    default:
+      return 'presence-badge-none'
   }
 }
 

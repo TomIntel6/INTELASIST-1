@@ -2300,11 +2300,12 @@ app.get('/api/users/with-permissions', async (req, res) => {
         u.correo AS "email",
         u.nombre AS "fullName",
         u.rol AS "role",
+        COALESCE(up.modules_access ->> 'presence_badge_style', 'none') AS "presenceStyle",
         COALESCE(jsonb_object_agg(upd.permission_key, upd.granted) FILTER (WHERE upd.permission_key IS NOT NULL), '{}'::jsonb) AS "permissions"
       FROM usuarios u
       LEFT JOIN user_permissions up ON up.user_id = u.id
       LEFT JOIN user_permission_details upd ON upd.permission_id = up.id
-      GROUP BY u.id, u.correo, u.nombre, u.rol
+      GROUP BY u.id, u.correo, u.nombre, u.rol, up.modules_access
       ORDER BY u.nombre ASC
     `)
 
@@ -2334,6 +2335,7 @@ app.get('/api/users/with-permissions', async (req, res) => {
         email: row.email,
         fullName: row.fullName,
         role: row.role,
+        presenceStyle: row.presenceStyle || 'none',
         permissions: completePermissions,
       }
     })
@@ -2525,10 +2527,15 @@ app.get('/api/users/:userId/permissions', async (req, res) => {
       completePermissions[row.permission_key] = row.granted
     })
 
+    const presenceStyle = typeof permission.modules_access === 'object' && permission.modules_access !== null
+      ? (permission.modules_access.presence_badge_style || 'none')
+      : 'none'
+
     res.json({
       permissionId: permission.id,
       permissions: completePermissions,
       modules: permission.modules_access || {},
+      presenceStyle,
       createdAt: permission.created_at,
       updatedAt: permission.updated_at,
     })
@@ -2596,6 +2603,7 @@ app.put('/api/users/:userId/permissions', async (req, res) => {
   try {
     const userId = typeof req.params.userId === 'string' ? req.params.userId.trim() : ''
     const permissions = req.body?.permissions || {}
+    const presenceStyle = typeof req.body?.presenceStyle === 'string' ? req.body.presenceStyle.trim() : ''
 
     if (!userId) {
       return res.status(400).json({ error: 'userId requerido' })
@@ -2635,10 +2643,17 @@ app.put('/api/users/:userId/permissions', async (req, res) => {
         )
       }
 
+      const nextModulesAccess = { ...existingModulesAccess }
+      if (presenceStyle && presenceStyle !== 'none') {
+        nextModulesAccess.presence_badge_style = presenceStyle
+      } else {
+        delete nextModulesAccess.presence_badge_style
+      }
+
       // Actualizar updated_at en user_permissions
       await pool.query(
-        'UPDATE user_permissions SET updated_at = NOW() WHERE id = $1',
-        [permId]
+        'UPDATE user_permissions SET modules_access = $1, updated_at = NOW() WHERE id = $2',
+        [JSON.stringify(nextModulesAccess), permId]
       )
 
       await pool.query('COMMIT')
@@ -2666,7 +2681,7 @@ app.put('/api/users/:userId/permissions', async (req, res) => {
         console.warn('Error notificando cambio de permisos via SSE:', err)
       }
 
-      res.json({ success: true, message: 'Permisos actualizados', userId, permissions })
+      res.json({ success: true, message: 'Permisos actualizados', userId, permissions, presenceStyle: presenceStyle || 'none' })
     } catch (txErr) {
       try { await pool.query('ROLLBACK') } catch (e) { /* noop */ }
       console.error('Error en transacción al actualizar permisos:', txErr)
