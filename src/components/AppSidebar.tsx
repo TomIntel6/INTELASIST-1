@@ -24,9 +24,10 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { fetchOnlineUsersFromServer, getNameColorClasses, getOnlineUsers, getRoleColorClasses, getUserRole, getUserRoles, useAuth, PRESENCE_STORAGE_KEY, PRESENCE_SYNC_STORAGE_KEY, USERS_SYNC_STORAGE_KEY, canAccessAdvancedAdmin } from '@/lib/auth'
+import { fetchOnlineUsersFromServer, getNameColorClasses, getOnlineUsers, getPresenceStyleClasses, getRoleColorClasses, getUserRole, getUserRoles, useAuth, PRESENCE_STORAGE_KEY, PRESENCE_SYNC_STORAGE_KEY, USERS_SYNC_STORAGE_KEY, canAccessAdvancedAdmin } from '@/lib/auth'
 import { getDefaultApiBase } from '@/lib/supabase'
 import { PERMISSIONS } from '@/lib/permissions'
+import { PermissionsManagementService } from '@/lib/permissions-management'
 import { usePermissions } from '@/lib/permissions-context'
 import { LayoutDashboard, FileText, LogOut, FilePlus, Users, AlertCircle, Settings } from 'lucide-react'
 
@@ -47,6 +48,7 @@ function areOnlineUsersEqual(a: Array<ReturnType<typeof getOnlineUsers>[number]>
       userA.email !== userB.email ||
       userA.fullName !== userB.fullName ||
       userA.role !== userB.role ||
+      userA.presenceStyle !== userB.presenceStyle ||
       userA.lastSeen !== userB.lastSeen ||
       userA.roles.length !== userB.roles.length ||
       userA.roles.some((role, roleIndex) => role !== userB.roles[roleIndex])
@@ -101,6 +103,7 @@ export const AppSidebar = React.memo(function AppSidebar() {
     [rawSystemPermissions, hasPermission]
   )
   const [onlineUsers, setOnlineUsers] = React.useState<ReturnType<typeof getOnlineUsers>>(() => getOnlineUsers())
+  const [presenceStyles, setPresenceStyles] = React.useState<Record<string, string>>({})
   const initials = React.useMemo(() =>
     displayName
       .split(' ')
@@ -119,6 +122,15 @@ export const AppSidebar = React.memo(function AppSidebar() {
       const nextUsers = getOnlineUsers()
       return areOnlineUsersEqual(prevUsers, nextUsers) ? prevUsers : nextUsers
     })
+  }, [])
+
+  const refreshPresenceStyles = React.useCallback(async () => {
+    try {
+      const nextStyles = await PermissionsManagementService.getPresenceStyles()
+      setPresenceStyles(nextStyles)
+    } catch {
+      setPresenceStyles({})
+    }
   }, [])
 
   const refreshOnlineUsersFromServer = React.useCallback(async () => {
@@ -196,6 +208,10 @@ export const AppSidebar = React.memo(function AppSidebar() {
       void refreshOnlineUsersFromServer()
     }
 
+    const handlePresenceStyleChanged = () => {
+      void refreshPresenceStyles()
+    }
+
     const handleUsersSync = (event: Event) => {
       if (event instanceof CustomEvent && event.detail?.email && event.detail?.newName) {
         setOnlineUsers(prevUsers =>
@@ -231,6 +247,7 @@ export const AppSidebar = React.memo(function AppSidebar() {
     window.addEventListener('storage', handleStorage)
     window.addEventListener(PRESENCE_SYNC_STORAGE_KEY, handlePresenceSync)
     window.addEventListener(USERS_SYNC_STORAGE_KEY, handleUsersSync)
+    window.addEventListener('presence-style-changed', handlePresenceStyleChanged)
     window.addEventListener('visibilitychange', handleVisibilityChange)
 
     return () => {
@@ -239,9 +256,10 @@ export const AppSidebar = React.memo(function AppSidebar() {
       window.removeEventListener('storage', handleStorage)
       window.removeEventListener(PRESENCE_SYNC_STORAGE_KEY, handlePresenceSync)
       window.removeEventListener(USERS_SYNC_STORAGE_KEY, handleUsersSync)
+      window.removeEventListener('presence-style-changed', handlePresenceStyleChanged)
       window.removeEventListener('visibilitychange', handleVisibilityChange)
     }
-  }, [refreshOnlineUsers, refreshOnlineUsersFromServer, startRemoteSync, stopRemoteSync])
+  }, [refreshOnlineUsers, refreshOnlineUsersFromServer, refreshPresenceStyles, startRemoteSync, stopRemoteSync])
 
   // Función para cargar intentos fallidos (fuera del useEffect para ser reutilizable)
   const loadFailedAttempts = React.useCallback(async () => {
@@ -345,12 +363,17 @@ export const AppSidebar = React.memo(function AppSidebar() {
     }
   }, [alertsOpen, canAccessFailedAlerts, loadFailedAttempts])
 
+  React.useEffect(() => {
+    void refreshPresenceStyles()
+  }, [refreshPresenceStyles])
+
   const visibleUsers = React.useMemo(() => {
     const list = onlineUsers.map(user => ({
       email: user.email.trim().toLowerCase(),
       fullName: user.fullName,
       role: user.role,
       roles: Array.isArray(user.roles) ? user.roles : (user.role ? [user.role] : []),
+      presenceStyle: user.presenceStyle || presenceStyles[user.email.trim().toLowerCase()] || 'none',
       reportsCreated: 0,
     }))
 
@@ -359,6 +382,7 @@ export const AppSidebar = React.memo(function AppSidebar() {
       fullName: (user.user_metadata?.full_name as string) || user.email,
       role: getUserRole(user),
       roles: getUserRoles(user),
+      presenceStyle: presenceStyles[String(user.email).trim().toLowerCase()] || 'none',
       reportsCreated: 0,
     } : null
 
@@ -380,7 +404,7 @@ export const AppSidebar = React.memo(function AppSidebar() {
     }
 
     return Array.from(mergedByEmail.values())
-  }, [onlineUsers, user])
+  }, [onlineUsers, user, presenceStyles])
 
   const getUserInitials = (value: string) => value
     .split(' ')
@@ -568,7 +592,7 @@ export const AppSidebar = React.memo(function AppSidebar() {
               <div className="space-y-1">
                 {visibleUsers.map(user => {
                   return (
-                    <div key={user.email} className="flex items-center justify-between gap-1.5 rounded-md bg-sidebar/80 px-1.5 py-1 shadow-[0_4px_12px_-12px_rgba(15,23,42,0.25)]">
+                    <div key={user.email} className={`flex items-center justify-between gap-1.5 rounded-md border border-transparent bg-sidebar/80 px-1.5 py-1 shadow-[0_4px_12px_-12px_rgba(15,23,42,0.25)] transition-all duration-300 ${getPresenceStyleClasses(user.presenceStyle)}`}>
                       <div className="flex items-center gap-1.5 min-w-0">
                         <div className="relative shrink-0">
                           <Avatar className="size-6 border border-white/40 bg-primary/10 text-primary">

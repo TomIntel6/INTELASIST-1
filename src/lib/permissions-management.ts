@@ -11,6 +11,12 @@ export interface UserPermissionData {
   permissions: Record<PermissionKey, boolean>
 }
 
+interface UserWithPermissionsPayload {
+  email?: string
+  presenceStyle?: string
+  permissions?: Record<string, unknown>
+}
+
 function normalizePermissionMap(rawPermissions: Record<string, any> | undefined): Record<PermissionKey, boolean> {
   const normalized: Record<PermissionKey, boolean> = {} as Record<PermissionKey, boolean>
 
@@ -64,15 +70,27 @@ export class PermissionsManagementService {
     }
   }
 
-  static async getUsersWithPermissions() {
+  static async getUsersWithPermissions(): Promise<UserWithPermissionsPayload[]> {
     const response = await fetch(`${API_BASE}/api/users/with-permissions`)
     if (!response.ok) throw new Error('Failed to fetch users with permissions')
 
-    const users = await response.json()
-    return users.map((user: any) => ({
+    const users = await response.json() as Array<UserWithPermissionsPayload & { permissions?: Record<string, unknown>; presenceStyle?: string }>
+    return users.map((user) => ({
       ...user,
+      presenceStyle: typeof user.presenceStyle === 'string' && user.presenceStyle.trim() ? user.presenceStyle : 'none',
       permissions: normalizePermissionMap(user.permissions),
     }))
+  }
+
+  static async getPresenceStyles(): Promise<Record<string, string>> {
+    const users = await this.getUsersWithPermissions()
+    return users.reduce<Record<string, string>>((acc: Record<string, string>, user: UserWithPermissionsPayload) => {
+      const email = String(user.email || '').trim().toLowerCase()
+      if (email) {
+        acc[email] = user.presenceStyle || 'none'
+      }
+      return acc
+    }, {})
   }
 
   static async getUsersWithModules() {
@@ -111,7 +129,7 @@ export class PermissionsManagementService {
   /**
    * Update all permissions for a user via backend API
    */
-  static async updateUserPermissions(userId: string, permissions: Record<PermissionKey, boolean>) {
+  static async updateUserPermissions(userId: string, permissions: Record<PermissionKey, boolean>, presenceStyle?: string) {
     try {
       const oldPermissions = await this.getUserPermissions(userId)
 
@@ -120,7 +138,7 @@ export class PermissionsManagementService {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ permissions }),
+        body: JSON.stringify({ permissions, presenceStyle: presenceStyle || 'none' }),
       })
 
       if (!response.ok) throw new Error('Failed to update permissions')
@@ -134,6 +152,9 @@ export class PermissionsManagementService {
         }))
         window.dispatchEvent(new CustomEvent('modules-changed', {
           detail: { userId, modules: await this.getUserModules(userId), timestamp: new Date().toISOString() },
+        }))
+        window.dispatchEvent(new CustomEvent('presence-style-changed', {
+          detail: { userId, presenceStyle: presenceStyle || 'none', timestamp: new Date().toISOString() },
         }))
       }
 
