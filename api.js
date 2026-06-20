@@ -1357,6 +1357,22 @@ function getCurrentSpanishMonth() {
   return months[new Date().getMonth()]
 }
 
+function normalizeAttemptDetails(value) {
+  if (Array.isArray(value)) {
+    return value.filter(item => item && typeof item === 'object' && (item.field || item.label || item.value !== undefined))
+  }
+
+  if (typeof value === 'string') {
+    try {
+      return normalizeAttemptDetails(JSON.parse(value))
+    } catch {
+      return []
+    }
+  }
+
+  return []
+}
+
 function normalizeReportPayload(payload) {
   const now = new Date()
   const month = typeof payload.month === 'string' && payload.month.trim() ? payload.month : getCurrentSpanishMonth()
@@ -1739,6 +1755,8 @@ app.get('/failed-report-attempts', async (req, res) => {
 // Devuelve intentos individuales (raw) para listados y conteo por intento
 app.get('/failed-report-attempts/raw', async (req, res) => {
   try {
+    await ensureFailedReportAttemptsTable()
+
     const days = Math.max(1, Number(req.query.days) || 30)
     const result = await pool.query(`
       SELECT id, user_id, user_email, user_name, missing_fields, completed_fields, missing_details, completed_details, attempted_at
@@ -1754,10 +1772,10 @@ app.get('/failed-report-attempts/raw', async (req, res) => {
         id: row.id,
         email: row.user_email,
         name: row.user_name,
-        missingFields: row.missing_fields,
-        completedFields: row.completed_fields,
-        missingDetails: row.missing_details,
-        completedDetails: row.completed_details,
+        missingFields: Array.isArray(row.missing_fields) ? row.missing_fields : [],
+        completedFields: Array.isArray(row.completed_fields) ? row.completed_fields : [],
+        missingDetails: normalizeAttemptDetails(row.missing_details),
+        completedDetails: normalizeAttemptDetails(row.completed_details),
         attemptedAt: row.attempted_at,
       })),
     })
@@ -1804,6 +1822,8 @@ app.post('/failed-report-attempts/register', async (req, res) => {
   console.log('  Body:', JSON.stringify(req.body).slice(0, 200))
   
   try {
+    await ensureFailedReportAttemptsTable()
+
     let user_id, user_email, user_name, missing_fields, completed_fields, missing_details, completed_details
 
     // Manejar tanto JSON como FormData/sendBeacon
@@ -1816,12 +1836,8 @@ app.post('/failed-report-attempts/register', async (req, res) => {
       completed_fields = Array.isArray(req.body.completed_fields)
         ? req.body.completed_fields
         : (Array.isArray(req.body.completedFields) ? req.body.completedFields : [])
-      missing_details = Array.isArray(req.body.missing_details)
-        ? req.body.missing_details
-        : (Array.isArray(req.body.missingDetails) ? req.body.missingDetails : [])
-      completed_details = Array.isArray(req.body.completed_details)
-        ? req.body.completed_details
-        : (Array.isArray(req.body.completedDetails) ? req.body.completedDetails : [])
+      missing_details = normalizeAttemptDetails(req.body.missing_details ?? req.body.missingDetails)
+      completed_details = normalizeAttemptDetails(req.body.completed_details ?? req.body.completedDetails)
     } else if (typeof req.body === 'string') {
       // Si viene como string (sendBeacon a veces lo envía así)
       try {
@@ -1833,12 +1849,8 @@ app.post('/failed-report-attempts/register', async (req, res) => {
         completed_fields = Array.isArray(parsed.completed_fields)
           ? parsed.completed_fields
           : (Array.isArray(parsed.completedFields) ? parsed.completedFields : [])
-        missing_details = Array.isArray(parsed.missing_details)
-          ? parsed.missing_details
-          : (Array.isArray(parsed.missingDetails) ? parsed.missingDetails : [])
-        completed_details = Array.isArray(parsed.completed_details)
-          ? parsed.completed_details
-          : (Array.isArray(parsed.completedDetails) ? parsed.completedDetails : [])
+        missing_details = normalizeAttemptDetails(parsed.missing_details ?? parsed.missingDetails)
+        completed_details = normalizeAttemptDetails(parsed.completed_details ?? parsed.completedDetails)
       } catch (parseErr) {
         console.warn('⚠️ No se pudo parsear JSON:', parseErr)
         user_email = ''
