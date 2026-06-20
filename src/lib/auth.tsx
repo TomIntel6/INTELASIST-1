@@ -588,7 +588,7 @@ export function getRoleColorClasses(role: UserRole, fullName?: string | null) {
   }
 }
 
-export type PresenceStyleKey = 'none' | 'glow' | 'pulse' | 'rainbow' | 'orbit'
+export type PresenceStyleKey = 'none' | 'glow' | 'pulse' | 'rainbow' | 'orbit' | 'wave' | 'aurora' | 'spectrum' | 'neon' | 'haze' | 'prism'
 
 export function normalizePresenceStyle(style: unknown): PresenceStyleKey {
   const normalized = typeof style === 'string' ? style.trim().toLowerCase() : 'none'
@@ -598,6 +598,12 @@ export function normalizePresenceStyle(style: unknown): PresenceStyleKey {
     case 'pulse':
     case 'rainbow':
     case 'orbit':
+    case 'wave':
+    case 'aurora':
+    case 'spectrum':
+    case 'neon':
+    case 'haze':
+    case 'prism':
       return normalized
     default:
       return 'none'
@@ -614,6 +620,18 @@ export function getPresenceStyleLabel(style: unknown): string {
       return 'Arcoíris'
     case 'orbit':
       return 'Orbital'
+    case 'wave':
+      return 'Ola'
+    case 'aurora':
+      return 'Aurora'
+    case 'spectrum':
+      return 'Espectro'
+    case 'neon':
+      return 'Neón'
+    case 'haze':
+      return 'Haze'
+    case 'prism':
+      return 'Prisma'
     case 'none':
     default:
       return 'Sin animación'
@@ -630,6 +648,18 @@ export function getPresenceStyleClasses(style: unknown): string {
       return 'presence-badge-rainbow'
     case 'orbit':
       return 'presence-badge-orbit'
+    case 'wave':
+      return 'presence-badge-wave'
+    case 'aurora':
+      return 'presence-badge-aurora'
+    case 'spectrum':
+      return 'presence-badge-spectrum'
+    case 'neon':
+      return 'presence-badge-neon'
+    case 'haze':
+      return 'presence-badge-haze'
+    case 'prism':
+      return 'presence-badge-prism'
     case 'none':
     default:
       return 'presence-badge-none'
