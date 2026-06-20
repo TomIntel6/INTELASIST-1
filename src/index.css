@@ -463,6 +463,23 @@
   }
 }
 
+@keyframes presence-loopwave-spin {
+  0% {
+    transform: rotate(0deg);
+    opacity: 0.7;
+  }
+
+  50% {
+    transform: rotate(180deg);
+    opacity: 1;
+  }
+
+  100% {
+    transform: rotate(360deg);
+    opacity: 0.7;
+  }
+}
+
 .presence-badge-none {
   border-color: transparent;
   box-shadow: none;
@@ -549,4 +566,27 @@
   background-repeat: no-repeat;
   border-color: rgba(255, 255, 255, 0.16);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14), 0 0 14px rgba(255, 255, 255, 0.06);
+}
+
+.presence-badge-loopwave {
+  position: relative;
+  overflow: visible;
+  isolation: isolate;
+  border: 1px solid transparent;
+  background-color: rgba(15, 23, 42, 0.05);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14), 0 0 14px rgba(125, 211, 252, 0.08);
+}
+
+.presence-badge-loopwave::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1.5px;
+  background: conic-gradient(from 0deg, rgba(255, 255, 255, 0.92), rgba(56, 189, 248, 0.95), rgba(236, 72, 153, 0.95), rgba(250, 204, 21, 0.95), rgba(74, 222, 128, 0.95), rgba(255, 255, 255, 0.92));
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: presence-loopwave-spin 2.4s linear infinite;
+  pointer-events: none;
 }
