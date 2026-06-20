@@ -295,10 +295,10 @@ export const AppSidebar = React.memo(function AppSidebar() {
           ...attempt,
           missingFields: Array.isArray(attempt.missingFields) ? attempt.missingFields : [],
           completedFields: Array.isArray(attempt.completedFields) ? attempt.completedFields : [],
-          missingFieldLabels: Array.isArray(attempt.missingFieldLabels) ? attempt.missingFieldLabels : [],
-          completedFieldLabels: Array.isArray(attempt.completedFieldLabels) ? attempt.completedFieldLabels : [],
-          missingDetails: Array.isArray(attempt.missingDetails) ? attempt.missingDetails : [],
-          completedDetails: Array.isArray(attempt.completedDetails) ? attempt.completedDetails : [],
+          missingFieldLabels: Array.isArray(attempt.missingFieldLabels) ? attempt.missingFieldLabels : Array.isArray(attempt.missing_field_labels) ? attempt.missing_field_labels : [],
+          completedFieldLabels: Array.isArray(attempt.completedFieldLabels) ? attempt.completedFieldLabels : Array.isArray(attempt.completed_field_labels) ? attempt.completed_field_labels : [],
+          missingDetails: Array.isArray(attempt.missingDetails) ? attempt.missingDetails : Array.isArray(attempt.missing_details) ? attempt.missing_details : [],
+          completedDetails: Array.isArray(attempt.completedDetails) ? attempt.completedDetails : Array.isArray(attempt.completed_details) ? attempt.completed_details : [],
         })))
       } else {
         console.error('✗ Error en respuesta:', response.status, response.statusText)
