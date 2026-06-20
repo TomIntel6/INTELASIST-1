@@ -187,6 +187,7 @@ export default function PermissionsManagement() {
     { value: 'neon', label: 'Neón' },
     { value: 'haze', label: 'Haze' },
     { value: 'prism', label: 'Prisma' },
+    { value: 'loopwave', label: 'Ola de borde' },
   ]
 
   const applyRoleToUser = (userId: string, roleKey: string) => {
