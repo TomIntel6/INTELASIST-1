@@ -160,9 +160,8 @@ const [form, setForm] = React.useState<NewReportForm>({
     const summary = buildIncompleteReportSummary(currentForm as Record<string, unknown>)
 
     const hasIncompleteData = summary.missingFields.length > 0
-    const hasSomeData = summary.completedFields.length > 0
 
-    if (hasSomeData && hasIncompleteData) {
+    if (hasIncompleteData) {
       const displayName = user?.user_metadata?.full_name ?? user?.email ?? ''
       const data = buildFailedAttemptPayload(currentForm, displayName)
       
@@ -223,10 +222,9 @@ const [form, setForm] = React.useState<NewReportForm>({
   React.useEffect(() => {
     const summary = buildIncompleteReportSummary(form as Record<string, unknown>)
     const hasIncompleteData = summary.missingFields.length > 0
-    const hasSomeData = summary.completedFields.length > 0
 
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (!hasSomeData || !hasIncompleteData || saving) {
+      if (!hasIncompleteData || saving) {
         return
       }
 
@@ -524,11 +522,10 @@ const [form, setForm] = React.useState<NewReportForm>({
     }
 
     const hasIncompleteData = missingFields.length > 0
-    const hasSomeData = summary.completedFields.length > 0
 
-    console.log(`📊 hasIncompleteData: ${hasIncompleteData}, hasSomeData: ${hasSomeData}`)
+    console.log(`📊 hasIncompleteData: ${hasIncompleteData}`)
 
-    if (hasSomeData && hasIncompleteData) {
+    if (hasIncompleteData) {
       const displayName = user?.user_metadata?.full_name ?? user?.email ?? ''
       
       console.log(`✏️ Registrando intento fallido para: ${displayName} (${user?.email})`)
