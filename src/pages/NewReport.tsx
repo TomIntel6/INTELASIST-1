@@ -159,9 +159,10 @@ const [form, setForm] = React.useState<NewReportForm>({
     const currentForm = latestFormRef.current
     const summary = buildIncompleteReportSummary(currentForm as Record<string, unknown>)
 
+    const hasSomeInput = summary.completedFields.length > 0
     const hasIncompleteData = summary.missingFields.length > 0
 
-    if (hasIncompleteData) {
+    if (hasSomeInput && hasIncompleteData) {
       const displayName = user?.user_metadata?.full_name ?? user?.email ?? ''
       const data = buildFailedAttemptPayload(currentForm, displayName)
       
@@ -221,10 +222,11 @@ const [form, setForm] = React.useState<NewReportForm>({
   // Efecto para detectar y registrar cuando el usuario abandona sin guardar (cierra pestaña, recarga, etc)
   React.useEffect(() => {
     const summary = buildIncompleteReportSummary(form as Record<string, unknown>)
+    const hasSomeInput = summary.completedFields.length > 0
     const hasIncompleteData = summary.missingFields.length > 0
 
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (!hasIncompleteData || saving) {
+      if (!hasSomeInput || !hasIncompleteData || saving) {
         return
       }
 
@@ -521,11 +523,12 @@ const [form, setForm] = React.useState<NewReportForm>({
       console.log(`  - ${field}: vacío`)
     }
 
+    const hasSomeInput = summary.completedFields.length > 0
     const hasIncompleteData = missingFields.length > 0
 
-    console.log(`📊 hasIncompleteData: ${hasIncompleteData}`)
+    console.log(`📊 hasSomeInput: ${hasSomeInput}, hasIncompleteData: ${hasIncompleteData}`)
 
-    if (hasIncompleteData) {
+    if (hasSomeInput && hasIncompleteData) {
       const displayName = user?.user_metadata?.full_name ?? user?.email ?? ''
       
       console.log(`✏️ Registrando intento fallido para: ${displayName} (${user?.email})`)
