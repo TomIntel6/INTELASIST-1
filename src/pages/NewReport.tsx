@@ -104,6 +104,8 @@ const [form, setForm] = React.useState<NewReportForm>({
       completed_fields: summary.completedFields,
       missing_field_labels: summary.missingFieldLabels,
       completed_field_labels: summary.completedFieldLabels,
+      missing_details: summary.missingFieldEntries,
+      completed_details: summary.completedFieldEntries,
     }
   }, [user])
 

@@ -633,6 +633,8 @@ async function ensureFailedReportAttemptsTable() {
       user_name TEXT NOT NULL,
       missing_fields TEXT[] NOT NULL,
       completed_fields TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+      missing_details JSONB NOT NULL DEFAULT '[]'::jsonb,
+      completed_details JSONB NOT NULL DEFAULT '[]'::jsonb,
       attempted_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `)
@@ -640,6 +642,16 @@ async function ensureFailedReportAttemptsTable() {
   await pool.query(`
     ALTER TABLE failed_report_attempts
     ADD COLUMN IF NOT EXISTS completed_fields TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[]
+  `)
+
+  await pool.query(`
+    ALTER TABLE failed_report_attempts
+    ADD COLUMN IF NOT EXISTS missing_details JSONB NOT NULL DEFAULT '[]'::jsonb
+  `)
+
+  await pool.query(`
+    ALTER TABLE failed_report_attempts
+    ADD COLUMN IF NOT EXISTS completed_details JSONB NOT NULL DEFAULT '[]'::jsonb
   `)
 
   await pool.query(`
@@ -1729,7 +1741,7 @@ app.get('/failed-report-attempts/raw', async (req, res) => {
   try {
     const days = Math.max(1, Number(req.query.days) || 30)
     const result = await pool.query(`
-      SELECT id, user_id, user_email, user_name, missing_fields, completed_fields, attempted_at
+      SELECT id, user_id, user_email, user_name, missing_fields, completed_fields, missing_details, completed_details, attempted_at
       FROM failed_report_attempts
       WHERE attempted_at >= NOW() - ($1::int * INTERVAL '1 day')
       ORDER BY attempted_at DESC NULLS LAST
@@ -1744,6 +1756,8 @@ app.get('/failed-report-attempts/raw', async (req, res) => {
         name: row.user_name,
         missingFields: row.missing_fields,
         completedFields: row.completed_fields,
+        missingDetails: row.missing_details,
+        completedDetails: row.completed_details,
         attemptedAt: row.attempted_at,
       })),
     })
@@ -1758,7 +1772,7 @@ app.get('/failed-report-attempts/:email', async (req, res) => {
     const email = decodeURIComponent(req.params.email).toLowerCase()
     const days = Math.max(1, Number(req.query.days) || 30)
     const result = await pool.query(`
-      SELECT user_email, user_name, missing_fields, completed_fields, attempted_at
+      SELECT user_email, user_name, missing_fields, completed_fields, missing_details, completed_details, attempted_at
       FROM failed_report_attempts
       WHERE LOWER(user_email) = $1
       AND attempted_at >= NOW() - ($2::int * INTERVAL '1 day')
@@ -1772,6 +1786,8 @@ app.get('/failed-report-attempts/:email', async (req, res) => {
         name: row.user_name,
         missingFields: Array.isArray(row.missing_fields) ? row.missing_fields : [],
         completedFields: Array.isArray(row.completed_fields) ? row.completed_fields : [],
+        missingDetails: row.missing_details,
+        completedDetails: row.completed_details,
         attemptedAt: row.attempted_at,
       })),
     })
@@ -1788,7 +1804,7 @@ app.post('/failed-report-attempts/register', async (req, res) => {
   console.log('  Body:', JSON.stringify(req.body).slice(0, 200))
   
   try {
-    let user_id, user_email, user_name, missing_fields, completed_fields
+    let user_id, user_email, user_name, missing_fields, completed_fields, missing_details, completed_details
 
     // Manejar tanto JSON como FormData/sendBeacon
     if (typeof req.body === 'object' && req.body !== null) {
@@ -1800,6 +1816,12 @@ app.post('/failed-report-attempts/register', async (req, res) => {
       completed_fields = Array.isArray(req.body.completed_fields)
         ? req.body.completed_fields
         : (Array.isArray(req.body.completedFields) ? req.body.completedFields : [])
+      missing_details = Array.isArray(req.body.missing_details)
+        ? req.body.missing_details
+        : (Array.isArray(req.body.missingDetails) ? req.body.missingDetails : [])
+      completed_details = Array.isArray(req.body.completed_details)
+        ? req.body.completed_details
+        : (Array.isArray(req.body.completedDetails) ? req.body.completedDetails : [])
     } else if (typeof req.body === 'string') {
       // Si viene como string (sendBeacon a veces lo envía así)
       try {
@@ -1811,6 +1833,12 @@ app.post('/failed-report-attempts/register', async (req, res) => {
         completed_fields = Array.isArray(parsed.completed_fields)
           ? parsed.completed_fields
           : (Array.isArray(parsed.completedFields) ? parsed.completedFields : [])
+        missing_details = Array.isArray(parsed.missing_details)
+          ? parsed.missing_details
+          : (Array.isArray(parsed.missingDetails) ? parsed.missingDetails : [])
+        completed_details = Array.isArray(parsed.completed_details)
+          ? parsed.completed_details
+          : (Array.isArray(parsed.completedDetails) ? parsed.completedDetails : [])
       } catch (parseErr) {
         console.warn('⚠️ No se pudo parsear JSON:', parseErr)
         user_email = ''
@@ -1831,15 +1859,17 @@ app.post('/failed-report-attempts/register', async (req, res) => {
 
     // Registrar cada intento sin deduplicación (permite múltiples intentos del mismo usuario)
     const result = await pool.query(
-      `INSERT INTO failed_report_attempts (user_id, user_email, user_name, missing_fields, completed_fields)
-       VALUES ($1, $2, $3, $4, $5)
+      `INSERT INTO failed_report_attempts (user_id, user_email, user_name, missing_fields, completed_fields, missing_details, completed_details)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING id, attempted_at`,
       [
         user_id || null,
         normalizedEmail,
         user_name || normalizedEmail,
         missing_fields,
-        completed_fields
+        completed_fields,
+        missing_details,
+        completed_details
       ]
     )
 

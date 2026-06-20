@@ -182,6 +182,8 @@ export const AppSidebar = React.memo(function AppSidebar() {
     completedFields: string[]
     missingFieldLabels?: string[]
     completedFieldLabels?: string[]
+    missingDetails?: Array<{ field: string; label: string; value: string }>
+    completedDetails?: Array<{ field: string; label: string; value: string }>
   }>>([])
   const [alertsOpen, setAlertsOpen] = React.useState(false)
   const isAdminRole = userRoles.includes('Admin') || userRoles.includes('Support') || userRoles.includes('Gerente')
@@ -295,6 +297,8 @@ export const AppSidebar = React.memo(function AppSidebar() {
           completedFields: Array.isArray(attempt.completedFields) ? attempt.completedFields : [],
           missingFieldLabels: Array.isArray(attempt.missingFieldLabels) ? attempt.missingFieldLabels : [],
           completedFieldLabels: Array.isArray(attempt.completedFieldLabels) ? attempt.completedFieldLabels : [],
+          missingDetails: Array.isArray(attempt.missingDetails) ? attempt.missingDetails : [],
+          completedDetails: Array.isArray(attempt.completedDetails) ? attempt.completedDetails : [],
         })))
       } else {
         console.error('✗ Error en respuesta:', response.status, response.statusText)
@@ -766,14 +770,23 @@ export const AppSidebar = React.memo(function AppSidebar() {
                           <div className="rounded-md border border-emerald-200 bg-emerald-50/70 p-2">
                             <p className="text-[11px] font-semibold uppercase tracking-wide text-emerald-700">Campos completados</p>
                             <ul className="mt-1 space-y-1 text-xs text-emerald-900">
-                              {(attempt.completedFieldLabels?.length
-                                ? attempt.completedFieldLabels
-                                : (attempt.completedFields ?? []).map((field: string) => getReportFieldLabel(field)))
-                                .length > 0 ? (
-                                (attempt.completedFieldLabels?.length
-                                  ? attempt.completedFieldLabels
-                                  : (attempt.completedFields ?? []).map((field: string) => getReportFieldLabel(field)))
-                                  .map((label: string) => <li key={label}>• {label}</li>)
+                              {((Array.isArray(attempt.completedDetails) && attempt.completedDetails.length > 0)
+                                ? attempt.completedDetails
+                                : (Array.isArray(attempt.completedFieldLabels) && attempt.completedFieldLabels.length > 0
+                                  ? attempt.completedFieldLabels.map((label: string) => ({ label, value: 'Sin diligenciar' }))
+                                  : [])
+                              ).length > 0 ? (
+                                (Array.isArray(attempt.completedDetails) && attempt.completedDetails.length > 0
+                                  ? attempt.completedDetails
+                                  : (Array.isArray(attempt.completedFieldLabels) && attempt.completedFieldLabels.length > 0
+                                    ? attempt.completedFieldLabels.map((label: string) => ({ label, value: 'Sin diligenciar' }))
+                                    : [])
+                                ).map((item: any, index: number) => (
+                                  <li key={`${item.field ?? item.label}-${index}`} className="break-words">
+                                    <span className="font-medium">{item.label}</span>
+                                    {item.value ? <span className="ml-1 text-emerald-950">: {item.value}</span> : null}
+                                  </li>
+                                ))
                               ) : (
                                 <li className="text-muted-foreground">Ninguno</li>
                               )}
@@ -783,14 +796,23 @@ export const AppSidebar = React.memo(function AppSidebar() {
                           <div className="rounded-md border border-amber-200 bg-amber-50/70 p-2">
                             <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-700">Campos incompletos</p>
                             <ul className="mt-1 space-y-1 text-xs text-amber-900">
-                              {(attempt.missingFieldLabels?.length
-                                ? attempt.missingFieldLabels
-                                : (attempt.missingFields ?? []).map((field: string) => getReportFieldLabel(field)))
-                                .length > 0 ? (
-                                (attempt.missingFieldLabels?.length
-                                  ? attempt.missingFieldLabels
-                                  : (attempt.missingFields ?? []).map((field: string) => getReportFieldLabel(field)))
-                                  .map((label: string) => <li key={label}>• {label}</li>)
+                              {((Array.isArray(attempt.missingDetails) && attempt.missingDetails.length > 0)
+                                ? attempt.missingDetails
+                                : (Array.isArray(attempt.missingFieldLabels) && attempt.missingFieldLabels.length > 0
+                                  ? attempt.missingFieldLabels.map((label: string) => ({ label, value: 'Sin diligenciar' }))
+                                  : [])
+                              ).length > 0 ? (
+                                (Array.isArray(attempt.missingDetails) && attempt.missingDetails.length > 0
+                                  ? attempt.missingDetails
+                                  : (Array.isArray(attempt.missingFieldLabels) && attempt.missingFieldLabels.length > 0
+                                    ? attempt.missingFieldLabels.map((label: string) => ({ label, value: 'Sin diligenciar' }))
+                                    : [])
+                                ).map((item: any, index: number) => (
+                                  <li key={`${item.field ?? item.label}-${index}`} className="break-words">
+                                    <span className="font-medium">{item.label}</span>
+                                    {item.value ? <span className="ml-1 text-amber-950">: {item.value}</span> : null}
+                                  </li>
+                                ))
                               ) : (
                                 <li className="text-muted-foreground">Ninguno</li>
                               )}
