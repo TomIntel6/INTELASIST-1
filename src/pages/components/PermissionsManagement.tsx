@@ -181,6 +181,12 @@ export default function PermissionsManagement() {
     { value: 'pulse', label: 'Pulso' },
     { value: 'rainbow', label: 'Arcoíris' },
     { value: 'orbit', label: 'Orbital' },
+    { value: 'wave', label: 'Ola' },
+    { value: 'aurora', label: 'Aurora' },
+    { value: 'spectrum', label: 'Espectro' },
+    { value: 'neon', label: 'Neón' },
+    { value: 'haze', label: 'Haze' },
+    { value: 'prism', label: 'Prisma' },
   ]
 
   const applyRoleToUser = (userId: string, roleKey: string) => {
