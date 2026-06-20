@@ -261,29 +261,34 @@
 
 .admin-animated {
   background-image: linear-gradient(90deg, #0f2d51 0%, #ff6f61 30%, #d4af37 60%, #708090 100%);
-  animation: support-stripe-shift 4s ease-in-out infinite;
+  animation: none;
+  background-position: 0% 50%;
 }
 
 .support-animated {
   background-image: linear-gradient(90deg, #7928CA 0%, #29D8FF 50%, #FF0080 100%);
-  animation: support-stripe-shift 3.5s ease-in-out infinite;
+  animation: none;
+  background-position: 0% 50%;
 }
 
 .gerente-animated {
   background-image: linear-gradient(90deg, #FF3B30 0%, #FFCC00 50%, #007AFF 100%);
-  animation: support-stripe-shift 3.5s ease-in-out infinite;
+  animation: none;
+  background-position: 0% 50%;
 }
 
 .agente-animated {
   background-image: linear-gradient(90deg, #64748B 0%, #94A3B8 50%, #CBD5E1 100%);
-  animation: support-stripe-shift 3.5s ease-in-out infinite;
+  animation: none;
+  background-position: 0% 50%;
 }
 
 /* Paleta completa (arcoíris) — exclusiva para usuarios destacados */
 .rainbow-animated {
   background-image: linear-gradient(90deg, #FF3B30 0%, #FF9500 16%, #FFCC00 33%, #34C759 50%, #00C7BE 66%, #007AFF 83%, #AF52DE 100%);
   background-size: 300% 100%;
-  animation: support-stripe-shift 4s ease-in-out infinite;
+  animation: none;
+  background-position: 0% 50%;
   font-weight: 900;
   letter-spacing: 0.3px;
 }
@@ -291,12 +296,15 @@
 .agente-animated-special {
   background-image: linear-gradient(90deg, #EC4899 0%, #F472B6 25%, #FBCFE8 50%, #F472B6 75%, #EC4899 100%);
   background-size: 200% 200%;
-  animation: agente-special-pulse 2s ease-in-out infinite;
+  animation: none;
+  background-position: 0% 50%;
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
   font-weight: 900;
   letter-spacing: 0.5px;
+  filter: brightness(1);
+  transform: none;
 }
 
 @keyframes agente-special-pulse {
@@ -372,17 +380,26 @@
 }
 
 .presence-badge-glow {
-  animation: presence-glow-breathe 1.2s ease-in-out infinite;
+  animation: none;
+  box-shadow: inset 0 0 0 1.5px rgba(56, 189, 248, 0.7), 0 0 0 0 rgba(56, 189, 248, 0.2), 0 0 12px rgba(56, 189, 248, 0.16);
+  transform: none;
 }
 
 .presence-badge-pulse {
-  animation: presence-pulse-wave 1s ease-in-out infinite;
+  animation: none;
+  box-shadow: inset 0 0 0 1.5px rgba(244, 63, 94, 0.7), 0 0 0 0 rgba(244, 63, 94, 0.2);
+  transform: none;
 }
 
 .presence-badge-rainbow {
-  animation: presence-rainbow-rotate 1.6s linear infinite;
+  animation: none;
+  filter: hue-rotate(0deg) saturate(1.1);
+  box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.36), 0 0 0 0 rgba(255, 255, 255, 0.1);
+  transform: none;
 }
 
 .presence-badge-orbit {
-  animation: presence-orbit-spin 1.4s ease-in-out infinite;
+  animation: none;
+  box-shadow: inset 0 0 0 1.5px rgba(129, 140, 248, 0.7), 0 0 0 0 rgba(129, 140, 248, 0.2);
+  transform: none;
 }
