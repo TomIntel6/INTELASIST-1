@@ -21,6 +21,7 @@ import { AuditService } from '@/lib/audit-service'
 import type { PermissionKey } from '@/lib/permissions'
 import { PERMISSIONS } from '@/lib/permissions'
 import { ArrowLeft, Save, Upload, X } from 'lucide-react'
+import { buildIncompleteReportSummary } from '@/lib/report-alerts'
 
 export default function NewReport() {
   const navigate = useNavigate()
@@ -92,6 +93,20 @@ const [form, setForm] = React.useState<NewReportForm>({
   const fileInputRef = React.useRef<HTMLInputElement | null>(null)
   const pasteTextareaRef = React.useRef<HTMLTextAreaElement | null>(null)
 
+  const buildFailedAttemptPayload = React.useCallback((currentForm: NewReportForm, displayName: string) => {
+    const summary = buildIncompleteReportSummary(currentForm as Record<string, unknown>)
+
+    return {
+      user_id: user?.id || null,
+      user_email: user?.email || '',
+      user_name: displayName,
+      missing_fields: summary.missingFields,
+      completed_fields: summary.completedFields,
+      missing_field_labels: summary.missingFieldLabels,
+      completed_field_labels: summary.completedFieldLabels,
+    }
+  }, [user])
+
   const setClipboardImage = (blob: Blob) => {
     const reader = new FileReader()
     reader.onload = (e) => {
@@ -140,31 +155,14 @@ const [form, setForm] = React.useState<NewReportForm>({
     }
 
     const currentForm = latestFormRef.current
-    const requiredFields = ['service_type', 'insured_name', 'plate', 'policy', 'brand', 'model', 'color', 'status']
-    const missingFields: string[] = []
-    
-    for (const field of requiredFields) {
-      const value = currentForm[field as keyof typeof form]
-      if (!value || String(value).trim() === '') {
-        missingFields.push(field)
-      }
-    }
+    const summary = buildIncompleteReportSummary(currentForm as Record<string, unknown>)
 
-    // Si hay campos faltantes Y hay al menos algunos datos, registrar intento fallido
-    const hasPartialData = requiredFields.some(field => {
-      const value = currentForm[field as keyof typeof form]
-      return value && String(value).trim() !== ''
-    })
+    const hasIncompleteData = summary.missingFields.length > 0
+    const hasSomeData = summary.completedFields.length > 0
 
-    if (hasPartialData && missingFields.length > 0) {
+    if (hasSomeData && hasIncompleteData) {
       const displayName = user?.user_metadata?.full_name ?? user?.email ?? ''
-      
-      const data = {
-        user_id: user?.id || null,
-        user_email: user?.email || '',
-        user_name: displayName,
-        missing_fields: missingFields,
-      }
+      const data = buildFailedAttemptPayload(currentForm, displayName)
       
       console.log(`📤 Registrando intento fallido al abandonar (via ${window.location.pathname}):`, data)
       
@@ -221,40 +219,24 @@ const [form, setForm] = React.useState<NewReportForm>({
 
   // Efecto para detectar y registrar cuando el usuario abandona sin guardar (cierra pestaña, recarga, etc)
   React.useEffect(() => {
-    const requiredFields = ['service_type', 'insured_name', 'plate', 'policy', 'brand', 'model', 'color', 'status']
-    const hasPartialData = requiredFields.some(field => {
-      const value = form[field as keyof typeof form]
-      return value && String(value).trim() !== ''
-    })
+    const summary = buildIncompleteReportSummary(form as Record<string, unknown>)
+    const hasIncompleteData = summary.missingFields.length > 0
+    const hasSomeData = summary.completedFields.length > 0
 
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (!hasPartialData || saving) {
+      if (!hasSomeData || !hasIncompleteData || saving) {
         return
       }
 
       console.log('⚠️ beforeunload detectado - Usuario intenta cerrar/recargar con datos parciales')
 
-      // Calcular campos vacíos
-      const missingFields: string[] = []
-      for (const field of requiredFields) {
-        const value = form[field as keyof typeof form]
-        if (!value || String(value).trim() === '') {
-          missingFields.push(field)
-        }
-      }
-
       // Si hay campos faltantes, registrar intento fallido
-      if (missingFields.length > 0) {
+      if (summary.missingFields.length > 0) {
         const displayName = user?.user_metadata?.full_name ?? user?.email ?? ''
         
         try {
           // Usar Blob de JSON para sendBeacon (más compatible que FormData)
-          const data = {
-            user_id: user?.id || null,
-            user_email: user?.email || '',
-            user_name: displayName,
-            missing_fields: missingFields,
-          }
+          const data = buildFailedAttemptPayload(form, displayName)
           const blob = new Blob([JSON.stringify(data)], { type: 'application/json' })
           const API_BASE_URL = getDefaultApiBase()
           const sent = navigator.sendBeacon(`${API_BASE_URL}/failed-report-attempts/register`, blob)
@@ -531,39 +513,25 @@ const [form, setForm] = React.useState<NewReportForm>({
   const vehicleYears = Array.from({ length: currentYear - 1969 }, (_, i) => currentYear - i)
 
   const handleNavigateBack = async () => {
-    const requiredFields = ['service_type', 'insured_name', 'plate', 'policy', 'brand', 'model', 'color', 'status']
-    const missingFields: string[] = []
+    const summary = buildIncompleteReportSummary(form as Record<string, unknown>)
+    const missingFields = summary.missingFields
     
     console.log('🔍 handleNavigateBack - Form actual:', form)
-    
-    for (const field of requiredFields) {
-      const value = form[field as keyof typeof form]
-      const isEmpty = !value || String(value).trim() === ''
-      console.log(`  - ${field}: "${value}" (vacío: ${isEmpty})`)
-      if (isEmpty) {
-        missingFields.push(field)
-      }
+    for (const field of summary.missingFields) {
+      console.log(`  - ${field}: vacío`)
     }
 
-    // Si hay campos faltantes Y hay al menos algunos datos, registrar intento fallido
-    const hasPartialData = requiredFields.some(field => {
-      const value = form[field as keyof typeof form]
-      return value && String(value).trim() !== ''
-    })
+    const hasIncompleteData = missingFields.length > 0
+    const hasSomeData = summary.completedFields.length > 0
 
-    console.log(`📊 hasPartialData: ${hasPartialData}, missingFields: ${missingFields.length}`)
+    console.log(`📊 hasIncompleteData: ${hasIncompleteData}, hasSomeData: ${hasSomeData}`)
 
-    if (hasPartialData && missingFields.length > 0) {
+    if (hasSomeData && hasIncompleteData) {
       const displayName = user?.user_metadata?.full_name ?? user?.email ?? ''
       
       console.log(`✏️ Registrando intento fallido para: ${displayName} (${user?.email})`)
       
-      const data = {
-        user_id: user?.id || null,
-        user_email: user?.email || '',
-        user_name: displayName,
-        missing_fields: missingFields,
-      }
+      const data = buildFailedAttemptPayload(form, displayName)
       
       console.log(`📤 Enviando:`, data)
       

@@ -27,6 +27,7 @@ import { Label } from '@/components/ui/label'
 import { fetchOnlineUsersFromServer, getNameColorClasses, getOnlineUsers, getPresenceStyleClasses, getRoleColorClasses, getUserRole, getUserRoles, useAuth, PRESENCE_STORAGE_KEY, PRESENCE_SYNC_STORAGE_KEY, USERS_SYNC_STORAGE_KEY, canAccessAdvancedAdmin } from '@/lib/auth'
 import { getDefaultApiBase } from '@/lib/supabase'
 import { PERMISSIONS } from '@/lib/permissions'
+import { getReportFieldLabel } from '@/lib/report-alerts'
 import { PermissionsManagementService } from '@/lib/permissions-management'
 import { usePermissions } from '@/lib/permissions-context'
 import { LayoutDashboard, FileText, LogOut, FilePlus, Users, AlertCircle, Settings } from 'lucide-react'
@@ -178,6 +179,9 @@ export const AppSidebar = React.memo(function AppSidebar() {
     attemptCount: number
     lastAttempt: string
     missingFields: string[]
+    completedFields: string[]
+    missingFieldLabels?: string[]
+    completedFieldLabels?: string[]
   }>>([])
   const [alertsOpen, setAlertsOpen] = React.useState(false)
   const isAdminRole = userRoles.includes('Admin') || userRoles.includes('Support') || userRoles.includes('Gerente')
@@ -285,7 +289,13 @@ export const AppSidebar = React.memo(function AppSidebar() {
           })
         }
         
-        setFailedAttempts(attempts)
+        setFailedAttempts(attempts.map((attempt: any) => ({
+          ...attempt,
+          missingFields: Array.isArray(attempt.missingFields) ? attempt.missingFields : [],
+          completedFields: Array.isArray(attempt.completedFields) ? attempt.completedFields : [],
+          missingFieldLabels: Array.isArray(attempt.missingFieldLabels) ? attempt.missingFieldLabels : [],
+          completedFieldLabels: Array.isArray(attempt.completedFieldLabels) ? attempt.completedFieldLabels : [],
+        })))
       } else {
         console.error('✗ Error en respuesta:', response.status, response.statusText)
       }
@@ -751,6 +761,42 @@ export const AppSidebar = React.memo(function AppSidebar() {
                         <p className="font-medium text-sm text-foreground truncate">{attempt.name || attempt.email}</p>
                         <p className="text-xs text-muted-foreground truncate">{attempt.email}</p>
                         <p className="text-xs text-muted-foreground mt-1">Usuario {attempt.name || attempt.email} no completó el informe.</p>
+
+                        <div className="mt-2 space-y-2">
+                          <div className="rounded-md border border-emerald-200 bg-emerald-50/70 p-2">
+                            <p className="text-[11px] font-semibold uppercase tracking-wide text-emerald-700">Campos completados</p>
+                            <ul className="mt-1 space-y-1 text-xs text-emerald-900">
+                              {(attempt.completedFieldLabels?.length
+                                ? attempt.completedFieldLabels
+                                : (attempt.completedFields ?? []).map((field: string) => getReportFieldLabel(field)))
+                                .length > 0 ? (
+                                (attempt.completedFieldLabels?.length
+                                  ? attempt.completedFieldLabels
+                                  : (attempt.completedFields ?? []).map((field: string) => getReportFieldLabel(field)))
+                                  .map((label: string) => <li key={label}>• {label}</li>)
+                              ) : (
+                                <li className="text-muted-foreground">Ninguno</li>
+                              )}
+                            </ul>
+                          </div>
+
+                          <div className="rounded-md border border-amber-200 bg-amber-50/70 p-2">
+                            <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-700">Campos incompletos</p>
+                            <ul className="mt-1 space-y-1 text-xs text-amber-900">
+                              {(attempt.missingFieldLabels?.length
+                                ? attempt.missingFieldLabels
+                                : (attempt.missingFields ?? []).map((field: string) => getReportFieldLabel(field)))
+                                .length > 0 ? (
+                                (attempt.missingFieldLabels?.length
+                                  ? attempt.missingFieldLabels
+                                  : (attempt.missingFields ?? []).map((field: string) => getReportFieldLabel(field)))
+                                  .map((label: string) => <li key={label}>• {label}</li>)
+                              ) : (
+                                <li className="text-muted-foreground">Ninguno</li>
+                              )}
+                            </ul>
+                          </div>
+                        </div>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-muted-foreground">{new Date(attempt.attemptedAt).toLocaleString('es-ES')}</span>
