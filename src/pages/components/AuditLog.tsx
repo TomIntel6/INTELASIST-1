@@ -3,6 +3,7 @@ import { AuditService } from '@/lib/audit-service'
 import type { AuditLog } from '@/lib/permissions'
 import { AUDIT_ACTION_LABELS, type AuditLog as AuditLogType } from '@/lib/permissions'
 import { usePermissions } from '@/lib/permissions-context'
+import { API_BASE_URL } from '@/lib/auth'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -143,11 +144,8 @@ export default function AuditLog() {
     setDeletingId(auditId)
 
     try {
-      const response = await fetch(`/api/audit-logs/${encodeURIComponent(auditId)}`, {
+      const response = await fetch(`${API_BASE_URL}/api/audit-logs/${encodeURIComponent(auditId)}`, {
         method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        },
       })
 
       if (!response.ok) {
