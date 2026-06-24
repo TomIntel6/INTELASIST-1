@@ -2,6 +2,7 @@ import * as React from 'react'
 import { AuditService } from '@/lib/audit-service'
 import type { AuditLog } from '@/lib/permissions'
 import { AUDIT_ACTION_LABELS, type AuditLog as AuditLogType } from '@/lib/permissions'
+import { usePermissions } from '@/lib/permissions-context'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -29,11 +30,14 @@ const ACTIONS = [
 ]
 
 export default function AuditLog() {
+  const { isSupport } = usePermissions()
   const [logs, setLogs] = React.useState<AuditLogType[]>([])
   const [loading, setLoading] = React.useState(true)
   const [totalCount, setTotalCount] = React.useState(0)
   const [page, setPage] = React.useState(0)
   const [limit] = React.useState(20)
+  const [deletingId, setDeletingId] = React.useState<string | null>(null)
+  const [deleteError, setDeleteError] = React.useState<string | null>(null)
 
   // Filters
   const [moduleFilter, setModuleFilter] = React.useState('')
@@ -128,6 +132,39 @@ export default function AuditLog() {
 
   const totalPages = Math.ceil(totalCount / limit)
 
+  const handleDeleteLog = async (auditId: string) => {
+    if (!isSupport) return
+
+    if (!window.confirm('¿Eliminar este registro de auditoría? Esta acción no se puede deshacer.')) {
+      return
+    }
+
+    setDeleteError(null)
+    setDeletingId(auditId)
+
+    try {
+      const response = await fetch(`/api/audit-logs/${encodeURIComponent(auditId)}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+
+      if (!response.ok) {
+        const body = await response.json().catch(() => null)
+        const message = body?.error || response.statusText || 'Error al eliminar registro de auditoría'
+        throw new Error(message)
+      }
+
+      await loadLogs()
+    } catch (err) {
+      console.error('Error deleting audit log:', err)
+      setDeleteError(err instanceof Error ? err.message : 'Error al eliminar registro de auditoría')
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -220,6 +257,11 @@ export default function AuditLog() {
         )}
 
         {/* Logs Table */}
+        {deleteError && (
+          <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {deleteError}
+          </div>
+        )}
         {!loading && logs.length === 0 ? (
           <div className="text-center py-8 text-slate-500">
             No hay registros de auditoría con los filtros seleccionados
@@ -234,6 +276,7 @@ export default function AuditLog() {
                   <th className="px-4 py-2 text-left font-medium">Acción</th>
                   <th className="px-4 py-2 text-left font-medium">Módulo</th>
                   <th className="px-4 py-2 text-left font-medium">Estado</th>
+                  <th className="px-4 py-2 text-right font-medium">Acciones</th>
                 </tr>
               </thead>
               <tbody>
@@ -259,6 +302,20 @@ export default function AuditLog() {
                     </td>
                     <td className="px-4 py-2 text-slate-700">{log.module}</td>
                     <td className="px-4 py-2">{getStatusBadge(log.status || 'pending')}</td>
+                    <td className="px-4 py-2 text-right">
+                      {isSupport ? (
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => handleDeleteLog(String(log.id))}
+                          disabled={deletingId === String(log.id)}
+                        >
+                          {deletingId === String(log.id) ? 'Eliminando…' : 'Eliminar'}
+                        </Button>
+                      ) : (
+                        <span className="text-xs text-slate-400">Solo Support</span>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
