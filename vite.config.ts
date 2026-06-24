@@ -102,7 +102,10 @@ export default defineConfig({
         target: "https://intelasist.onrender.com",
         changeOrigin: true,
         secure: true,
-      },
-    }
+      },      "/api": {
+        target: "https://intelasist.onrender.com",
+        changeOrigin: true,
+        secure: true,
+      },    }
   },
 })
