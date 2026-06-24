@@ -868,6 +868,28 @@ async function logAuditEvent(req, {
   }
 }
 
+function getAuditUserInfo(req, fallback = {}) {
+  const userId = fallback.userId ?? req.user?.id ?? null
+  const userEmail = String(fallback.userEmail ?? req.user?.email ?? '').trim() || null
+  let userName = String(fallback.userName ?? req.user?.user_metadata?.full_name ?? '').trim() || null
+
+  if (!userName && userEmail) {
+    userName = userEmail
+  }
+  if (!userName && userId) {
+    userName = `User ${String(userId).slice(0, 8)}`
+  }
+  if (!userName) {
+    userName = 'Usuario Desconocido'
+  }
+
+  return {
+    auditUserId: userId,
+    auditUserEmail: userEmail,
+    auditUserName: userName,
+  }
+}
+
 async function ensureDeletedReportsTable() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS deleted_reports (
@@ -1711,9 +1733,7 @@ app.delete('/reports/:id', async (req, res) => {
       entityType: 'report',
       oldValues: reportData,
       status: 'success',
-      auditUserId: userId,
-      auditUserEmail: userEmail,
-      auditUserName: userName,
+      ...getAuditUserInfo(req),
     })
 
     console.log(`[DELETE /reports/:id] ✅ Reporte ${reportId} eliminado. Auditoría registrada.`)
@@ -1733,9 +1753,7 @@ app.delete('/reports/:id', async (req, res) => {
       entityType: 'report',
       status: 'error',
       errorMessage: error instanceof Error ? error.message : String(error),
-      auditUserId: userId,
-      auditUserEmail: userEmail,
-      auditUserName: userName,
+      ...getAuditUserInfo(req),
     })
 
     res.status(500).json({ error: 'Error al eliminar el informe' })
@@ -2981,9 +2999,11 @@ app.post('/api/trash', async (req, res) => {
       oldValues: originalData,
       newValues: { status: 'trashed', reason },
       status: 'success',
-      auditUserId: deletedBy,
-      auditUserEmail: deletedByEmail,
-      auditUserName: deletedByName,
+      ...getAuditUserInfo(req, {
+        userId: deletedBy,
+        userEmail: deletedByEmail,
+        userName: deletedByName,
+      }),
     })
 
     res.json({ 
@@ -3017,9 +3037,11 @@ app.post('/api/trash', async (req, res) => {
       oldValues: req.body?.originalData || null,
       status: 'error',
       errorMessage: err instanceof Error ? err.message : String(err),
-      auditUserId,
-      auditUserEmail,
-      auditUserName,
+      ...getAuditUserInfo(req, {
+        userId: deletedBy || undefined,
+        userEmail: deletedByEmail || undefined,
+        userName: auditUserName || undefined,
+      }),
     })
     res.status(500).json({ error: 'Error al mover a papelera' })
   }
@@ -3089,9 +3111,7 @@ app.post('/api/trash/empty', async (req, res) => {
           entityType: 'report',
           oldValues: trash.original_data,
           status: 'success',
-          auditUserId: userId,
-          auditUserEmail: userEmail,
-          auditUserName: userName,
+          ...getAuditUserInfo(req),
         })
         console.log(`[POST /api/trash/empty] ✅ Auditoría registrada para reporte ${trash.report_id}`)
       } catch (auditErr) {
@@ -3115,9 +3135,7 @@ app.post('/api/trash/empty', async (req, res) => {
       module: 'trash',
       status: 'success',
       newValues: { deleted_count: result.rows.length },
-      auditUserId: userId,
-      auditUserEmail: userEmail,
-      auditUserName: userName,
+      ...getAuditUserInfo(req),
     })
 
     res.json({ success: true, deleted_count: result.rows.length })
@@ -3134,9 +3152,7 @@ app.post('/api/trash/empty', async (req, res) => {
       module: 'trash',
       status: 'error',
       errorMessage: err instanceof Error ? err.message : String(err),
-      auditUserId: userId,
-      auditUserEmail: userEmail,
-      auditUserName: userName,
+      ...getAuditUserInfo(req),
     })
 
     res.status(500).json({ error: 'Error al vaciar papelera' })
@@ -3265,9 +3281,11 @@ app.post('/api/trash/:id/restore', async (req, res) => {
       entityId: restoredReportId,
       entityType: 'report',
       status: 'success',
-      auditUserId: restoredBy,
-      auditUserEmail: restoredByEmail,
-      auditUserName: restoredByName,
+      ...getAuditUserInfo(req, {
+        userId: restoredBy,
+        userEmail: restoredByEmail,
+        userName: restoredByName,
+      }),
     })
 
     res.json({ success: true, restored: updateResult.rows[0] })
@@ -3310,17 +3328,16 @@ app.post('/api/trash/:id/delete', async (req, res) => {
 
     // Log the permanent delete action
     await logAuditEvent(req, {
-      auditUserId: deletedBy,
-      auditUserEmail: deletedByEmail,
-      auditUserName: deletedByName,
       action: 'permanently_delete_report',
       module: 'reports',
       entityId: permanentlyDeletedReportId,
       entityType: 'report',
       status: 'success',
-      auditUserId: deletedBy,
-      auditUserEmail: deletedByEmail,
-      auditUserName: deletedByName,
+      ...getAuditUserInfo(req, {
+        userId: deletedBy,
+        userEmail: deletedByEmail,
+        userName: deletedByName,
+      }),
     })
 
     res.json({ success: true, deleted: deleteResult.rows[0] })
