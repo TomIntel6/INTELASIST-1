@@ -2888,6 +2888,10 @@ app.get('/api/health/auth', async (req, res) => {
 
 // POST /api/trash - Mover informe a papelera
 app.post('/api/trash', async (req, res) => {
+  let deletedBy: string | null = null
+  let deletedByEmail = ''
+  let deletedByName = ''
+
   try {
     const reportId = typeof req.body?.reportId === 'string' ? req.body.reportId.trim() : ''
     const originalData = typeof req.body?.originalData === 'object' ? req.body.originalData : {}
@@ -2906,9 +2910,9 @@ app.post('/api/trash', async (req, res) => {
       return res.status(401).json({ error: 'Autenticación requerida.' })
     }
 
-    const deletedBy = req.user.id
-    const deletedByEmail = String(req.user.email || '').trim()
-    let deletedByName = String(req.user.user_metadata?.full_name || '').trim()
+    deletedBy = req.user.id
+    deletedByEmail = String(req.user.email || '').trim()
+    deletedByName = String(req.user.user_metadata?.full_name || '').trim()
 
     console.log(`[POST /api/trash] User info from req.user:`, {
       reqUserId: req.user.id,
@@ -2990,6 +2994,21 @@ app.post('/api/trash', async (req, res) => {
     })
   } catch (err) {
     console.error('Error moving to trash:', err)
+
+    const auditUserId = deletedBy || req.user?.id || null
+    const auditUserEmail = deletedByEmail || String(req.user?.email || '').trim()
+    let auditUserName = deletedByName || String(req.user?.user_metadata?.full_name || '').trim()
+
+    if (!auditUserName && auditUserEmail) {
+      auditUserName = auditUserEmail
+    }
+    if (!auditUserName && auditUserId) {
+      auditUserName = `User ${String(auditUserId).slice(0, 8)}`
+    }
+    if (!auditUserName) {
+      auditUserName = 'Usuario Desconocido'
+    }
+
     await logAuditEvent(req, {
       action: 'delete_report',
       module: 'reports',
@@ -2998,9 +3017,9 @@ app.post('/api/trash', async (req, res) => {
       oldValues: req.body?.originalData || null,
       status: 'error',
       errorMessage: err instanceof Error ? err.message : String(err),
-      auditUserId: deletedBy,
-      auditUserEmail: deletedByEmail,
-      auditUserName: deletedByName,
+      auditUserId,
+      auditUserEmail,
+      auditUserName,
     })
     res.status(500).json({ error: 'Error al mover a papelera' })
   }
