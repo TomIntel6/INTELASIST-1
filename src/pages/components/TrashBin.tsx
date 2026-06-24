@@ -292,15 +292,21 @@ export default function TrashBin() {
           <AlertDialogCancel>Cancelar</AlertDialogCancel>
           <AlertDialogAction
             onClick={async () => {
-              if (!confirmDialog) return
-              if (confirmDialog.type === 'restore' && confirmDialog.trashId) {
-                await handleRestore(confirmDialog.trashId)
-              } else if (confirmDialog.type === 'delete' && confirmDialog.trashId) {
-                await handlePermanentDelete(confirmDialog.trashId)
-              } else if (confirmDialog.type === 'empty') {
-                await handleEmptyTrash()
+              try {
+                if (!confirmDialog) return
+                if (confirmDialog.type === 'restore' && confirmDialog.trashId) {
+                  await handleRestore(confirmDialog.trashId)
+                } else if (confirmDialog.type === 'delete' && confirmDialog.trashId) {
+                  await handlePermanentDelete(confirmDialog.trashId)
+                } else if (confirmDialog.type === 'empty') {
+                  await handleEmptyTrash()
+                }
+              } catch (error) {
+                console.error('Error executing trash action:', error)
+                toast.error('Error procesando la acción. Intenta nuevamente.')
+              } finally {
+                setConfirmDialog(null)
               }
-              setConfirmDialog(null)
             }}
             className={confirmDialog?.type !== 'restore' ? 'bg-destructive hover:bg-destructive/90' : ''}
           >
