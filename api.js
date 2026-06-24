@@ -2906,7 +2906,7 @@ app.get('/api/health/auth', async (req, res) => {
 
 // POST /api/trash - Mover informe a papelera
 app.post('/api/trash', async (req, res) => {
-  let deletedBy: string | null = null
+  let deletedBy = null
   let deletedByEmail = ''
   let deletedByName = ''
 
