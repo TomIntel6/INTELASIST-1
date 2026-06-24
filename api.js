@@ -1880,8 +1880,8 @@ app.post('/failed-report-attempts/register', async (req, res) => {
         user_name || normalizedEmail,
         missing_fields,
         completed_fields,
-        missing_details,
-        completed_details
+        JSON.stringify(missing_details),
+        JSON.stringify(completed_details)
       ]
     )
 
