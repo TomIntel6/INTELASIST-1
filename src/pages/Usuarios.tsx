@@ -448,9 +448,28 @@ export default function Usuarios() {
   React.useEffect(() => {
     void cargarUsuarios()
 
-    const intervalo = window.setInterval(() => {
-      void cargarUsuarios()
-    }, 10000)
+    let intervalId: number | null = null
+
+    const startInterval = () => {
+      if (intervalId !== null) {
+        return
+      }
+
+      intervalId = window.setInterval(() => {
+        if (document.visibilityState !== 'visible') {
+          return
+        }
+
+        void cargarUsuarios()
+      }, 60000)
+    }
+
+    const stopInterval = () => {
+      if (intervalId !== null) {
+        window.clearInterval(intervalId)
+        intervalId = null
+      }
+    }
 
     const handleUsersSync = (event: Event) => {
       if (!(event instanceof CustomEvent)) {
@@ -481,13 +500,28 @@ export default function Usuarios() {
       void cargarUsuarios()
     }
 
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        void cargarUsuarios()
+        startInterval()
+      } else {
+        stopInterval()
+      }
+    }
+
+    if (document.visibilityState === 'visible') {
+      startInterval()
+    }
+
     window.addEventListener(USERS_SYNC_STORAGE_KEY, handleUsersSync as EventListener)
     window.addEventListener('storage', handleUsersStorage)
+    window.addEventListener('visibilitychange', handleVisibilityChange)
 
     return () => {
-      window.clearInterval(intervalo)
+      stopInterval()
       window.removeEventListener(USERS_SYNC_STORAGE_KEY, handleUsersSync as EventListener)
       window.removeEventListener('storage', handleUsersStorage)
+      window.removeEventListener('visibilitychange', handleVisibilityChange)
     }
   }, [cargarUsuarios])
 

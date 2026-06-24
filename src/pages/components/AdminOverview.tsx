@@ -48,8 +48,8 @@ export default function AdminOverview() {
       const trashResponse = await fetch(`${API_BASE}/api/trash/stats`)
       const trashStats = await trashResponse.json()
 
-      // Get recent audit logs (last 24 hours)
-      const auditResponse = await fetch(`${API_BASE}/api/audit-logs?limit=1000`)
+      const startDate = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+      const auditResponse = await fetch(`${API_BASE}/api/audit-logs?limit=1&startDate=${encodeURIComponent(startDate)}`)
       const auditData = await auditResponse.json()
 
       setStats({
@@ -58,7 +58,7 @@ export default function AdminOverview() {
         suspendedUsers: activityStats.suspendedUsers,
         totalReports: activityStats.totalReports,
         trashCount: trashStats.totalDeleted,
-        recentAuditCount: auditData.data?.length || 0,
+        recentAuditCount: Number(auditData.count || 0),
       })
     } catch (err) {
       console.error('Error loading stats:', err)

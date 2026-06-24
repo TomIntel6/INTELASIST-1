@@ -112,11 +112,30 @@ export default function ReportsList() {
     setLoading(cached.length === 0)
     void loadReports(selectedMonth, selectedYear, false)
 
-    const intervalId = window.setInterval(() => {
-      void loadReports(selectedMonth, selectedYear, false)
-    }, 10000)
+    const refreshReports = () => {
+      if (document.visibilityState !== 'visible') {
+        return
+      }
 
-    return () => window.clearInterval(intervalId)
+      void loadReports(selectedMonth, selectedYear, false)
+    }
+
+    const intervalId = window.setInterval(() => {
+      refreshReports()
+    }, 60000)
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        refreshReports()
+      }
+    }
+
+    window.addEventListener('visibilitychange', handleVisibilityChange)
+
+    return () => {
+      window.clearInterval(intervalId)
+      window.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
   }, [loadReports, selectedMonth, selectedYear])
 
   const filtered = reports.filter(r => {
