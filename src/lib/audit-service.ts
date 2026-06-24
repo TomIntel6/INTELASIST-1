@@ -326,6 +326,7 @@ export class AuditService {
     module?: string
     action?: string
     entityId?: string
+    entityType?: string
     startDate?: string
     endDate?: string
     limit?: number
