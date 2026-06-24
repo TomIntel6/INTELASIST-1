@@ -45,9 +45,13 @@ export class TrashService {
       headers['Content-Type'] = 'application/json'
     }
 
+    // IMPORTANTE: `headers` debe ir DESPUÉS de `...options`. Si se expande
+    // options al final, su propia propiedad `headers` (p. ej. Content-Type en
+    // moveToTrash) sobrescribe las cabeceras ya combinadas y se pierden
+    // Authorization y x-user-* → el backend responde 401.
     const response = await fetch(path, {
-      headers,
       ...options,
+      headers,
     })
 
     if (response.status === 401) {

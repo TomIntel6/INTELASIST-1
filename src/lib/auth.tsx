@@ -200,12 +200,15 @@ function normalizeUserRecord(record: Record<string, unknown>): LocalUser | null 
 async function requestJson<T>(url: string, options: RequestInit = {}): Promise<T> {
   try {
     const response = await fetch(url, {
+      ...options,
+      // `headers` después de `...options` para que las cabeceras combinadas
+      // (incluida la identidad de getAuthHeaders) no se pierdan si options
+      // trae su propia propiedad `headers`.
       headers: {
         'Content-Type': 'application/json',
         ...getAuthHeaders(),
         ...(options.headers ?? {}),
       },
-      ...options,
     })
 
     const payload = await response.json().catch(() => ({}))
