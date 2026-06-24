@@ -1,4 +1,4 @@
-import { getAuthHeaders } from '@/lib/auth'
+import { getAuthHeaders, getAuthToken } from '@/lib/auth'
 import { getDefaultApiBase } from '@/lib/supabase'
 import { AuditService } from '@/lib/audit-service'
 
@@ -23,17 +23,48 @@ export interface TrashReport {
  * Handles soft-delete functionality for report recovery
  */
 export class TrashService {
+  static redirectToLogin() {
+    if (typeof window !== 'undefined') {
+      window.location.href = '/login'
+    }
+  }
+
+  static assertAuthToken() {
+    const token = getAuthToken()
+    if (!token) {
+      this.redirectToLogin()
+      throw new Error('Authentication token missing. Redirecting to login.')
+    }
+    return token
+  }
+
+  static async fetchWithAuth(path: string, options: RequestInit = {}) {
+    this.assertAuthToken()
+
+    const response = await fetch(path, {
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeaders(),
+        ...(options.headers ?? {}),
+      },
+      ...options,
+    })
+
+    if (response.status === 401) {
+      this.redirectToLogin()
+      throw new Error('Unauthorized. Redirecting to login.')
+    }
+
+    return response
+  }
+
   /**
    * Move a report to trash (soft delete)
    */
   static async moveToTrash(reportId: string, reportData: Record<string, any>, reason?: string) {
     try {
-      const response = await fetch(`${API_BASE}/api/trash`, {
+      const response = await this.fetchWithAuth(`${API_BASE}/api/trash`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...getAuthHeaders(),
-        },
         body: JSON.stringify({
           reportId,
           originalData: reportData,
