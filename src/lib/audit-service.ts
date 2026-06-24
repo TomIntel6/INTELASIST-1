@@ -339,6 +339,10 @@ export class AuditService {
       if (filters?.userEmail) params.append('userEmail', filters.userEmail)
       if (filters?.module) params.append('module', filters.module)
       if (filters?.action) params.append('action', filters.action)
+      if (filters?.entityId) params.append('entityId', filters.entityId)
+      if (filters?.entityType) params.append('entityType', filters.entityType)
+      if (filters?.startDate) params.append('startDate', filters.startDate)
+      if (filters?.endDate) params.append('endDate', filters.endDate)
 
       const response = await fetch(`${API_BASE}/api/audit-logs?${params.toString()}`, {
         headers: {

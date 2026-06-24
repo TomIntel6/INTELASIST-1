@@ -185,19 +185,74 @@ export default function ReportDetail() {
   React.useEffect(() => {
     if (!report) return
 
-    const intervalId = window.setInterval(() => {
-      void fetchData()
-    }, 15000)
+    let intervalId: number | null = null
 
-    // Load audit events for this report
+    const refreshIfVisible = () => {
+      if (document.visibilityState === 'visible') {
+        void fetchData()
+      }
+    }
+
+    const startPolling = () => {
+      if (intervalId !== null) {
+        return
+      }
+
+      intervalId = window.setInterval(() => {
+        if (document.visibilityState !== 'visible') {
+          return
+        }
+
+        void fetchData()
+      }, 60000)
+    }
+
+    const stopPolling = () => {
+      if (intervalId !== null) {
+        window.clearInterval(intervalId)
+        intervalId = null
+      }
+    }
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        refreshIfVisible()
+        startPolling()
+      } else {
+        stopPolling()
+      }
+    }
+
+    if (document.visibilityState === 'visible') {
+      startPolling()
+    }
+
+    window.addEventListener('visibilitychange', handleVisibilityChange)
+
+    return () => {
+      stopPolling()
+      window.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [report, fetchData])
+
+  React.useEffect(() => {
+    if (!report || !showAuditPanel) {
+      return
+    }
+
+    let isMounted = true
+
     const loadAuditEvents = async () => {
       try {
-        const events = await AuditService.fetchAuditLogs({
+        const { data } = await AuditService.fetchAuditLogs({
           entityId: id,
           module: 'REPORTS',
+          limit: 50,
+          offset: 0,
         })
-        if (Array.isArray(events)) {
-          setAuditEvents(events)
+
+        if (isMounted) {
+          setAuditEvents(data)
         }
       } catch (err) {
         console.error('Error loading audit events:', err)
@@ -206,8 +261,10 @@ export default function ReportDetail() {
 
     void loadAuditEvents()
 
-    return () => window.clearInterval(intervalId)
-  }, [report, fetchData, id])
+    return () => {
+      isMounted = false
+    }
+  }, [report, id, showAuditPanel])
 
   const handleAddUpdate = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -253,13 +310,14 @@ export default function ReportDetail() {
 
       setNewComment('')
       await fetchData()
-      
-      // Reload audit events
-      const events = await AuditService.fetchAuditLogs({
-        entityId: id,
-        module: 'REPORTS',
-      })
-      if (Array.isArray(events)) {
+
+      if (showAuditPanel) {
+        const { data: events } = await AuditService.fetchAuditLogs({
+          entityId: id,
+          module: 'REPORTS',
+          limit: 50,
+          offset: 0,
+        })
         setAuditEvents(events)
       }
     } catch (error) {

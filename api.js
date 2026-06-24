@@ -3469,6 +3469,10 @@ app.get('/api/audit-logs', async (req, res) => {
     const userEmail = String(req.query.userEmail || '')
     const module = String(req.query.module || '')
     const action = String(req.query.action || '')
+    const entityId = String(req.query.entityId || '')
+    const entityType = String(req.query.entityType || '')
+    const startDate = String(req.query.startDate || '')
+    const endDate = String(req.query.endDate || '')
 
     let whereClause = ''
     const params = []
@@ -3488,6 +3492,22 @@ app.get('/api/audit-logs', async (req, res) => {
     if (action) {
       whereClause += `${whereClause ? ' AND' : 'WHERE'} al.action = $${params.length + 1}`
       params.push(action)
+    }
+    if (entityId) {
+      whereClause += `${whereClause ? ' AND' : 'WHERE'} al.entity_id = $${params.length + 1}`
+      params.push(entityId)
+    }
+    if (entityType) {
+      whereClause += `${whereClause ? ' AND' : 'WHERE'} al.entity_type = $${params.length + 1}`
+      params.push(entityType)
+    }
+    if (startDate) {
+      whereClause += `${whereClause ? ' AND' : 'WHERE'} al.created_at >= $${params.length + 1}`
+      params.push(startDate)
+    }
+    if (endDate) {
+      whereClause += `${whereClause ? ' AND' : 'WHERE'} al.created_at <= $${params.length + 1}`
+      params.push(endDate)
     }
 
     const countResult = await pool.query(`
