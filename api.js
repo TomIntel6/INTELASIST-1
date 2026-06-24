@@ -3005,13 +3005,28 @@ app.post('/api/trash', async (req, res) => {
       return res.status(404).json({ error: 'Informe no encontrado' })
     }
 
-    if (!req.user?.id) {
+    // Aceptamos identidad por id o por email. Algunas sesiones llegan solo con
+    // email (token ausente o identidad de respaldo por cabeceras); en ese caso
+    // resolvemos el id desde la base de datos en lugar de rechazar con 401.
+    deletedBy = req.user?.id || null
+    deletedByEmail = String(req.user?.email || '').trim()
+    deletedByName = String(req.user?.user_metadata?.full_name || '').trim()
+
+    if (!deletedBy && !deletedByEmail) {
       return res.status(401).json({ error: 'Autenticación requerida.' })
     }
 
-    deletedBy = req.user.id
-    deletedByEmail = String(req.user.email || '').trim()
-    deletedByName = String(req.user.user_metadata?.full_name || '').trim()
+    if (!deletedBy && deletedByEmail) {
+      try {
+        const idResult = await pool.query(
+          'SELECT id FROM usuarios WHERE LOWER(correo) = LOWER($1) LIMIT 1',
+          [deletedByEmail]
+        )
+        deletedBy = idResult.rows[0]?.id ? String(idResult.rows[0].id) : null
+      } catch (e) {
+        console.warn('Error resolving user id for trash:', e)
+      }
+    }
 
     console.log(`[POST /api/trash] User info from req.user:`, {
       reqUserId: req.user.id,
