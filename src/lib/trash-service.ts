@@ -1,4 +1,5 @@
-import { supabase, getDefaultApiBase } from '@/lib/supabase'
+import { getAuthHeaders } from '@/lib/auth'
+import { getDefaultApiBase } from '@/lib/supabase'
 import { AuditService } from '@/lib/audit-service'
 
 const API_BASE = getDefaultApiBase()
@@ -27,25 +28,16 @@ export class TrashService {
    */
   static async moveToTrash(reportId: string, reportData: Record<string, any>, reason?: string) {
     try {
-      // Get current user info to send to backend
-      const { data: authData } = await supabase.auth.getUser()
-      const currentUser = authData?.user
-      const userId = currentUser?.id || null
-      const userEmail = (currentUser?.email || '').trim()
-      const userName = (currentUser?.user_metadata?.full_name || '').trim()
-
-      console.log('[TrashService] moveToTrash - user info:', { userId, userEmail, userName })
-
       const response = await fetch(`${API_BASE}/api/trash`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders(),
+        },
         body: JSON.stringify({
           reportId,
           originalData: reportData,
           reason: reason || 'Deleted by user',
-          userId,
-          userEmail,
-          userName,
         }),
       })
 
@@ -66,7 +58,11 @@ export class TrashService {
    */
   static async getTrash(limit = 50, offset = 0) {
     try {
-      const response = await fetch(`${API_BASE}/api/trash?limit=${limit}&offset=${offset}`)
+      const response = await fetch(`${API_BASE}/api/trash?limit=${limit}&offset=${offset}`, {
+        headers: {
+          ...getAuthHeaders(),
+        },
+      })
       if (!response.ok) throw new Error('Failed to fetch trash')
       
       const result = await response.json()
@@ -96,7 +92,11 @@ export class TrashService {
    */
   static async getDeletedReport(trashId: string) {
     try {
-      const response = await fetch(`${API_BASE}/api/trash/${trashId}`)
+      const response = await fetch(`${API_BASE}/api/trash/${trashId}`, {
+        headers: {
+          ...getAuthHeaders(),
+        },
+      })
       if (!response.ok) return null
       
       const item = await response.json()
@@ -129,21 +129,13 @@ export class TrashService {
         throw new Error('Deleted report not found')
       }
 
-      // Get current user info to send to backend
-      const { data: authData } = await supabase.auth.getUser()
-      const currentUser = authData?.user
-      const userId = currentUser?.id || null
-      const userEmail = (currentUser?.email || '').trim()
-      const userName = (currentUser?.user_metadata?.full_name || '').trim()
-
       const response = await fetch(`${API_BASE}/api/trash/${trashId}/restore`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId,
-          userEmail,
-          userName,
-        }),
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders(),
+        },
+        body: JSON.stringify({}),
       })
 
       if (!response.ok) throw new Error('Failed to restore report')
@@ -169,21 +161,13 @@ export class TrashService {
         throw new Error('Deleted report not found')
       }
 
-      // Get current user info to send to backend
-      const { data: authData } = await supabase.auth.getUser()
-      const currentUser = authData?.user
-      const userId = currentUser?.id || null
-      const userEmail = (currentUser?.email || '').trim()
-      const userName = (currentUser?.user_metadata?.full_name || '').trim()
-
       const response = await fetch(`${API_BASE}/api/trash/${trashId}/delete`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId,
-          userEmail,
-          userName,
-        }),
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders(),
+        },
+        body: JSON.stringify({}),
       })
 
       if (!response.ok) throw new Error('Failed to permanently delete report')
@@ -205,7 +189,10 @@ export class TrashService {
     try {
       const response = await fetch(`${API_BASE}/api/trash/empty`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders(),
+        },
       })
 
       if (!response.ok) throw new Error('Failed to empty trash')

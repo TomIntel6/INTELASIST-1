@@ -16,10 +16,6 @@ export interface LocalUser {
   }
 }
 
-interface LocalSession {
-  user: LocalUser
-}
-
 interface AuthContextValue {
   user: LocalUser | null
   session: LocalSession | null
@@ -40,6 +36,11 @@ export const PRESENCE_SYNC_STORAGE_KEY = 'intelasist-presence-sync'
 export const ROLE_SYNC_STORAGE_KEY = 'intelasist-role-sync'
 export const USERS_SYNC_STORAGE_KEY = 'intelasist-users-sync'
 export const PRESENCE_STYLE_STORAGE_KEY = 'intelasist-presence-styles'
+
+export interface LocalSession {
+  user: LocalUser
+  token?: string
+}
 const PRESENCE_TTL_MS = 1000 * 45
 // El heartbeat debe ser claramente más frecuente que el TTL para evitar que el
 // usuario "expire" entre un latido y el siguiente (antes: 60s > 45s -> parpadeo).
@@ -66,6 +67,27 @@ function persistSession(session: LocalSession | null) {
   }
 
   window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session))
+}
+
+export function getAuthToken(): string | null {
+  if (typeof window === 'undefined') {
+    return null
+  }
+
+  try {
+    const raw = window.localStorage.getItem(AUTH_STORAGE_KEY)
+    if (!raw) return null
+
+    const parsed = JSON.parse(raw) as { token?: string }
+    return typeof parsed?.token === 'string' ? parsed.token : null
+  } catch {
+    return null
+  }
+}
+
+export function getAuthHeaders(): Record<string, string> {
+  const token = getAuthToken()
+  return token ? { Authorization: `Bearer ${token}` } : {}
 }
 
 function loadSession(): LocalSession | null {
@@ -950,11 +972,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user])
 
-  const persistCurrentUser = React.useCallback((nextUser: LocalUser) => {
+  const persistCurrentUser = React.useCallback((nextUser: LocalUser, token?: string) => {
+    const nextSession: LocalSession = {
+      user: nextUser,
+      token: token ?? session?.token,
+    }
+
     setUser(nextUser)
-    setSession({ user: nextUser })
-    persistSession({ user: nextUser })
-  }, [])
+    setSession(nextSession)
+    persistSession(nextSession)
+  }, [session])
 
   React.useEffect(() => {
     const handleUserSync = (event: Event) => {
@@ -983,7 +1010,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [user, persistCurrentUser])
 
   const signInWithEmailPassword = async (email: string, password: string) => {
-    const payload = await requestJson<{ user?: Record<string, unknown>; userData?: Record<string, unknown>; must_change_password?: boolean }>(`${API_BASE_URL}/auth/login`, {
+    const payload = await requestJson<{ user?: Record<string, unknown>; userData?: Record<string, unknown>; token?: string; must_change_password?: boolean }>(`${API_BASE_URL}/auth/login`, {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     })
@@ -999,7 +1026,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       must_change_password: payload.must_change_password === true,
     }
 
-    persistCurrentUser(nextUser)
+    persistCurrentUser(nextUser, typeof payload.token === 'string' ? payload.token : undefined)
     upsertOnlineUser(nextUser)
 
     try {
