@@ -35,7 +35,20 @@ export class TrashService {
 
     const headers: Record<string, string> = {
       ...getAuthHeaders(),
-      ...(options.headers ?? {}),
+    }
+
+    if (options.headers) {
+      if (options.headers instanceof Headers) {
+        options.headers.forEach((value, key) => {
+          headers[key] = value
+        })
+      } else if (Array.isArray(options.headers)) {
+        for (const [key, value] of options.headers) {
+          headers[key] = value
+        }
+      } else {
+        Object.assign(headers, options.headers)
+      }
     }
 
     if (options.body && !Object.keys(headers).some(key => key.toLowerCase() === 'content-type')) {
