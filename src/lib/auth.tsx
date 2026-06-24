@@ -740,6 +740,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return
       }
 
+      // Las sesiones creadas antes de habilitar la autenticación por JWT no
+      // contienen token. Sin token, las operaciones protegidas (papelera,
+      // auditoría, etc.) fallan con "Authentication token missing.".
+      // Forzamos un nuevo inicio de sesión para obtener un token válido.
+      if (!storedSession.token) {
+        persistSession(null)
+        setSession(null)
+        setUser(null)
+        setLoading(false)
+        return
+      }
+
       setSession(storedSession)
       setUser(storedSession.user)
       upsertOnlineUser(storedSession.user)

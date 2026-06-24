@@ -25,7 +25,7 @@ export class TrashService {
   static assertAuthToken() {
     const token = getAuthToken()
     if (!token) {
-      throw new Error('Authentication token missing.')
+      throw new Error('Tu sesión ha expirado. Vuelve a iniciar sesión para continuar.')
     }
     return token
   }
@@ -61,7 +61,7 @@ export class TrashService {
     })
 
     if (response.status === 401) {
-      throw new Error('Unauthorized.')
+      throw new Error('Tu sesión ha expirado. Vuelve a iniciar sesión para continuar.')
     }
 
     return response
