@@ -44,7 +44,7 @@ export interface LocalSession {
 const PRESENCE_TTL_MS = 1000 * 45
 // El heartbeat debe ser claramente más frecuente que el TTL para evitar que el
 // usuario "expire" entre un latido y el siguiente (antes: 60s > 45s -> parpadeo).
-const PRESENCE_SYNC_INTERVAL_MS = 1000 * 20
+const PRESENCE_SYNC_INTERVAL_MS = 1000 * 120
 const getDefaultApiBase = () => {
   if (import.meta.env.VITE_API_BASE_URL) return import.meta.env.VITE_API_BASE_URL
   return 'https://intelasist.onrender.com'
