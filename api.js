@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url'
 import express from 'express'
 import cors from 'cors'
 import bcrypt from 'bcrypt'
+import jwt from 'jsonwebtoken'
 import multer from 'multer'
 import { createClient } from '@supabase/supabase-js'
 import pool from './db.js'
@@ -93,6 +94,8 @@ const SUPABASE_SERVICE_KEY_SOURCE = process.env.SUPABASE_SERVICE_KEY
     ? 'SUPABASE_SERVICE_ROLE_KEY'
     : 'none'
 const PLACEHOLDER_SERVICE_KEY = 'TU_SECRET_KEY'
+const JWT_SECRET = String(process.env.JWT_SECRET || 'TU_SECRETO_JWT').trim()
+const JWT_EXPIRES_IN = '8h'
 
 const supabase = SUPABASE_URL && SUPABASE_SERVICE_KEY && SUPABASE_SERVICE_KEY !== PLACEHOLDER_SERVICE_KEY
   ? createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY)
@@ -145,28 +148,50 @@ const distPath = join(__dirname, 'dist')
 console.log(`[EXPRESS] Serving static files from: ${distPath}`)
 app.use(express.static(distPath))
 
-// Middleware para capturar información del usuario desde el body o headers
-app.use((req, res, next) => {
+// Authentication middleware: only accept bearer JWT tokens for req.user
+const authRoutes = express.Router()
+
+function generateJwtToken(user) {
+  if (!JWT_SECRET || JWT_SECRET === 'TU_SECRETO_JWT') {
+    console.warn('[JWT] JWT_SECRET no está configurado correctamente. Se usará un secreto inseguro para desarrollo.')
+  }
+
+  const payload = {
+    userId: user.id,
+    email: user.email,
+    fullName: user.nombre || user.correo || '',
+    role: user.rol || null,
+    roles: user.roles || null,
+  }
+
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN })
+}
+
+function verifyJwtToken(token) {
   try {
-    // Si el body tiene información del usuario, la capturamos
-    if (req.body) {
-      if (req.body.userId || req.body.user_id) {
-        req.user = {
-          id: req.body.userId || req.body.user_id,
-          email: req.body.userEmail || req.body.user_email,
-          user_metadata: {
-            full_name: req.body.userName || req.body.user_name,
-          },
-        }
+    return jwt.verify(token, JWT_SECRET)
+  } catch (error) {
+    return null
+  }
+}
+
+app.use((req, res, next) => {
+  const authHeader = typeof req.headers.authorization === 'string' ? req.headers.authorization.trim() : ''
+  if (authHeader.startsWith('Bearer ')) {
+    const token = authHeader.slice('Bearer '.length).trim()
+    const decoded = verifyJwtToken(token)
+    if (decoded && typeof decoded === 'object') {
+      req.user = {
+        id: decoded.userId,
+        email: decoded.email,
+        user_metadata: {
+          full_name: decoded.fullName || '',
+        },
       }
     }
-  } catch (e) {
-    // ignore
   }
   next()
 })
-
-const authRoutes = express.Router()
 
 const uploadsDir = resolve(process.cwd(), 'uploads')
 mkdirSync(uploadsDir, { recursive: true })
@@ -1040,6 +1065,7 @@ authRoutes.post('/login', async (req, res) => {
     if (!user.password) {
       res.json({
         user: serializeUserRecord(user),
+        token: generateJwtToken(user),
         must_change_password: true,
       })
       return
@@ -1054,6 +1080,7 @@ authRoutes.post('/login', async (req, res) => {
 
     res.json({
       user: serializeUserRecord(user),
+      token: generateJwtToken(user),
       must_change_password: false,
     })
   } catch (err) {
@@ -2875,20 +2902,18 @@ app.post('/api/trash', async (req, res) => {
       return res.status(404).json({ error: 'Informe no encontrado' })
     }
 
-    // Capturar información del usuario - primero del body, luego de req.user
-    let deletedBy = req.body?.userId || (req.user && req.user.id) || null
-    let deletedByEmail = (req.body?.userEmail || (req.user && req.user.email) || '').trim()
-    let deletedByName = (req.body?.userName || (req.user && req.user.user_metadata && req.user.user_metadata.full_name) || '').trim()
+    if (!req.user?.id) {
+      return res.status(401).json({ error: 'Autenticación requerida.' })
+    }
 
-    console.log(`[POST /api/trash] User info from body:`, { 
-      bodyUserId: req.body?.userId,
-      bodyUserEmail: req.body?.userEmail,
-      bodyUserName: req.body?.userName,
-    })
+    const deletedBy = req.user.id
+    const deletedByEmail = String(req.user.email || '').trim()
+    let deletedByName = String(req.user.user_metadata?.full_name || '').trim()
+
     console.log(`[POST /api/trash] User info from req.user:`, {
-      reqUserId: req.user?.id,
-      reqUserEmail: req.user?.email,
-      reqUserName: req.user?.user_metadata?.full_name,
+      reqUserId: req.user.id,
+      reqUserEmail: req.user.email,
+      reqUserName: req.user.user_metadata?.full_name,
     })
 
     // Get user name from database if email is available and name not provided
@@ -3205,13 +3230,16 @@ app.post('/api/trash/:id/restore', async (req, res) => {
     }
 
     const restoredReportId = updateResult.rows[0]?.report_id
-    
-    // Get user info from body or req.user
-    const restoredBy = req.body?.userId || req.user?.id || null
-    const restoredByEmail = (req.body?.userEmail || req.user?.email || '').trim()
-    const restoredByName = (req.body?.userName || req.user?.user_metadata?.full_name || '').trim()
 
-    // Log the restore action
+    if (!req.user?.id) {
+      return res.status(401).json({ error: 'Autenticación requerida.' })
+    }
+
+    const restoredBy = req.user.id
+    const restoredByEmail = String(req.user.email || '').trim()
+    const restoredByName = String(req.user.user_metadata?.full_name || '').trim()
+
+    // Log the restore action using authenticated user info only
     await logAuditEvent(req, {
       action: 'restore_report',
       module: 'reports',
@@ -3253,12 +3281,19 @@ app.post('/api/trash/:id/delete', async (req, res) => {
     const permanentlyDeletedReportId = deleteResult.rows[0]?.report_id
 
     // Get user info from body or req.user
-    const deletedBy = req.body?.userId || req.user?.id || null
-    const deletedByEmail = (req.body?.userEmail || req.user?.email || '').trim()
-    const deletedByName = (req.body?.userName || req.user?.user_metadata?.full_name || '').trim()
+    if (!req.user?.id) {
+      return res.status(401).json({ error: 'Autenticación requerida.' })
+    }
+
+    const deletedBy = req.user.id
+    const deletedByEmail = String(req.user.email || '').trim()
+    const deletedByName = String(req.user.user_metadata?.full_name || '').trim()
 
     // Log the permanent delete action
     await logAuditEvent(req, {
+      auditUserId: deletedBy,
+      auditUserEmail: deletedByEmail,
+      auditUserName: deletedByName,
       action: 'permanently_delete_report',
       module: 'reports',
       entityId: permanentlyDeletedReportId,
@@ -3283,6 +3318,10 @@ app.post('/api/audit-logs', async (req, res) => {
     const action = typeof body.action === 'string' && body.action.trim() ? body.action.trim() : null
     const module = typeof body.module === 'string' && body.module.trim() ? body.module.trim() : null
 
+    if (!req.user?.id) {
+      return res.status(401).json({ error: 'Autenticación requerida.' })
+    }
+
     if (!action || !module) {
       return res.status(400).json({ error: 'action y module son requeridos' })
     }
@@ -3292,12 +3331,12 @@ app.post('/api/audit-logs', async (req, res) => {
       : req.ip || null
     const userAgent = req.headers['user-agent'] ? String(req.headers['user-agent']) : null
 
-    // Capturar información del usuario con fallbacks
-    let userId = (body.userId || body.user_id || null)
-    let userEmail = String(body.userEmail || body.user_email || body.email || '').trim() || null
-    let userName = String(body.userName || body.user_name || body.name || '').trim()
+    // Capturar información del usuario desde la sesión autenticada
+    let userId = req.user.id || null
+    let userEmail = String(req.user.email || '').trim() || null
+    let userName = String(req.user.user_metadata?.full_name || '').trim()
 
-    console.log(`[POST /api/audit-logs] 📥 Datos recibidos del frontend:`, { userId, userEmail, userName, action, module })
+    console.log(`[POST /api/audit-logs] 📥 Usuario autenticado:`, { userId, userEmail, userName, action, module })
 
     // IMPORTANTE: Siempre intentar obtener el nombre de la BD si no viene del frontend
     if (userEmail) {

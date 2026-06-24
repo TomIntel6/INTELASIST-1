@@ -1,4 +1,5 @@
-import { supabase, getDefaultApiBase } from '@/lib/supabase'
+import { getAuthHeaders } from '@/lib/auth'
+import { getDefaultApiBase } from '@/lib/supabase'
 import { AUDIT_ACTIONS_MAP, type AuditLog } from '@/lib/permissions'
 
 const API_BASE = getDefaultApiBase()
@@ -19,35 +20,8 @@ export interface AuditEventData {
 /**
  * Get current authenticated user info
  */
-async function getCurrentUserInfo() {
-  try {
-    const { data: authData } = await supabase.auth.getUser()
-    const currentUser = authData?.user
-
-    if (!currentUser) {
-      console.warn('[AuditService] No authenticated user found')
-      return { userId: null, userEmail: '', userName: '' }
-    }
-
-    let userId = currentUser.id || null
-    let userEmail = (currentUser.email || '').trim()
-    let userName = (currentUser.user_metadata?.full_name || '').trim()
-
-    // Ensure we have at least the email as fallback
-    if (!userName && userEmail) {
-      userName = userEmail
-    }
-
-    console.log('[AuditService] Current user info:', { userId, userEmail, userName })
-    return { userId, userEmail, userName }
-  } catch (error) {
-    console.error('[AuditService] Error getting current user:', error)
-    return { userId: null, userEmail: '', userName: '' }
-  }
-}
-
 /**
- * Service for logging audit events to the database
+ * Service for logging audit events to the backend API
  */
 export class AuditService {
   /**
@@ -68,48 +42,11 @@ export class AuditService {
         errorMessage,
       } = data
 
-      // Get current user info for audit logging
-      const { userId, userEmail, userName } = await getCurrentUserInfo()
-
-      const { error } = await supabase.rpc('log_audit_event', {
-        p_action: AUDIT_ACTIONS_MAP[action],
-        p_module: module,
-        p_entity_id: entityId || null,
-        p_entity_type: entityType || null,
-        p_old_values: oldValues ? JSON.stringify(oldValues) : null,
-        p_new_values: newValues ? JSON.stringify(newValues) : null,
-        p_status: status,
-        p_error_message: errorMessage || null,
-      })
-
-      if (!error) {
-        return true
-      }
-
-      const errorMessageText = String(error?.message || '')
-      const isMissingRpc =
-        error?.code === 'PGRST301' ||
-        error?.code === 'PGRST404' ||
-        /not found|does not exist|function .* not found|rpc.*not found/i.test(errorMessageText)
-
-      if (!isMissingRpc) {
-        console.error('Error logging audit event via RPC:', error)
-        return false
-      }
-
-      // Fallback to backend API - include user info
-      console.log('[AuditService] Using fallback - sending to /api/audit-logs:', {
-        action,
-        module,
-        userId,
-        userEmail,
-        userName,
-      })
-
-      const fallbackResponse = await fetch(`${API_BASE}/api/audit-logs`, {
+      const response = await fetch(`${API_BASE}/api/audit-logs`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...getAuthHeaders(),
         },
         body: JSON.stringify({
           action: AUDIT_ACTIONS_MAP[action],
@@ -120,18 +57,14 @@ export class AuditService {
           newValues,
           status,
           errorMessage,
-          userId,
-          userEmail,
-          userName,
         }),
       })
 
-      if (!fallbackResponse.ok) {
-        throw new Error(`Audit fallback failed with status ${fallbackResponse.status}`)
+      if (!response.ok) {
+        throw new Error(`Audit log failed with status ${response.status}`)
       }
 
-      const fallbackResult = await fallbackResponse.json().catch(() => ({}))
-      return fallbackResult?.success !== false
+      return true
     } catch (error) {
       console.error('Error logging audit event:', error)
       return false
@@ -407,7 +340,11 @@ export class AuditService {
       if (filters?.module) params.append('module', filters.module)
       if (filters?.action) params.append('action', filters.action)
 
-      const response = await fetch(`${API_BASE}/api/audit-logs?${params.toString()}`)
+      const response = await fetch(`${API_BASE}/api/audit-logs?${params.toString()}`, {
+        headers: {
+          ...getAuthHeaders(),
+        },
+      })
       if (!response.ok) throw new Error('Failed to fetch audit logs')
 
       const result = await response.json()
