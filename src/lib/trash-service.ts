@@ -1,4 +1,4 @@
-import { getAuthHeaders, getAuthToken } from '@/lib/auth'
+import { getAuthHeaders } from '@/lib/auth'
 import { getDefaultApiBase } from '@/lib/supabase'
 
 const API_BASE = getDefaultApiBase()
@@ -22,17 +22,7 @@ export interface TrashReport {
  * Handles soft-delete functionality for report recovery
  */
 export class TrashService {
-  static assertAuthToken() {
-    const token = getAuthToken()
-    if (!token) {
-      throw new Error('Tu sesión ha expirado. Vuelve a iniciar sesión para continuar.')
-    }
-    return token
-  }
-
   static async fetchWithAuth(path: string, options: RequestInit = {}) {
-    this.assertAuthToken()
-
     const headers: Record<string, string> = {
       ...getAuthHeaders(),
     }

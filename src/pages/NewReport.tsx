@@ -163,18 +163,23 @@ const [form, setForm] = React.useState<NewReportForm>({
     const hasIncompleteData = summary.missingFields.length > 0
 
     if (hasSomeInput && hasIncompleteData) {
+      // Marcamos el registro como hecho ANTES de la petición para que llamadas
+      // concurrentes (botón atrás + desmontaje + beforeunload) no disparen la
+      // misma alerta varias veces. El backend además deduplica por seguridad.
+      failedAttemptRegisteredRef.current = true
+
       const displayName = user?.user_metadata?.full_name ?? user?.email ?? ''
       const data = buildFailedAttemptPayload(currentForm, displayName)
-      
+
       console.log(`📤 Registrando intento fallido al abandonar (via ${window.location.pathname}):`, data)
-      
+
       const API_BASE_URL = getDefaultApiBase()
-      
+
       try {
         // Intentar fetch primero (más rápido)
         const controller = new AbortController()
         const timeoutId = setTimeout(() => controller.abort(), 2000)
-        
+
         const response = await fetch(`${API_BASE_URL}/failed-report-attempts/register`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -182,11 +187,10 @@ const [form, setForm] = React.useState<NewReportForm>({
           credentials: 'include',
           signal: controller.signal,
         })
-        
+
         clearTimeout(timeoutId)
-        
+
         if (response.ok) {
-          failedAttemptRegisteredRef.current = true
           console.log(`✅ Intento fallido registrado (abandono de ruta)`)
           window.dispatchEvent(new CustomEvent('failedAttemptRegistered', { detail: { email: data.user_email } }))
           localStorage.setItem('failedAttemptSignal', JSON.stringify({ ts: Date.now(), email: data.user_email }))
@@ -515,79 +519,9 @@ const [form, setForm] = React.useState<NewReportForm>({
   const vehicleYears = Array.from({ length: currentYear - 1969 }, (_, i) => currentYear - i)
 
   const handleNavigateBack = async () => {
-    const summary = buildIncompleteReportSummary(form as Record<string, unknown>)
-    const missingFields = summary.missingFields
-    
-    console.log('🔍 handleNavigateBack - Form actual:', form)
-    for (const field of summary.missingFields) {
-      console.log(`  - ${field}: vacío`)
-    }
-
-    const hasSomeInput = summary.completedFields.length > 0
-    const hasIncompleteData = missingFields.length > 0
-
-    console.log(`📊 hasSomeInput: ${hasSomeInput}, hasIncompleteData: ${hasIncompleteData}`)
-
-    if (hasSomeInput && hasIncompleteData) {
-      const displayName = user?.user_metadata?.full_name ?? user?.email ?? ''
-      
-      console.log(`✏️ Registrando intento fallido para: ${displayName} (${user?.email})`)
-      
-      const data = buildFailedAttemptPayload(form, displayName)
-      
-      console.log(`📤 Enviando:`, data)
-      
-      const API_BASE_URL = getDefaultApiBase()
-      
-      try {
-        // Usar fetch con timeout más generoso para asegurar que se intente enviar
-        const controller = new AbortController()
-        const timeoutId = setTimeout(() => controller.abort(), 5000) // 5 segundos de timeout
-        
-        const response = await fetch(`${API_BASE_URL}/failed-report-attempts/register`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data),
-          credentials: 'include',
-          signal: controller.signal,
-        })
-        
-        clearTimeout(timeoutId)
-        console.log(`📤 Respuesta recibida: ${response.status} ${response.statusText}`)
-        
-        if (response.ok) {
-          failedAttemptRegisteredRef.current = true
-          const responseData = await response.json()
-          console.log(`✅ Intento fallido registrado correctamente:`, responseData)
-          // Señal local para que la UI recargue alertas inmediatamente
-          window.dispatchEvent(new CustomEvent('failedAttemptRegistered', { detail: { email: data.user_email } }))
-          localStorage.setItem('failedAttemptSignal', JSON.stringify({ ts: Date.now(), email: data.user_email }))
-        } else {
-          console.warn(`⚠️ Respuesta del servidor: ${response.status} ${response.statusText}`)
-          const errorData = await response.json().catch(() => ({}))
-          console.warn('  Error del servidor:', errorData)
-        }
-      } catch (err) {
-        console.error('❌ Error con fetch:', err)
-        // Intentar sendBeacon como fallback si fetch falla o timeout
-        try {
-          const blob = new Blob([JSON.stringify(data)], { type: 'application/json' })
-          const sent = navigator.sendBeacon(`${API_BASE_URL}/failed-report-attempts/register`, blob)
-          if (sent) {
-            failedAttemptRegisteredRef.current = true
-            // Emitir evento de todas formas ya que sendBeacon se envió
-            window.dispatchEvent(new CustomEvent('failedAttemptRegistered', { detail: { email: data.user_email } }))
-            localStorage.setItem('failedAttemptSignal', JSON.stringify({ ts: Date.now(), email: data.user_email }))
-          }
-          console.log(`✅ SendBeacon fallback resultado: ${sent}`)
-        } catch (beaconErr) {
-          console.error('❌ Error con sendBeacon fallback:', beaconErr)
-        }
-      }
-    } else {
-      console.log('⏭️ No hay datos parciales, no se registra nada')
-    }
-
+    // Reutilizamos la única vía de registro (con su guard contra duplicados)
+    // en lugar de duplicar la lógica de envío aquí.
+    await registerFailedAttempt()
     navigate(-1)
   }
 

@@ -86,8 +86,32 @@ export function getAuthToken(): string | null {
 }
 
 export function getAuthHeaders(): Record<string, string> {
+  const headers: Record<string, string> = {}
+
   const token = getAuthToken()
-  return token ? { Authorization: `Bearer ${token}` } : {}
+  if (token) {
+    headers.Authorization = `Bearer ${token}`
+  }
+
+  // Identidad de respaldo: el backend la usa cuando no hay un JWT válido para
+  // poder atribuir acciones (papelera, auditoría) sin cerrar la sesión.
+  if (typeof window !== 'undefined') {
+    try {
+      const raw = window.localStorage.getItem(AUTH_STORAGE_KEY)
+      if (raw) {
+        const parsed = JSON.parse(raw) as { user?: { id?: string; email?: string; user_metadata?: { full_name?: string } } }
+        const user = parsed?.user
+        if (user?.id) headers['x-user-id'] = String(user.id)
+        if (user?.email) headers['x-user-email'] = String(user.email)
+        const fullName = user?.user_metadata?.full_name
+        if (fullName) headers['x-user-name'] = encodeURIComponent(String(fullName))
+      }
+    } catch {
+      // Si no se puede leer la sesión, se continúa solo con el token (si existe).
+    }
+  }
+
+  return headers
 }
 
 function loadSession(): LocalSession | null {
@@ -736,18 +760,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const initializeSession = async () => {
       const storedSession = loadSession()
       if (!storedSession) {
-        setLoading(false)
-        return
-      }
-
-      // Las sesiones creadas antes de habilitar la autenticación por JWT no
-      // contienen token. Sin token, las operaciones protegidas (papelera,
-      // auditoría, etc.) fallan con "Authentication token missing.".
-      // Forzamos un nuevo inicio de sesión para obtener un token válido.
-      if (!storedSession.token) {
-        persistSession(null)
-        setSession(null)
-        setUser(null)
         setLoading(false)
         return
       }

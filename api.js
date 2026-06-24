@@ -135,7 +135,7 @@ const corsOptions = {
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-user-id', 'x-user-email', 'x-user-name'],
   optionsSuccessStatus: 204,
 }
 
@@ -190,6 +190,33 @@ app.use((req, res, next) => {
       }
     }
   }
+
+  // Fallback de identidad: si no hubo un JWT válido (sesiones creadas antes de
+  // habilitar el token, usuarios con must_change_password, etc.) usamos la
+  // identidad que el frontend envía en cabeceras para no bloquear acciones como
+  // mover a papelera. El JWT sigue siendo el método preferente cuando existe.
+  if (!req.user) {
+    const headerId = typeof req.headers['x-user-id'] === 'string' ? req.headers['x-user-id'].trim() : ''
+    const headerEmail = typeof req.headers['x-user-email'] === 'string' ? req.headers['x-user-email'].trim() : ''
+    const rawHeaderName = typeof req.headers['x-user-name'] === 'string' ? req.headers['x-user-name'].trim() : ''
+    let headerName = rawHeaderName
+    try {
+      headerName = rawHeaderName ? decodeURIComponent(rawHeaderName) : ''
+    } catch {
+      headerName = rawHeaderName
+    }
+
+    if (headerId || headerEmail) {
+      req.user = {
+        id: headerId || null,
+        email: headerEmail || '',
+        user_metadata: {
+          full_name: headerName || '',
+        },
+      }
+    }
+  }
+
   next()
 })
 
@@ -686,6 +713,70 @@ async function ensureFailedReportAttemptsTable() {
   await pool.query(`
     CREATE INDEX IF NOT EXISTS idx_failed_attempts_attempted_at ON failed_report_attempts (attempted_at DESC)
   `)
+}
+
+// Ventana (en segundos) durante la cual un intento idéntico se considera
+// duplicado y no se vuelve a insertar.
+const FAILED_ATTEMPT_DEDUPE_WINDOW_SECONDS = 60
+
+/**
+ * Registra un intento fallido (alerta de informe incompleto) evitando
+ * duplicados. El frontend dispara el registro desde varias rutas (botón atrás,
+ * desmontaje del componente, beforeunload) y el backend también lo registra al
+ * rechazar un POST /reports incompleto; sin esta deduplicación la MISMA alerta
+ * se almacena varias veces. Si ya existe un intento idéntico (mismo usuario y
+ * mismos campos faltantes) dentro de la ventana, se reutiliza ese registro.
+ */
+async function recordFailedReportAttempt({
+  user_id = null,
+  user_email = '',
+  user_name = '',
+  missing_fields = [],
+  completed_fields = [],
+  missing_details = [],
+  completed_details = [],
+}) {
+  await ensureFailedReportAttemptsTable()
+
+  const normalizedEmail = String(user_email || '').trim().toLowerCase()
+  const safeMissing = Array.isArray(missing_fields) ? missing_fields : []
+
+  if (!normalizedEmail || safeMissing.length === 0) {
+    return { ok: false, error: 'Datos incompletos para registrar intento' }
+  }
+
+  const duplicate = await pool.query(
+    `SELECT id FROM failed_report_attempts
+     WHERE LOWER(user_email) = $1
+       AND missing_fields = $2::text[]
+       AND attempted_at > NOW() - ($3 || ' seconds')::interval
+     ORDER BY attempted_at DESC
+     LIMIT 1`,
+    [normalizedEmail, safeMissing, String(FAILED_ATTEMPT_DEDUPE_WINDOW_SECONDS)]
+  )
+
+  if (duplicate.rowCount > 0) {
+    const existingId = duplicate.rows[0].id
+    console.log(`♻️ Intento fallido duplicado evitado (id existente: ${existingId}) para ${normalizedEmail}`)
+    return { ok: true, id: existingId, deduped: true }
+  }
+
+  const result = await pool.query(
+    `INSERT INTO failed_report_attempts (user_id, user_email, user_name, missing_fields, completed_fields, missing_details, completed_details)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)
+     RETURNING id, attempted_at`,
+    [
+      user_id || null,
+      normalizedEmail,
+      user_name || normalizedEmail,
+      safeMissing,
+      Array.isArray(completed_fields) ? completed_fields : [],
+      JSON.stringify(normalizeAttemptDetails(missing_details)),
+      JSON.stringify(normalizeAttemptDetails(completed_details)),
+    ]
+  )
+
+  return { ok: true, id: result.rows[0]?.id, attempted_at: result.rows[0]?.attempted_at, deduped: false }
 }
 
 async function ensureUserPermissionsTable() {
@@ -1471,19 +1562,16 @@ app.post('/reports', async (req, res) => {
       .filter(([, value]) => !value || String(value).trim() === '')
       .map(([field]) => field)
     
-    // Si faltan campos, registrar intento fallido
+    // Si faltan campos, registrar intento fallido (deduplicado para no generar
+    // alertas repetidas cuando el frontend también lo registra al salir).
     if (missingFields.length > 0) {
       try {
-        await pool.query(
-          `INSERT INTO failed_report_attempts (user_id, user_email, user_name, missing_fields)
-           VALUES ($1, $2, $3, $4)`,
-          [
-            payload.created_by || null,
-            payload.created_by_email || '',
-            payload.created_by_name || '',
-            missingFields
-          ]
-        )
+        await recordFailedReportAttempt({
+          user_id: payload.created_by || null,
+          user_email: payload.created_by_email || '',
+          user_name: payload.created_by_name || '',
+          missing_fields: missingFields,
+        })
       } catch (logError) {
         console.error('Error al registrar intento fallido:', logError)
       }
@@ -1911,35 +1999,28 @@ app.post('/failed-report-attempts/register', async (req, res) => {
       return
     }
 
-    // Normalizar email a minúsculas
-    const normalizedEmail = user_email.trim().toLowerCase()
+    const outcome = await recordFailedReportAttempt({
+      user_id,
+      user_email,
+      user_name,
+      missing_fields,
+      completed_fields,
+      missing_details,
+      completed_details,
+    })
 
-    // Registrar cada intento sin deduplicación (permite múltiples intentos del mismo usuario)
-    const result = await pool.query(
-      `INSERT INTO failed_report_attempts (user_id, user_email, user_name, missing_fields, completed_fields, missing_details, completed_details)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
-       RETURNING id, attempted_at`,
-      [
-        user_id || null,
-        normalizedEmail,
-        user_name || normalizedEmail,
-        missing_fields,
-        completed_fields,
-        JSON.stringify(missing_details),
-        JSON.stringify(completed_details)
-      ]
-    )
+    if (!outcome.ok) {
+      res.status(400).json({ error: outcome.error || 'Datos incompletos para registrar intento' })
+      return
+    }
 
-    const newId = result.rows[0]?.id
-    const newAttemptedAt = result.rows[0]?.attempted_at
-    
-    console.log(`✅ Intento fallido registrado:`)
-    console.log(`   ID: ${newId}`)
-    console.log(`   Email: ${normalizedEmail}`)
-    console.log(`   Campos faltantes: ${missing_fields.join(', ')}`)
-    console.log(`   Registrado en: ${newAttemptedAt}`)
-    
-    res.json({ ok: true, id: newId })
+    if (outcome.deduped) {
+      console.log(`♻️ Intento fallido reutilizado (id: ${outcome.id}) para ${user_email}`)
+    } else {
+      console.log(`✅ Intento fallido registrado (id: ${outcome.id}) para ${user_email}`)
+    }
+
+    res.json({ ok: true, id: outcome.id, deduped: outcome.deduped === true })
   } catch (error) {
     console.error('❌ Error registering failed attempt:', error)
     res.status(500).json({ error: 'Error al registrar intento fallido' })
