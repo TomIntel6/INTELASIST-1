@@ -178,6 +178,7 @@ async function requestJson<T>(url: string, options: RequestInit = {}): Promise<T
     const response = await fetch(url, {
       headers: {
         'Content-Type': 'application/json',
+        ...getAuthHeaders(),
         ...(options.headers ?? {}),
       },
       ...options,
@@ -745,8 +746,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       const backendUser = await fetchCurrentUserFromBackend(storedSession.user.email)
       if (backendUser) {
-        persistCurrentUser(backendUser)
-        setSession({ user: backendUser })
+        persistCurrentUser(backendUser, storedSession.token)
+        setSession({ user: backendUser, token: storedSession.token })
         setUser(backendUser)
         upsertOnlineUser(backendUser)
       }
@@ -781,9 +782,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       setUser(nextUser)
       setSession(current => current?.user.email.toLowerCase() === user.email.toLowerCase()
-        ? { user: nextUser }
+        ? { ...current, user: nextUser }
         : current)
-      persistSession({ user: nextUser })
+      persistSession({ user: nextUser, token: session?.token ?? getAuthToken() })
       upsertOnlineUser(nextUser)
     }
 
@@ -812,9 +813,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
           setUser(nextUser)
           setSession(current => current?.user.email.toLowerCase() === user.email.toLowerCase()
-            ? { user: nextUser }
+            ? { ...current, user: nextUser }
             : current)
-          persistSession({ user: nextUser })
+          persistSession({ user: nextUser, token: session?.token ?? getAuthToken() })
           upsertOnlineUser(nextUser)
         } catch {
           // Ignora actualizaciones no parseables.
@@ -975,7 +976,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const persistCurrentUser = React.useCallback((nextUser: LocalUser, token?: string) => {
     const nextSession: LocalSession = {
       user: nextUser,
-      token: token ?? session?.token,
+      token: token ?? session?.token ?? getAuthToken(),
     }
 
     setUser(nextUser)
