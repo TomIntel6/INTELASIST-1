@@ -3451,6 +3451,27 @@ app.get('/api/audit-logs', async (req, res) => {
   }
 })
 
+// DELETE /api/audit-logs/:id - Eliminar un registro de auditoría
+app.delete('/api/audit-logs/:id', async (req, res) => {
+  try {
+    const auditId = req.params.id
+    if (!auditId) {
+      return res.status(400).json({ error: 'ID de auditoría requerido' })
+    }
+
+    const result = await pool.query('DELETE FROM audit_logs WHERE id = $1 RETURNING id', [auditId])
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'Registro de auditoría no encontrado' })
+    }
+
+    res.json({ success: true, deletedId: result.rows[0].id })
+  } catch (err) {
+    console.error('Error deleting audit log:', err)
+    res.status(500).json({ error: 'Error al eliminar el registro de auditoría' })
+  }
+})
+
 // ADMIN ENDPOINT: Llenar user_names vacíos en audit_logs (TEMPORAL)
 app.post('/api/admin/fill-audit-usernames', async (req, res) => {
   try {
