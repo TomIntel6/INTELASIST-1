@@ -1,6 +1,5 @@
 import { getAuthHeaders, getAuthToken } from '@/lib/auth'
 import { getDefaultApiBase } from '@/lib/supabase'
-import { AuditService } from '@/lib/audit-service'
 
 const API_BASE = getDefaultApiBase()
 
@@ -23,17 +22,10 @@ export interface TrashReport {
  * Handles soft-delete functionality for report recovery
  */
 export class TrashService {
-  static redirectToLogin() {
-    if (typeof window !== 'undefined') {
-      window.location.href = '/login'
-    }
-  }
-
   static assertAuthToken() {
     const token = getAuthToken()
     if (!token) {
-      this.redirectToLogin()
-      throw new Error('Authentication token missing. Redirecting to login.')
+      throw new Error('Authentication token missing.')
     }
     return token
   }
@@ -41,18 +33,22 @@ export class TrashService {
   static async fetchWithAuth(path: string, options: RequestInit = {}) {
     this.assertAuthToken()
 
+    const headers: Record<string, string> = {
+      ...getAuthHeaders(),
+      ...(options.headers ?? {}),
+    }
+
+    if (options.body && !Object.keys(headers).some(key => key.toLowerCase() === 'content-type')) {
+      headers['Content-Type'] = 'application/json'
+    }
+
     const response = await fetch(path, {
-      headers: {
-        'Content-Type': 'application/json',
-        ...getAuthHeaders(),
-        ...(options.headers ?? {}),
-      },
+      headers,
       ...options,
     })
 
     if (response.status === 401) {
-      this.redirectToLogin()
-      throw new Error('Unauthorized. Redirecting to login.')
+      throw new Error('Unauthorized.')
     }
 
     return response
@@ -65,6 +61,9 @@ export class TrashService {
     try {
       const response = await this.fetchWithAuth(`${API_BASE}/api/trash`, {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({
           reportId,
           originalData: reportData,
@@ -89,11 +88,7 @@ export class TrashService {
    */
   static async getTrash(limit = 50, offset = 0) {
     try {
-      const response = await fetch(`${API_BASE}/api/trash?limit=${limit}&offset=${offset}`, {
-        headers: {
-          ...getAuthHeaders(),
-        },
-      })
+      const response = await this.fetchWithAuth(`${API_BASE}/api/trash?limit=${limit}&offset=${offset}`)
       if (!response.ok) throw new Error('Failed to fetch trash')
       
       const result = await response.json()
@@ -123,11 +118,7 @@ export class TrashService {
    */
   static async getDeletedReport(trashId: string) {
     try {
-      const response = await fetch(`${API_BASE}/api/trash/${trashId}`, {
-        headers: {
-          ...getAuthHeaders(),
-        },
-      })
+      const response = await this.fetchWithAuth(`${API_BASE}/api/trash/${trashId}`)
       if (!response.ok) return null
       
       const item = await response.json()
@@ -154,17 +145,10 @@ export class TrashService {
    */
   static async restoreReport(trashId: string) {
     try {
-      // Get the trash record
-      const trash = await this.getDeletedReport(trashId)
-      if (!trash) {
-        throw new Error('Deleted report not found')
-      }
-
-      const response = await fetch(`${API_BASE}/api/trash/${trashId}/restore`, {
+      const response = await this.fetchWithAuth(`${API_BASE}/api/trash/${trashId}/restore`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...getAuthHeaders(),
         },
         body: JSON.stringify({}),
       })
@@ -186,17 +170,10 @@ export class TrashService {
    */
   static async permanentlyDelete(trashId: string) {
     try {
-      // Get the trash record
-      const trash = await this.getDeletedReport(trashId)
-      if (!trash) {
-        throw new Error('Deleted report not found')
-      }
-
-      const response = await fetch(`${API_BASE}/api/trash/${trashId}/delete`, {
+      const response = await this.fetchWithAuth(`${API_BASE}/api/trash/${trashId}/delete`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...getAuthHeaders(),
         },
         body: JSON.stringify({}),
       })
@@ -218,20 +195,16 @@ export class TrashService {
    */
   static async emptyTrash() {
     try {
-      const response = await fetch(`${API_BASE}/api/trash/empty`, {
+      const response = await this.fetchWithAuth(`${API_BASE}/api/trash/empty`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...getAuthHeaders(),
         },
       })
 
       if (!response.ok) throw new Error('Failed to empty trash')
 
       const result = await response.json()
-
-      // Log the action
-      await AuditService.logTrashEmptied(result.deleted_count || 0)
 
       return { success: true, count: result.deleted_count || 0 }
     } catch (error) {
@@ -245,7 +218,7 @@ export class TrashService {
    */
   static async getTrashStats() {
     try {
-      const response = await fetch(`${API_BASE}/api/trash/stats`)
+      const response = await this.fetchWithAuth(`${API_BASE}/api/trash/stats`)
       if (!response.ok) throw new Error('Failed to fetch trash stats')
       
       const result = await response.json()
