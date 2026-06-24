@@ -36,13 +36,20 @@ export default function Dashboard() {
   const [_loading, setLoading] = React.useState(initialReports.length === 0)
   const [reports, setReports] = React.useState<Report[]>(initialReports)
   const reportsRef = React.useRef<Report[]>(initialReports)
+  const lastSyncRef = React.useRef<number>(0)
 
   React.useEffect(() => {
     let isMounted = true
 
-    const syncReports = async (applyChanges = true) => {
+    const syncReports = async (force = false) => {
+      const now = Date.now()
+      const shouldSkip = !force && reportsRef.current.length > 0 && now - lastSyncRef.current < 5 * 60 * 1000
+      if (shouldSkip) {
+        return
+      }
+
       try {
-        if (applyChanges && reportsRef.current.length === 0) {
+        if (force || reportsRef.current.length === 0) {
           setLoading(true)
         }
 
@@ -54,13 +61,14 @@ export default function Dashboard() {
 
         setReports(normalizedReports)
         reportsRef.current = normalizedReports
+        lastSyncRef.current = Date.now()
       } catch (err) {
         console.error('Error sincronizando reportes:', err)
         if (isMounted) {
-          // Usar caché como fallback
           const cachedReports = getCachedReportsForYear(currentYear).filter((report): report is Report => hasValidReportMeta(report))
           setReports(cachedReports)
           reportsRef.current = cachedReports
+          lastSyncRef.current = Date.now()
         }
       } finally {
         if (isMounted) {
@@ -69,17 +77,23 @@ export default function Dashboard() {
       }
     }
 
+    const refreshIfVisible = () => {
+      if (document.visibilityState === 'visible') {
+        void syncReports(false)
+      }
+    }
+
     void syncReports(true)
 
-    const intervalId = window.setInterval(() => {
-      void syncReports(false)
-    }, 30000)
+    window.addEventListener('visibilitychange', refreshIfVisible)
+    window.addEventListener('focus', refreshIfVisible)
 
     return () => {
       isMounted = false
-      window.clearInterval(intervalId)
+      window.removeEventListener('visibilitychange', refreshIfVisible)
+      window.removeEventListener('focus', refreshIfVisible)
     }
-  }, [])
+  }, [currentYear])
 
   React.useEffect(() => {
     const ticker = window.setInterval(() => {

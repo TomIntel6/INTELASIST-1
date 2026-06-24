@@ -11,15 +11,8 @@ export function RealtimeStatus() {
   const [lastUpdate, setLastUpdate] = React.useState(new Date())
 
   React.useEffect(() => {
-    // Check connection status periodically
-    const interval = setInterval(() => {
-      // In a real implementation, you would check the actual WebSocket connection
-      // For now, we'll assume it's connected if the page is loaded
-      setIsConnected(true)
-      setLastUpdate(new Date())
-    }, 30000)
-
-    return () => clearInterval(interval)
+    setIsConnected(true)
+    setLastUpdate(new Date())
   }, [])
 
   return (

@@ -21,9 +21,20 @@ export default function SystemHealth() {
   const [loading, setLoading] = React.useState(true)
 
   React.useEffect(() => {
-    checkHealth()
-    const interval = setInterval(checkHealth, 30000) // Check every 30 seconds
-    return () => clearInterval(interval)
+    const refreshIfVisible = () => {
+      if (document.visibilityState === 'visible') {
+        void checkHealth()
+      }
+    }
+
+    void checkHealth()
+    window.addEventListener('visibilitychange', refreshIfVisible)
+    window.addEventListener('focus', refreshIfVisible)
+
+    return () => {
+      window.removeEventListener('visibilitychange', refreshIfVisible)
+      window.removeEventListener('focus', refreshIfVisible)
+    }
   }, [])
 
   const checkHealth = async () => {

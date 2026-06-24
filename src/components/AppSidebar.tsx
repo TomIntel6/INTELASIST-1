@@ -32,8 +32,8 @@ import { PermissionsManagementService } from '@/lib/permissions-management'
 import { usePermissions } from '@/lib/permissions-context'
 import { LayoutDashboard, FileText, LogOut, FilePlus, Users, AlertCircle, Settings } from 'lucide-react'
 
-const ONLINE_USER_FETCH_INTERVAL_MS = 60000
-const FAILED_ATTEMPTS_REFRESH_INTERVAL_MS = 60000
+const ONLINE_USER_FETCH_INTERVAL_MS = 5 * 60 * 1000
+const FAILED_ATTEMPTS_REFRESH_INTERVAL_MS = 5 * 60 * 1000
 
 function areOnlineUsersEqual(a: Array<ReturnType<typeof getOnlineUsers>[number]>, b: Array<ReturnType<typeof getOnlineUsers>[number]>) {
   if (a.length !== b.length) {
