@@ -784,7 +784,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSession(current => current?.user.email.toLowerCase() === user.email.toLowerCase()
         ? { ...current, user: nextUser }
         : current)
-      persistSession({ user: nextUser, token: session?.token ?? getAuthToken() })
+      persistSession({ user: nextUser, token: session?.token ?? getAuthToken() ?? undefined })
       upsertOnlineUser(nextUser)
     }
 
@@ -815,7 +815,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setSession(current => current?.user.email.toLowerCase() === user.email.toLowerCase()
             ? { ...current, user: nextUser }
             : current)
-          persistSession({ user: nextUser, token: session?.token ?? getAuthToken() })
+          persistSession({ user: nextUser, token: session?.token ?? getAuthToken() ?? undefined })
           upsertOnlineUser(nextUser)
         } catch {
           // Ignora actualizaciones no parseables.
@@ -976,7 +976,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const persistCurrentUser = React.useCallback((nextUser: LocalUser, token?: string) => {
     const nextSession: LocalSession = {
       user: nextUser,
-      token: token ?? session?.token ?? getAuthToken(),
+      token: token ?? session?.token ?? getAuthToken() ?? undefined,
     }
 
     setUser(nextUser)
