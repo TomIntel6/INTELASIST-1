@@ -133,7 +133,7 @@ export default function AdvancedUserManagement() {
       await loadUsers()
     } catch (error) {
       console.error('Error suspending user:', error)
-      toast.error('Error suspendiendo usuario')
+      toast.error(error instanceof Error ? error.message : 'Error suspendiendo usuario')
     } finally {
       setActioning(prev => ({ ...prev, [suspendDialog.userId]: false }))
     }
@@ -147,7 +147,7 @@ export default function AdvancedUserManagement() {
       await loadUsers()
     } catch (error) {
       console.error('Error reactivating user:', error)
-      toast.error('Error reactivando usuario')
+      toast.error(error instanceof Error ? error.message : 'Error reactivando usuario')
     } finally {
       setActioning(prev => ({ ...prev, [userId]: false }))
     }
