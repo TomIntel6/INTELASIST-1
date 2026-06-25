@@ -6,7 +6,6 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Spinner } from '@/components/ui/spinner'
-import { Eye, EyeOff, KeyRound } from 'lucide-react'
 import { canCreateUsers, canDeleteUsers, canManageAgents, canViewPasswords, fetchOnlineUsersFromServer, getNameColorClasses, useAuth, USERS_SYNC_STORAGE_KEY, type UserRole } from '@/lib/auth'
 import { getDefaultApiBase } from '@/lib/supabase'
 
@@ -110,15 +109,9 @@ export default function Usuarios() {
   const [showNewUserPassword, setShowNewUserPassword] = React.useState(false)
   const [editingUserId, setEditingUserId] = React.useState<number | null>(null)
   const [editingUserName, setEditingUserName] = React.useState('')
-  const [passwordEditingUserId, setPasswordEditingUserId] = React.useState<number | null>(null)
-  const [newPasswordForUser, setNewPasswordForUser] = React.useState('')
-  const [showNewPassword, setShowNewPassword] = React.useState(false)
-  const [changingPasswordUserId, setChangingPasswordUserId] = React.useState<number | null>(null)
-  const [passwordMessage, setPasswordMessage] = React.useState<string | null>(null)
 
   const canCreateUserAccess = canCreateUsers(user)
   const canShowPasswords = canViewPasswords(user)
-  const canChangeUserPasswords = canViewPasswords(user)
   const canEditUserNames = canManageAgents(user)
   const roleOptions = ROLE_OPTIONS
 
@@ -304,79 +297,6 @@ export default function Usuarios() {
     }
   }, [usuarios, canEditUserNames])
 
-  const openPasswordEditor = React.useCallback((usuario: Usuario) => {
-    if (!canChangeUserPasswords) {
-      setPasswordMessage('No tienes permisos para cambiar contraseñas.')
-      return
-    }
-
-    setPasswordEditingUserId(prev => (prev === usuario.id ? null : usuario.id))
-    setNewPasswordForUser('')
-    setShowNewPassword(false)
-    setPasswordMessage(null)
-  }, [canChangeUserPasswords])
-
-  const handleUserPasswordChange = React.useCallback(async (usuario: Usuario) => {
-    if (!canChangeUserPasswords) {
-      setPasswordMessage('No tienes permisos para cambiar contraseñas.')
-      return
-    }
-
-    const trimmedPassword = newPasswordForUser.trim()
-    if (trimmedPassword.length < 6) {
-      setPasswordMessage('La nueva contraseña debe tener al menos 6 caracteres.')
-      return
-    }
-
-    if (!usuario.correo) {
-      setPasswordMessage('Correo del usuario no disponible.')
-      return
-    }
-
-    setChangingPasswordUserId(usuario.id)
-    setPasswordMessage(null)
-
-    try {
-      const response = await fetch(`${API_BASE_URL}/usuarios/${encodeURIComponent(usuario.correo)}/password`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password: trimmedPassword }),
-      })
-
-      const payload = await response.json().catch(() => ({}))
-      if (!response.ok) {
-        throw new Error(payload.error || 'No se pudo actualizar la contraseña.')
-      }
-
-      setPasswordMessage(`Contraseña actualizada correctamente para ${usuario.nombre || usuario.correo}.`)
-      setPasswordEditingUserId(null)
-      setNewPasswordForUser('')
-      setShowNewPassword(false)
-
-      if (typeof window !== 'undefined') {
-        window.localStorage.setItem(USERS_SYNC_STORAGE_KEY, JSON.stringify({
-          updatedAt: Date.now(),
-          userId: usuario.id,
-          email: usuario.correo,
-          passwordChanged: true,
-        }))
-
-        window.dispatchEvent(new CustomEvent(USERS_SYNC_STORAGE_KEY, {
-          detail: {
-            userId: usuario.id,
-            email: usuario.correo,
-            passwordChanged: true,
-          },
-        }))
-      }
-
-      void cargarUsuarios()
-    } catch (err) {
-      setPasswordMessage(err instanceof Error ? err.message : 'Error al actualizar la contraseña.')
-    } finally {
-      setChangingPasswordUserId(null)
-    }
-  }, [canChangeUserPasswords, newPasswordForUser, cargarUsuarios])
 
   const handleCreateUser = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -720,18 +640,6 @@ export default function Usuarios() {
                       <Badge variant={usuario.estado === 'Activo' ? 'default' : 'secondary'}>
                         {usuario.estado ?? 'Desconectado'}
                       </Badge>
-                      {canChangeUserPasswords ? (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => openPasswordEditor(usuario)}
-                          disabled={changingPasswordUserId === usuario.id}
-                        >
-                          <KeyRound className="size-4" />
-                          {passwordEditingUserId === usuario.id ? 'Cancelar' : 'Resetear contraseña'}
-                        </Button>
-                      ) : null}
                       {canDeleteUsers(user) ? (
                         <Button
                           variant="destructive"
@@ -743,46 +651,6 @@ export default function Usuarios() {
                         </Button>
                       ) : null}
                     </div>
-                    {passwordEditingUserId === usuario.id ? (
-                      <div className="mt-3 rounded-3xl border border-dashed border-border bg-muted/20 p-4">
-                        <p className="text-sm font-semibold text-foreground">Nueva contraseña</p>
-                        <p className="text-xs text-muted-foreground mb-2">
-                          El usuario deberá usar esta contraseña para iniciar sesión.
-                        </p>
-                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                          <div className="relative flex-1">
-                            <Input
-                              id={`new-password-${usuario.id}`}
-                              type={showNewPassword ? 'text' : 'password'}
-                              value={newPasswordForUser}
-                              onChange={event => setNewPasswordForUser(event.target.value)}
-                              placeholder="Mínimo 6 caracteres"
-                              disabled={changingPasswordUserId === usuario.id}
-                              className="pr-9"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => setShowNewPassword(prev => !prev)}
-                              className="absolute inset-y-0 right-2 flex items-center text-muted-foreground hover:text-foreground"
-                              aria-label={showNewPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
-                            >
-                              {showNewPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-                            </button>
-                          </div>
-                          <Button
-                            type="button"
-                            size="sm"
-                            onClick={() => void handleUserPasswordChange(usuario)}
-                            disabled={changingPasswordUserId === usuario.id || newPasswordForUser.trim().length < 6}
-                          >
-                            {changingPasswordUserId === usuario.id ? 'Guardando…' : 'Guardar contraseña'}
-                          </Button>
-                        </div>
-                        {passwordMessage ? (
-                          <p className="mt-3 text-sm text-muted-foreground">{passwordMessage}</p>
-                        ) : null}
-                      </div>
-                    ) : null}
                   </div>
                 )
               })}
