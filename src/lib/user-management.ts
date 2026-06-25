@@ -98,68 +98,51 @@ export class UserManagementService {
    * Suspend a user
    */
   static async suspendUser(userId: string, reason: string) {
-    try {
-      let { data: activity } = await supabase
-        .from('user_activity_log')
-        .select('id')
-        .eq('user_id', userId)
-        .maybeSingle()
+    // Persistimos en el backend Express (sus datos viven en su Postgres, NO en
+    // Supabase). Lanzamos si la API responde error para que la UI lo informe.
+    const response = await fetch(`${API_BASE_URL}/api/users/${encodeURIComponent(userId)}/suspend`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reason }),
+    })
 
-      if (!activity) {
-        const { data: created } = await supabase
-          .from('user_activity_log')
-          .insert({ user_id: userId })
-          .select('id')
-          .single()
-        activity = created
-      }
-
-      const now = new Date().toISOString()
-      const { error } = await supabase
-        .from('user_activity_log')
-        .update({
-          is_suspended: true,
-          suspension_reason: reason,
-          suspended_at: now,
-        })
-        .eq('user_id', userId)
-
-      if (error) throw error
-
-      // Log the action
-      await AuditService.logUserSuspended(userId, reason)
-
-      return true
-    } catch (error) {
-      console.error('Error suspending user:', error)
-      return false
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}))
+      throw new Error(data.error || `No se pudo suspender al usuario (HTTP ${response.status})`)
     }
+
+    // Auditoría no crítica: no debe tumbar la operación si falla.
+    try {
+      await AuditService.logUserSuspended(userId, reason)
+    } catch (auditError) {
+      console.error('Error logging user suspension:', auditError)
+    }
+
+    return true
   }
 
   /**
    * Reactivate a suspended user
    */
   static async reactivateUser(userId: string) {
-    try {
-      const { error } = await supabase
-        .from('user_activity_log')
-        .update({
-          is_suspended: false,
-          suspension_reason: null,
-          suspended_at: null,
-        })
-        .eq('user_id', userId)
+    const response = await fetch(`${API_BASE_URL}/api/users/${encodeURIComponent(userId)}/reactivate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    })
 
-      if (error) throw error
-
-      // Log the action
-      await AuditService.logUserReactivated(userId)
-
-      return true
-    } catch (error) {
-      console.error('Error reactivating user:', error)
-      return false
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}))
+      throw new Error(data.error || `No se pudo reactivar al usuario (HTTP ${response.status})`)
     }
+
+    // Auditoría no crítica: no debe tumbar la operación si falla.
+    try {
+      await AuditService.logUserReactivated(userId)
+    } catch (auditError) {
+      console.error('Error logging user reactivation:', auditError)
+    }
+
+    return true
   }
 
   /**
