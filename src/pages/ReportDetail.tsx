@@ -22,15 +22,16 @@ import { usePermissions } from '@/lib/permissions-context'
 import type { PermissionKey } from '@/lib/permissions'
 import { AuditService } from '@/lib/audit-service'
 import { PERMISSIONS } from '@/lib/permissions'
+import { cn } from '@/lib/utils'
 import { ArrowLeft, Send, User, Calendar, Car, FileText, Wrench, Image as ImageIcon, ZoomIn, Copy, History, Pencil } from 'lucide-react'
 
 const STATUS_BADGE: Record<string, string> = {
-  'Caso Finalizado': 'bg-emerald-500/15 text-emerald-700 border-emerald-200',
-  'Seguimiento de caso': 'bg-amber-500/15 text-amber-700 border-amber-200',
-  'Falta de Informacion': 'bg-destructive/15 text-destructive border-destructive/20',
-  'Informativo': 'bg-emerald-500/15 text-emerald-700 border-emerald-200',
-  'Validacion': 'bg-emerald-500/15 text-emerald-700 border-emerald-200',
-  'Cotizacion': 'bg-blue-500/15 text-blue-700 border-blue-200',
+  'Caso Finalizado': 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
+  'Seguimiento de caso': 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20',
+  'Falta de Informacion': 'bg-destructive/10 text-destructive border-destructive/20',
+  'Informativo': 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
+  'Validacion': 'bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/20',
+  'Cotizacion': 'bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20',
 }
 
 function getInitials(name: string) {
@@ -406,48 +407,55 @@ export default function ReportDetail() {
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-5">
       {/* Header */}
-      <div className="flex items-start gap-3 justify-between">
-        <div className="flex items-start gap-3 flex-1">
-          <Button variant="ghost" size="icon-sm" onClick={() => navigate(-1)} className="mt-0.5">
-            <ArrowLeft className="size-4" />
-          </Button>
-          <div className="flex-1 min-w-0">
-            <div className="flex flex-wrap items-center gap-3">
-              <h1 className="text-xl font-bold text-foreground truncate">{report.insured_name}</h1>
-              <Badge
-                className={`text-xs border ${STATUS_BADGE[report.status] ?? 'bg-secondary'}`}
-              >
-                {report.status}
-              </Badge>
+      <div className="glass-panel relative overflow-hidden rounded-xl p-5">
+        <span className="brand-gradient-bg absolute inset-x-0 top-0 h-1" aria-hidden="true" />
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex items-start gap-3">
+            <Button variant="ghost" size="icon-sm" onClick={() => navigate(-1)} className="mt-0.5 shrink-0">
+              <ArrowLeft className="size-4" />
+            </Button>
+            <div className="min-w-0 flex-1">
+              <p className="mb-1.5 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                <span className="brand-gradient-bg size-1.5 rounded-full" aria-hidden="true" />
+                Detalle de informe
+              </p>
+              <div className="flex flex-wrap items-center gap-3">
+                <h1 className="truncate text-2xl font-bold tracking-tight text-foreground">{report.insured_name}</h1>
+                <Badge
+                  className={cn('border text-xs', STATUS_BADGE[report.status] ?? 'bg-secondary')}
+                >
+                  {report.status}
+                </Badge>
+              </div>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {report.month} {report.year} &bull; Placa: <span className="font-mono font-medium text-foreground">{report.plate}</span>
+              </p>
             </div>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              {report.month} {report.year} &bull; Placa: <span className="font-mono font-medium text-foreground">{report.plate}</span>
-            </p>
           </div>
-        </div>
-        <div className="flex items-center gap-2">
-          {canEditReports && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => navigate(`/informes/${report.id}/editar`)}
-              className="gap-2"
-            >
-              <Pencil className="size-4" />
-              Editar
-            </Button>
-          )}
-          {hasPermission(PERMISSIONS.SYSTEM.VIEW_AUDIT_LOGS as PermissionKey) && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowAuditPanel(!showAuditPanel)}
-              className="gap-2"
-            >
-              <History className="size-4" />
-              Historial
-            </Button>
-          )}
+          <div className="flex items-center gap-2">
+            {canEditReports && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate(`/informes/${report.id}/editar`)}
+                className="gap-2"
+              >
+                <Pencil className="size-4" />
+                Editar
+              </Button>
+            )}
+            {hasPermission(PERMISSIONS.SYSTEM.VIEW_AUDIT_LOGS as PermissionKey) && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowAuditPanel(!showAuditPanel)}
+                className="gap-2"
+              >
+                <History className="size-4" />
+                Historial
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -457,8 +465,10 @@ export default function ReportDetail() {
           {/* Asegurado + Servicio */}
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <User className="size-4 text-muted-foreground" />
+              <CardTitle className="flex items-center gap-2.5 text-sm font-semibold">
+                <span className="flex size-8 items-center justify-center rounded-lg bg-sky-500/10 text-sky-600 ring-1 ring-sky-500/20 dark:text-sky-400">
+                  <User className="size-4" />
+                </span>
                 Información del Asegurado
               </CardTitle>
             </CardHeader>
@@ -475,8 +485,10 @@ export default function ReportDetail() {
           {/* Vehículo */}
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <Car className="size-4 text-muted-foreground" />
+              <CardTitle className="flex items-center gap-2.5 text-sm font-semibold">
+                <span className="flex size-8 items-center justify-center rounded-lg bg-violet-500/10 text-violet-600 ring-1 ring-violet-500/20 dark:text-violet-400">
+                  <Car className="size-4" />
+                </span>
                 Datos del Vehículo
               </CardTitle>
             </CardHeader>
@@ -492,8 +504,10 @@ export default function ReportDetail() {
           {(report.observation_comment || report.observation_comment === '') && (
             <Card>
               <CardHeader className="pb-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <Wrench className="size-4 text-muted-foreground" />
+                <CardTitle className="flex items-center gap-2.5 text-sm font-semibold">
+                  <span className="flex size-8 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600 ring-1 ring-amber-500/20 dark:text-amber-400">
+                    <Wrench className="size-4" />
+                  </span>
                   Observación Inicial
                 </CardTitle>
                 {observationCopyText ? (
@@ -507,7 +521,7 @@ export default function ReportDetail() {
                       <Copy className="size-4" />
                     </Button>
                     {copySuccess ? (
-                      <span className="text-xs text-emerald-600">{copySuccess}</span>
+                      <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">{copySuccess}</span>
                     ) : null}
                   </div>
                 ) : null}
@@ -541,8 +555,10 @@ export default function ReportDetail() {
           {evidenceImages.length > 0 && (
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <ImageIcon className="size-4 text-muted-foreground" />
+                <CardTitle className="flex items-center gap-2.5 text-sm font-semibold">
+                  <span className="flex size-8 items-center justify-center rounded-lg bg-blue-500/10 text-blue-600 ring-1 ring-blue-500/20 dark:text-blue-400">
+                    <ImageIcon className="size-4" />
+                  </span>
                   Evidencia
                 </CardTitle>
               </CardHeader>
@@ -553,7 +569,7 @@ export default function ReportDetail() {
                       key={`${image.url}-${index}`}
                       src={image.url}
                       alt={`Evidencia ${index + 1}`}
-                      className="w-full rounded-lg border border-border/70 object-cover max-h-80 cursor-pointer hover:opacity-90 transition-opacity"
+                      className="w-full rounded-lg border border-border object-cover max-h-80 cursor-pointer hover:opacity-90 transition-opacity"
                       onClick={() => {
                         setModalImageUrl(image.url)
                         setShowImageModal(true)
@@ -580,11 +596,13 @@ export default function ReportDetail() {
           {/* Timeline de updates */}
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <FileText className="size-4 text-muted-foreground" />
+              <CardTitle className="flex items-center gap-2.5 text-sm font-semibold">
+                <span className="flex size-8 items-center justify-center rounded-lg bg-indigo-500/10 text-indigo-600 ring-1 ring-indigo-500/20 dark:text-indigo-400">
+                  <FileText className="size-4" />
+                </span>
                 Historial de Actualizaciones
                 {updates.length > 0 && (
-                  <Badge variant="secondary" className="text-xs ml-1">{updates.length}</Badge>
+                  <Badge variant="secondary" className="text-xs ml-1 tabular-nums">{updates.length}</Badge>
                 )}
               </CardTitle>
             </CardHeader>
@@ -596,9 +614,9 @@ export default function ReportDetail() {
                 </Avatar>
                 <div className="flex-1 min-w-0">
                   <div className="flex flex-wrap items-center gap-2 mb-1">
-                    <span className="text-sm font-medium">{report.created_by_name || report.created_by_email}</span>
+                    <span className="text-sm font-medium text-foreground">{report.created_by_name || report.created_by_email}</span>
                     <span className="text-xs text-muted-foreground">creó este informe</span>
-                    <Badge className={`text-xs border ${STATUS_BADGE[report.status] ?? ''}`}>
+                    <Badge className={cn('border text-xs', STATUS_BADGE[report.status] ?? 'bg-secondary')}>
                       {report.status}
                     </Badge>
                   </div>
@@ -618,14 +636,14 @@ export default function ReportDetail() {
                     </Avatar>
                     <div className="flex-1 min-w-0">
                       <div className="flex flex-wrap items-center gap-2 mb-1">
-                        <span className="text-sm font-medium">{u.added_by_name || u.added_by_email}</span>
+                        <span className="text-sm font-medium text-foreground">{u.added_by_name || u.added_by_email}</span>
                         <span className="text-xs text-muted-foreground">actualizó</span>
-                        <Badge className={`text-xs border ${STATUS_BADGE[u.status] ?? ''}`}>
+                        <Badge className={cn('border text-xs', STATUS_BADGE[u.status] ?? 'bg-secondary')}>
                           {u.status}
                         </Badge>
                       </div>
                       {u.comment && (
-                        <p className="text-sm text-foreground bg-muted/50 rounded-md px-3 py-2 mb-1 leading-relaxed">
+                        <p className="text-sm text-foreground bg-muted rounded-md px-3 py-2 mb-1 leading-relaxed">
                           {u.comment}
                         </p>
                       )}
@@ -646,30 +664,30 @@ export default function ReportDetail() {
           {/* Meta */}
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm">Detalles</CardTitle>
+              <CardTitle className="text-sm font-semibold">Detalles</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
               <div>
-                <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium mb-1">Período</p>
-                <p className="font-medium">{report.month} {report.year}</p>
+                <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">Período</p>
+                <p className="font-medium text-foreground">{report.month} {report.year}</p>
               </div>
               <Separator />
               <div>
-                <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium mb-1">Creado por</p>
+                <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">Creado por</p>
                 <div className="flex items-center gap-2">
                   <Avatar size="sm">
                     <AvatarFallback className="text-xs">{getInitials(report.created_by_name || report.created_by_email)}</AvatarFallback>
                   </Avatar>
                   <div className="min-w-0">
-                    <p className="text-sm font-medium truncate">{report.created_by_name || '—'}</p>
-                    <p className="text-xs text-muted-foreground truncate">{report.created_by_email}</p>
+                    <p className="truncate text-sm font-medium text-foreground">{report.created_by_name || '—'}</p>
+                    <p className="truncate text-xs text-muted-foreground">{report.created_by_email}</p>
                   </div>
                 </div>
               </div>
               <Separator />
               <div>
-                <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium mb-1">Fecha</p>
-                <p className="text-sm"><TimeAgo date={report.created_at} /></p>
+                <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">Fecha</p>
+                <p className="text-sm text-foreground"><TimeAgo date={report.created_at} /></p>
               </div>
             </CardContent>
           </Card>
@@ -677,7 +695,7 @@ export default function ReportDetail() {
           {/* Add update form */}
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm">Agregar Actualización</CardTitle>
+              <CardTitle className="text-sm font-semibold">Agregar Actualización</CardTitle>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleAddUpdate} className="space-y-3">
@@ -721,7 +739,7 @@ export default function ReportDetail() {
                   type="submit"
                   disabled={submitting || !canAddUpdates}
                   size="sm"
-                  className="w-full gap-2 bg-destructive hover:bg-destructive/90 text-white"
+                  className="brand-gradient-bg w-full gap-2 border-0 text-white transition-opacity hover:opacity-90"
                 >
                   {submitting ? <Spinner className="size-3" /> : <Send className="size-3" />}
                   {submitting ? 'Enviando...' : 'Agregar Actualización'}
@@ -749,10 +767,12 @@ export default function ReportDetail() {
 
       {/* Audit Panel */}
       {showAuditPanel && (
-        <Card className="border-amber-200 bg-amber-50/50 dark:bg-amber-950/20">
+        <Card className="border-amber-500/20 bg-amber-500/5">
           <CardHeader>
-            <CardTitle className="text-sm flex items-center gap-2">
-              <History className="size-4" />
+            <CardTitle className="flex items-center gap-2.5 text-sm font-semibold">
+              <span className="flex size-8 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600 ring-1 ring-amber-500/20 dark:text-amber-400">
+                <History className="size-4" />
+              </span>
               Historial de Auditoría
             </CardTitle>
           </CardHeader>
@@ -761,12 +781,12 @@ export default function ReportDetail() {
               <p className="text-xs text-muted-foreground">No hay eventos registrados</p>
             ) : (
               auditEvents.map((event: any, idx: number) => (
-                <div key={idx} className="border-l-2 border-amber-300 pl-3 py-2 text-xs">
+                <div key={idx} className="border-l-2 border-amber-500/40 pl-3 py-2 text-xs">
                   <div className="flex items-center gap-2 mb-1">
                     <span className="font-semibold text-foreground">{event.action}</span>
                     <span className="text-muted-foreground">por {event.user_name || event.user_email}</span>
                   </div>
-                  <p className="text-muted-foreground">{new Date(event.created_at).toLocaleString('es-ES')}</p>
+                  <p className="text-muted-foreground tabular-nums">{new Date(event.created_at).toLocaleString('es-ES')}</p>
                   {event.details && (
                     <p className="text-muted-foreground mt-1 italic">{event.details}</p>
                   )}

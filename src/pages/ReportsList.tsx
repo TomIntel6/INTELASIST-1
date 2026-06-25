@@ -39,12 +39,12 @@ import { FilePlus, Download, Search, Eye, Trash2, Shield, AlertCircle, Clock, Ch
 import * as XLSX from 'xlsx'
 
 const STATUS_BADGE: Record<string, string> = {
-  'Caso Finalizado': 'bg-emerald-500/15 text-emerald-700 border-emerald-200',
-  'Seguimiento de caso': 'bg-amber-500/15 text-amber-700 border-amber-200',
-  'Falta de Informacion': 'bg-destructive/15 text-destructive border-destructive/20',
-  'Informativo': 'bg-emerald-500/15 text-emerald-700 border-emerald-200',
-  'Validacion': 'bg-emerald-500/15 text-emerald-700 border-emerald-200',
-  'Cotizacion': 'bg-blue-500/15 text-blue-700 border-blue-200',
+  'Caso Finalizado': 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 ring-1 ring-inset ring-emerald-500/20',
+  'Seguimiento de caso': 'bg-amber-500/10 text-amber-600 dark:text-amber-400 ring-1 ring-inset ring-amber-500/20',
+  'Falta de Informacion': 'bg-destructive/10 text-destructive ring-1 ring-inset ring-destructive/20',
+  'Informativo': 'bg-sky-500/10 text-sky-600 dark:text-sky-400 ring-1 ring-inset ring-sky-500/20',
+  'Validacion': 'bg-violet-500/10 text-violet-600 dark:text-violet-400 ring-1 ring-inset ring-violet-500/20',
+  'Cotizacion': 'bg-blue-500/10 text-blue-600 dark:text-blue-400 ring-1 ring-inset ring-blue-500/20',
 }
 
 
@@ -268,14 +268,14 @@ export default function ReportsList() {
   }
 
   const categories = [
-    { label: 'SOAT', count: countByKeyword('SOAT'), color: 'bg-blue-500/10 text-blue-700 border-blue-200', icon: Shield, iconColor: 'text-blue-600' },
-    { label: 'SALDO MOROSO', count: countByKeyword('SALDO MOROSO'), color: 'bg-red-500/10 text-red-700 border-red-200', icon: AlertCircle, iconColor: 'text-red-600' },
-    { label: 'RENOVACION NO PAGADA', count: countByKeyword('RENOVACION NO PAGADA'), color: 'bg-orange-500/10 text-orange-700 border-orange-200', icon: Clock, iconColor: 'text-orange-600' },
-    { label: 'SERVICIO UTILIZADO', count: countByKeyword('SERVICIO UTILIZADO'), color: 'bg-green-500/10 text-green-700 border-green-200', icon: CheckCircle2, iconColor: 'text-green-600' },
-    { label: 'BENEFICIO EN 24H', count: countByKeyword('BENEFICIO EN 24H'), color: 'bg-purple-500/10 text-purple-700 border-purple-200', icon: Zap, iconColor: 'text-purple-600' },
-    { label: 'POLIZA CANCELADA', count: countByKeyword('POLIZA CANCELADA'), color: 'bg-gray-500/10 text-gray-700 border-gray-200', icon: XCircle, iconColor: 'text-gray-600' },
-    { label: 'NO CUBIERTO POR LA POLIZA', count: countByKeyword('NO CUBIERTO POR LA POLIZA'), color: 'bg-slate-500/10 text-slate-700 border-slate-200', icon: XCircle, iconColor: 'text-slate-600' },
-    { label: 'OTROS', count: countOtherReports(), color: 'bg-neutral-500/10 text-neutral-700 border-neutral-200', icon: FileText, iconColor: 'text-neutral-600' },
+    { label: 'SOAT', count: countByKeyword('SOAT'), chip: 'bg-sky-500/10 text-sky-600 dark:text-sky-400 ring-sky-500/20', icon: Shield },
+    { label: 'SALDO MOROSO', count: countByKeyword('SALDO MOROSO'), chip: 'bg-red-500/10 text-red-600 dark:text-red-400 ring-red-500/20', icon: AlertCircle },
+    { label: 'RENOVACION NO PAGADA', count: countByKeyword('RENOVACION NO PAGADA'), chip: 'bg-orange-500/10 text-orange-600 dark:text-orange-400 ring-orange-500/20', icon: Clock },
+    { label: 'SERVICIO UTILIZADO', count: countByKeyword('SERVICIO UTILIZADO'), chip: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 ring-emerald-500/20', icon: CheckCircle2 },
+    { label: 'BENEFICIO EN 24H', count: countByKeyword('BENEFICIO EN 24H'), chip: 'bg-violet-500/10 text-violet-600 dark:text-violet-400 ring-violet-500/20', icon: Zap },
+    { label: 'POLIZA CANCELADA', count: countByKeyword('POLIZA CANCELADA'), chip: 'bg-muted text-muted-foreground ring-border', icon: XCircle },
+    { label: 'NO CUBIERTO POR LA POLIZA', count: countByKeyword('NO CUBIERTO POR LA POLIZA'), chip: 'bg-muted text-muted-foreground ring-border', icon: XCircle },
+    { label: 'OTROS', count: countOtherReports(), chip: 'bg-muted text-muted-foreground ring-border', icon: FileText },
   ]
 
   const handleDeleteReport = async (reportId: string) => {
@@ -322,6 +322,9 @@ export default function ReportsList() {
   if (!canViewReports) {
     return (
       <div className="p-6 max-w-4xl mx-auto text-center">
+        <span className="mx-auto mb-4 flex size-12 items-center justify-center rounded-xl bg-destructive/10 text-destructive ring-1 ring-destructive/20">
+          <Shield className="size-6" />
+        </span>
         <p className="text-lg font-semibold text-destructive">No tienes permisos para ver informes.</p>
         <p className="mt-2 text-sm text-muted-foreground">Solicita a un administrador el permiso correspondiente.</p>
         <div className="mt-4 flex justify-center">
@@ -343,7 +346,11 @@ export default function ReportsList() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Informes</h1>
+          <p className="mb-1.5 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            <span className="brand-gradient-bg size-1.5 rounded-full" aria-hidden="true" />
+            Informes
+          </p>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Informes</h1>
           <p className="text-sm text-muted-foreground mt-1">
             {filtered.length} informe{filtered.length !== 1 ? 's' : ''} en {selectedMonth} {selectedYear}
           </p>
@@ -377,12 +384,15 @@ export default function ReportsList() {
       {/* Categories Palette */}
       <div className="grid grid-cols-4 gap-3">
         {/* Total de Informes */}
-        <Card className="dashboard-soft-surface border border-border/70 bg-gradient-to-br from-primary/5 to-primary/10">
+        <Card className="relative overflow-hidden rounded-xl border bg-card shadow-sm">
+          <span className="brand-gradient-bg absolute inset-x-0 top-0 h-0.5" aria-hidden="true" />
           <CardContent className="p-4">
-            <div className="flex flex-col items-center text-center">
-              <FileText className="size-5 mb-2 text-primary" />
-              <p className="text-xs uppercase tracking-wide font-medium mb-2 text-muted-foreground">Total de Informes</p>
-              <p className="text-2xl font-bold text-foreground">{filtered.length}</p>
+            <div className="flex flex-col items-center gap-2 text-center">
+              <span className="flex size-10 items-center justify-center rounded-xl ring-1 brand-monogram ring-transparent">
+                <FileText className="size-5" />
+              </span>
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Total de Informes</p>
+              <p className="text-3xl font-bold tabular-nums text-foreground">{filtered.length}</p>
             </div>
           </CardContent>
         </Card>
@@ -390,12 +400,14 @@ export default function ReportsList() {
         {categories.map(cat => {
           const IconComponent = cat.icon
           return (
-            <Card key={cat.label} className="dashboard-soft-surface border border-border/70">
+            <Card key={cat.label} className="rounded-xl border bg-card shadow-sm">
               <CardContent className="p-4">
-                <div className="flex flex-col items-center text-center">
-                  <IconComponent className={`size-5 mb-2 ${cat.iconColor}`} />
-                  <p className="text-xs uppercase tracking-wide font-medium mb-2 text-muted-foreground">{cat.label}</p>
-                  <p className="text-2xl font-bold text-foreground">{cat.count}</p>
+                <div className="flex flex-col items-center gap-2 text-center">
+                  <span className={`flex size-10 items-center justify-center rounded-xl ring-1 ${cat.chip}`}>
+                    <IconComponent className="size-5" />
+                  </span>
+                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{cat.label}</p>
+                  <p className="text-3xl font-bold tabular-nums text-foreground">{cat.count}</p>
                 </div>
               </CardContent>
             </Card>
@@ -443,16 +455,20 @@ export default function ReportsList() {
       </div>
 
       {/* Table */}
-      <Card>
-        <CardHeader className="pb-0">
-          <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
+      <Card className="rounded-xl border overflow-hidden">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            <span className="brand-gradient-bg size-1.5 rounded-full" aria-hidden="true" />
             {selectedMonth} {selectedYear}
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0 overflow-x-auto">
           {deleteError ? (
             <div className="px-4 pt-4">
-              <p className="text-sm text-destructive bg-destructive/10 px-3 py-2 rounded-md">{deleteError}</p>
+              <p className="flex items-center gap-2 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive ring-1 ring-inset ring-destructive/20">
+                <AlertCircle className="size-4 shrink-0" />
+                {deleteError}
+              </p>
             </div>
           ) : null}
           {loading ? (
@@ -461,8 +477,11 @@ export default function ReportsList() {
             </div>
           ) : filtered.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center">
-              <FilePlus className="size-12 text-muted-foreground/30 mb-3" />
-              <p className="text-sm font-medium text-muted-foreground">No hay informes en {selectedMonth} {selectedYear}</p>
+              <span className="mb-4 flex size-12 items-center justify-center rounded-xl bg-muted text-muted-foreground ring-1 ring-border">
+                <FilePlus className="size-6" />
+              </span>
+              <p className="text-sm font-semibold text-foreground">No hay informes en {selectedMonth} {selectedYear}</p>
+              <p className="mt-1 text-xs text-muted-foreground">Ajusta los filtros o crea un nuevo informe para empezar.</p>
               {hasPermission(PERMISSIONS.REPORTS.CREATE as PermissionKey) ? (
                 <Button
                   variant="outline"
@@ -477,27 +496,27 @@ export default function ReportsList() {
           ) : (
               <Table>
                 <TableHeader>
-                  <TableRow className="bg-muted/40">
-                    <TableHead className="text-xs uppercase tracking-wide">Asegurado</TableHead>
-                    <TableHead className="text-xs uppercase tracking-wide">Placa</TableHead>
-                    <TableHead className="text-xs uppercase tracking-wide">Servicio</TableHead>
-                    <TableHead className="text-xs uppercase tracking-wide">Cobertura</TableHead>
-                    <TableHead className="text-xs uppercase tracking-wide">Vehículo</TableHead>
-                    <TableHead className="text-xs uppercase tracking-wide">Estado</TableHead>
-                    <TableHead className="text-xs uppercase tracking-wide">Creado por</TableHead>
-                    <TableHead className="text-xs uppercase tracking-wide">Fecha</TableHead>
-                    <TableHead className="text-xs uppercase tracking-wide text-right">Acciones</TableHead>
+                  <TableRow className="bg-muted/40 hover:bg-muted/40">
+                    <TableHead className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Asegurado</TableHead>
+                    <TableHead className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Placa</TableHead>
+                    <TableHead className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Servicio</TableHead>
+                    <TableHead className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Cobertura</TableHead>
+                    <TableHead className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Vehículo</TableHead>
+                    <TableHead className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Estado</TableHead>
+                    <TableHead className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Creado por</TableHead>
+                    <TableHead className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Fecha</TableHead>
+                    <TableHead className="text-xs font-medium uppercase tracking-wide text-muted-foreground text-right">Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filtered.map(report => (
                     <TableRow
                       key={report.id}
-                      className={`hover:bg-accent/40 ${canViewReports ? 'cursor-pointer' : 'cursor-not-allowed'}`}
+                      className={`border-border transition-colors hover:bg-accent ${canViewReports ? 'cursor-pointer' : 'cursor-not-allowed'}`}
                       onClick={() => canViewReports && navigate(`/informes/${report.id}`)}
                     >
-                      <TableCell className="font-medium text-sm">{report.insured_name}</TableCell>
-                      <TableCell className="text-sm font-mono">{report.plate}</TableCell>
+                      <TableCell className="font-medium text-sm text-foreground">{report.insured_name}</TableCell>
+                      <TableCell className="text-sm font-mono tabular-nums text-foreground">{report.plate}</TableCell>
                       <TableCell className="text-sm">
                         <Badge variant="outline" className="text-xs whitespace-nowrap">
                           {report.service_type}
@@ -511,7 +530,7 @@ export default function ReportsList() {
                       </TableCell>
                       <TableCell>
                         <Badge
-                          className={`text-xs border ${STATUS_BADGE[report.status] ?? 'bg-secondary text-secondary-foreground'}`}
+                          className={`text-xs font-medium ${STATUS_BADGE[report.status] ?? 'bg-secondary text-secondary-foreground ring-1 ring-inset ring-border'}`}
                         >
                           {report.status}
                         </Badge>
@@ -519,7 +538,7 @@ export default function ReportsList() {
                       <TableCell className="text-sm text-muted-foreground">
                         {report.created_by_name || report.created_by_email}
                       </TableCell>
-                      <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                      <TableCell className="text-xs text-muted-foreground tabular-nums whitespace-nowrap">
                         {formatDateTimeWithMeridiem(report.created_at)}
                       </TableCell>
                       <TableCell className="text-right">

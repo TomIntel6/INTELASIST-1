@@ -10,6 +10,8 @@ import { canCreateUsers, canDeleteUsers, canManageAgents, canViewPasswords, fetc
 import { usePermissions } from '@/lib/permissions-context'
 import { PERMISSIONS, type PermissionKey } from '@/lib/permissions'
 import { getDefaultApiBase } from '@/lib/supabase'
+import { cn } from '@/lib/utils'
+import { Users, UserPlus, Mail, Eye, EyeOff, Pencil, Trash2, X } from 'lucide-react'
 
 interface Usuario {
   id: number
@@ -456,42 +458,71 @@ export default function Usuarios() {
     <div className="p-6">
       <div className="floating-surface min-h-[calc(100vh-5rem)] rounded-[2rem] border border-primary/20 bg-card/95 p-6 shadow-[0_34px_110px_-36px_rgba(59,130,246,0.34),0_18px_42px_-24px_rgba(15,23,42,0.3)] backdrop-blur-md md:p-8 dark:border-primary/35 dark:shadow-[0_34px_120px_-36px_rgba(96,165,250,0.42),0_20px_48px_-26px_rgba(15,23,42,0.38)]">
         <div className="space-y-6">
-          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-            <div>
-              <p className="text-sm font-medium text-primary">INTELASIST</p>
-              <div className="mt-1 flex items-center gap-3">
-                <h1 className="text-2xl font-bold text-foreground">Usuarios</h1>
-                <Badge className="border-primary/30 bg-primary/15 px-3 py-1 text-sm font-bold text-primary dark:text-primary">
-                  {usuarios.length} {usuarios.length === 1 ? 'usuario registrado' : 'usuarios registrados'}
-                </Badge>
+          <div className="glass-panel relative overflow-hidden rounded-2xl p-5 md:p-6">
+            <span className="brand-gradient-bg absolute inset-x-0 top-0 h-1" aria-hidden="true" />
+            <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+              <div className="flex items-start gap-4">
+                <span className="brand-monogram flex size-12 shrink-0 items-center justify-center rounded-xl" aria-hidden="true">
+                  <Users className="size-6" />
+                </span>
+                <div>
+                  <p className="mb-1.5 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                    <span className="brand-gradient-bg size-1.5 rounded-full" aria-hidden="true" />
+                    Administracion
+                  </p>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <h1 className="text-2xl font-bold tracking-tight text-foreground">Usuarios</h1>
+                    <Badge className="border-primary/30 bg-primary/10 px-2.5 py-0.5 text-xs font-semibold tabular-nums text-primary dark:text-primary">
+                      {usuarios.length} {usuarios.length === 1 ? 'usuario registrado' : 'usuarios registrados'}
+                    </Badge>
+                  </div>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    Listado de usuarios registrados en la plataforma
+                  </p>
+                </div>
               </div>
-              <p className="mt-2 text-sm text-muted-foreground">
-                Listado de usuarios registrados en la plataforma
-              </p>
-            </div>
 
-            {canCreateUserAccess ? (
-              <div className="md:ml-auto">
-                <Button
-                  type="button"
-                  onClick={() => {
-                    setShowCreateUserForm(prev => !prev)
-                    setCreateMessage(null)
-                  }}
-                >
-                  {showCreateUserForm ? 'Cerrar' : 'Nuevo usuario'}
-                </Button>
-              </div>
-            ) : null}
+              {canCreateUserAccess ? (
+                <div className="md:ml-auto">
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      setShowCreateUserForm(prev => !prev)
+                      setCreateMessage(null)
+                    }}
+                  >
+                    {showCreateUserForm ? (
+                      <>
+                        <X className="size-4" />
+                        Cerrar
+                      </>
+                    ) : (
+                      <>
+                        <UserPlus className="size-4" />
+                        Nuevo usuario
+                      </>
+                    )}
+                  </Button>
+                </div>
+              ) : null}
+            </div>
           </div>
 
           {showCreateUserForm ? (
-            <Card>
+            <Card className="relative overflow-hidden">
+              <span className="brand-gradient-bg absolute inset-x-0 top-0 h-0.5" aria-hidden="true" />
               <CardHeader>
-                <CardTitle className="text-base">Crear Nuevo Usuario</CardTitle>
-                <CardDescription>
-                  Completa todos los campos para crear el usuario.
-                </CardDescription>
+                <div className="flex items-center gap-3">
+                  <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary ring-1 ring-primary/20">
+                    <UserPlus className="size-5" />
+                  </span>
+                  <div>
+                    <CardTitle className="text-base">Crear Nuevo Usuario</CardTitle>
+                    <CardDescription>
+                      Completa todos los campos para crear el usuario.
+                    </CardDescription>
+                  </div>
+                </div>
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleCreateUser} className="grid gap-4 md:grid-cols-2">
@@ -537,7 +568,17 @@ export default function Usuarios() {
                           size="sm"
                           onClick={() => setShowNewUserPassword(prev => !prev)}
                         >
-                          {showNewUserPassword ? 'Ocultar' : 'Mostrar'}
+                          {showNewUserPassword ? (
+                            <>
+                              <EyeOff className="size-4" />
+                              Ocultar
+                            </>
+                          ) : (
+                            <>
+                              <Eye className="size-4" />
+                              Mostrar
+                            </>
+                          )}
                         </Button>
                       ) : null}
                     </div>
@@ -580,15 +621,29 @@ export default function Usuarios() {
           ) : error ? (
             <Card>
               <CardHeader>
-                <CardTitle>Error al cargar</CardTitle>
-                <CardDescription>{error}</CardDescription>
+                <div className="flex items-center gap-3">
+                  <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-rose-500/10 text-rose-600 ring-1 ring-rose-500/20 dark:text-rose-400">
+                    <X className="size-5" />
+                  </span>
+                  <div>
+                    <CardTitle>Error al cargar</CardTitle>
+                    <CardDescription>{error}</CardDescription>
+                  </div>
+                </div>
               </CardHeader>
             </Card>
           ) : usuarios.length === 0 ? (
             <Card>
               <CardHeader>
-                <CardTitle>Sin usuarios</CardTitle>
-                <CardDescription>No hay usuarios disponibles en este momento.</CardDescription>
+                <div className="flex items-center gap-3">
+                  <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground ring-1 ring-border">
+                    <Users className="size-5" />
+                  </span>
+                  <div>
+                    <CardTitle>Sin usuarios</CardTitle>
+                    <CardDescription>No hay usuarios disponibles en este momento.</CardDescription>
+                  </div>
+                </div>
               </CardHeader>
             </Card>
           ) : (
@@ -596,55 +651,93 @@ export default function Usuarios() {
               {sortedUsuarios.map(usuario => {
                 const displayName = usuario.nombre?.trim() || usuario.correo?.trim() || 'Usuario'
                 const email = usuario.correo?.trim() || 'Correo no disponible'
+                const isOnline = usuario.estado === 'Activo'
+                const initial = displayName.charAt(0).toUpperCase() || 'U'
 
                 return (
                   <div
                     key={usuario.id}
-                    className="flex flex-col gap-3 rounded-3xl border border-border bg-card/80 p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between"
+                    className="hover-lift relative flex flex-col gap-3 overflow-hidden rounded-xl border border-border bg-card p-4 shadow-sm transition-colors hover:bg-accent hover:shadow-md sm:flex-row sm:items-center sm:justify-between"
                   >
-                    <div className="min-w-0">
-                      {editingUserId === usuario.id && canEditUserNames ? (
-                        <div>
-                          <Input
-                            value={editingUserName}
-                            onChange={e => setEditingUserName(e.target.value)}
-                            onKeyDown={e => {
-                              if (e.key === 'Enter') {
-                                e.currentTarget.blur()
-                                void saveUserName(usuario.id, editingUserName)
-                              }
-                              if (e.key === 'Escape') {
-                                setEditingUserId(null)
-                                setEditingUserName('')
-                              }
-                            }}
-                            onBlur={() => {
-                              const trimmed = editingUserName.trim()
-                              if (trimmed && trimmed !== (usuario.nombre?.trim() || usuario.correo || '')) {
-                                void saveUserName(usuario.id, editingUserName)
-                              } else {
-                                setEditingUserId(null)
-                                setEditingUserName('')
-                              }
-                            }}
-                            className="text-sm font-semibold text-foreground truncate"
-                            autoFocus
-                          />
-                          <p className="mt-1 truncate text-xs text-muted-foreground">{email}</p>
-                        </div>
-                      ) : (
-                        <div onDoubleClick={() => { if (canEditUserNames) { setEditingUserId(usuario.id); setEditingUserName(displayName) } }}>
-                          <p className={`truncate text-sm font-semibold text-foreground ${canEditUserNames ? 'cursor-pointer hover:text-primary' : ''} ${getNameColorClasses(displayName)}`}>
-                            {displayName}
-                            {!canEditUserNames && <span className="text-xs text-muted-foreground ml-2"></span>}
-                          </p>
-                          <p className="mt-1 truncate text-xs text-muted-foreground">{email}</p>
-                        </div>
-                      )}
+                    <div className="flex min-w-0 items-center gap-3">
+                      <span
+                        className={cn(
+                          'flex size-10 shrink-0 items-center justify-center rounded-xl text-sm font-semibold uppercase ring-1',
+                          isOnline
+                            ? 'bg-emerald-500/10 text-emerald-600 ring-emerald-500/20 dark:text-emerald-400'
+                            : 'bg-muted text-muted-foreground ring-border'
+                        )}
+                        aria-hidden="true"
+                      >
+                        {initial}
+                      </span>
+                      <div className="min-w-0">
+                        {editingUserId === usuario.id && canEditUserNames ? (
+                          <div>
+                            <Input
+                              value={editingUserName}
+                              onChange={e => setEditingUserName(e.target.value)}
+                              onKeyDown={e => {
+                                if (e.key === 'Enter') {
+                                  e.currentTarget.blur()
+                                  void saveUserName(usuario.id, editingUserName)
+                                }
+                                if (e.key === 'Escape') {
+                                  setEditingUserId(null)
+                                  setEditingUserName('')
+                                }
+                              }}
+                              onBlur={() => {
+                                const trimmed = editingUserName.trim()
+                                if (trimmed && trimmed !== (usuario.nombre?.trim() || usuario.correo || '')) {
+                                  void saveUserName(usuario.id, editingUserName)
+                                } else {
+                                  setEditingUserId(null)
+                                  setEditingUserName('')
+                                }
+                              }}
+                              className="text-sm font-semibold text-foreground truncate"
+                              autoFocus
+                            />
+                            <p className="mt-1 flex items-center gap-1.5 truncate text-xs text-muted-foreground">
+                              <Mail className="size-3 shrink-0" aria-hidden="true" />
+                              {email}
+                            </p>
+                          </div>
+                        ) : (
+                          <div onDoubleClick={() => { if (canEditUserNames) { setEditingUserId(usuario.id); setEditingUserName(displayName) } }}>
+                            <p className={cn(
+                              'flex items-center gap-1.5 truncate text-sm font-semibold text-foreground',
+                              canEditUserNames && 'cursor-pointer hover:text-primary',
+                              getNameColorClasses(displayName)
+                            )}>
+                              {displayName}
+                              {canEditUserNames && <Pencil className="size-3 shrink-0 text-muted-foreground/60" aria-hidden="true" />}
+                              {!canEditUserNames && <span className="text-xs text-muted-foreground ml-2"></span>}
+                            </p>
+                            <p className="mt-1 flex items-center gap-1.5 truncate text-xs text-muted-foreground">
+                              <Mail className="size-3 shrink-0" aria-hidden="true" />
+                              {email}
+                            </p>
+                          </div>
+                        )}
+                      </div>
                     </div>
 
-                    <div className="flex flex-wrap gap-2">
-                      <Badge variant={usuario.estado === 'Activo' ? 'default' : 'secondary'}>
+                    <div className="flex flex-wrap items-center gap-2 pl-[3.25rem] sm:pl-0">
+                      <Badge
+                        variant="outline"
+                        className={cn(
+                          'gap-1.5 font-medium',
+                          isOnline
+                            ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                            : 'border-border bg-muted text-muted-foreground'
+                        )}
+                      >
+                        <span
+                          className={cn('size-1.5 rounded-full', isOnline ? 'bg-emerald-500' : 'bg-muted-foreground/50')}
+                          aria-hidden="true"
+                        />
                         {usuario.estado ?? 'Desconectado'}
                       </Badge>
                       {canDeleteUsersAccess ? (
@@ -654,7 +747,14 @@ export default function Usuarios() {
                           onClick={() => eliminarUsuario(usuario)}
                           disabled={deletingUserId === usuario.id}
                         >
-                          {deletingUserId === usuario.id ? 'Eliminando…' : 'Eliminar'}
+                          {deletingUserId === usuario.id ? (
+                            'Eliminando…'
+                          ) : (
+                            <>
+                              <Trash2 className="size-4" />
+                              Eliminar
+                            </>
+                          )}
                         </Button>
                       ) : null}
                     </div>

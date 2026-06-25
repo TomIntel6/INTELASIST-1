@@ -20,7 +20,7 @@ import { usePermissions } from '@/lib/permissions-context'
 import { AuditService } from '@/lib/audit-service'
 import type { PermissionKey } from '@/lib/permissions'
 import { PERMISSIONS } from '@/lib/permissions'
-import { ArrowLeft, Save, Upload, X } from 'lucide-react'
+import { ArrowLeft, Save, Upload, X, FileText, CalendarDays, User, Car, MessageSquare, ImageIcon } from 'lucide-react'
 import { buildIncompleteReportSummary } from '@/lib/report-alerts'
 
 // El comentario se guarda con el prefijo "Motivo: ..." cuando el estado es
@@ -664,36 +664,61 @@ const [form, setForm] = React.useState<NewReportForm>({
   }
 
   return (
-    <div className="p-6 max-w-4xl mx-auto space-y-5">
-      <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon-sm" onClick={handleNavigateBack}>
-          <ArrowLeft className="size-4" />
-        </Button>
-        <div>
-          <h1 className="text-xl font-bold text-foreground">{isEditMode ? 'Editar Informe' : 'Nuevo Informe'}</h1>
-          <p className="text-sm text-muted-foreground">
-            {isEditMode ? 'Modifica la información del informe' : 'Completa la información del servicio'}
-          </p>
+    <div className="p-6 max-w-4xl mx-auto space-y-6">
+      <div className="glass-panel relative overflow-hidden rounded-xl p-5">
+        <span className="brand-gradient-bg absolute inset-x-0 top-0 h-1" aria-hidden="true" />
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="icon-sm" onClick={handleNavigateBack}>
+            <ArrowLeft className="size-4" />
+          </Button>
+          <span className="brand-monogram flex size-10 shrink-0 items-center justify-center rounded-xl" aria-hidden="true">
+            <FileText className="size-5" />
+          </span>
+          <div>
+            <p className="mb-1.5 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              <span className="brand-gradient-bg size-1.5 rounded-full" aria-hidden="true" />
+              {isEditMode ? 'Editar informe' : 'Nuevo informe'}
+            </p>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">{isEditMode ? 'Editar Informe' : 'Nuevo Informe'}</h1>
+            <p className="text-sm text-muted-foreground">
+              {isEditMode ? 'Modifica la información del informe' : 'Completa la información del servicio'}
+            </p>
+          </div>
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-5">
-        <Card>
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <Card className="rounded-xl border shadow-sm">
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">Período</CardTitle>
-            <CardDescription>El período se toma automáticamente del mes y año actual.</CardDescription>
+            <div className="flex items-center gap-3">
+              <span className="flex size-10 items-center justify-center rounded-xl bg-sky-500/10 text-sky-600 ring-1 ring-sky-500/20 dark:text-sky-400" aria-hidden="true">
+                <CalendarDays className="size-5" />
+              </span>
+              <div>
+                <CardTitle className="text-sm font-semibold">Período</CardTitle>
+                <CardDescription className="text-xs">El período se toma automáticamente del mes y año actual.</CardDescription>
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="rounded-lg border border-border/70 bg-muted/50 px-4 py-3 text-sm">
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">Mes y año del informe</p>
-              <p className="mt-1 font-semibold text-foreground">{form.month} {form.year}</p>
+            <div className="rounded-xl border border-border bg-muted px-4 py-3 text-sm">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Mes y año del informe</p>
+              <p className="mt-1 text-base font-semibold tabular-nums text-foreground">{form.month} {form.year}</p>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="rounded-xl border shadow-sm">
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">Información del Asegurado</CardTitle>
+            <div className="flex items-center gap-3">
+              <span className="flex size-10 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-600 ring-1 ring-indigo-500/20 dark:text-indigo-400" aria-hidden="true">
+                <User className="size-5" />
+              </span>
+              <div>
+                <CardTitle className="text-sm font-semibold">Información del Asegurado</CardTitle>
+                <CardDescription className="text-xs">Datos de identificación del asegurado y del servicio.</CardDescription>
+              </div>
+            </div>
           </CardHeader>
           <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <div className="space-y-1.5 sm:col-span-2 lg:col-span-1">
@@ -756,9 +781,17 @@ const [form, setForm] = React.useState<NewReportForm>({
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="rounded-xl border shadow-sm">
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">Datos del Vehículo</CardTitle>
+            <div className="flex items-center gap-3">
+              <span className="flex size-10 items-center justify-center rounded-xl bg-violet-500/10 text-violet-600 ring-1 ring-violet-500/20 dark:text-violet-400" aria-hidden="true">
+                <Car className="size-5" />
+              </span>
+              <div>
+                <CardTitle className="text-sm font-semibold">Datos del Vehículo</CardTitle>
+                <CardDescription className="text-xs">Características del vehículo asociado al caso.</CardDescription>
+              </div>
+            </div>
           </CardHeader>
           <CardContent className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
             <div className="space-y-1.5">
@@ -787,9 +820,17 @@ const [form, setForm] = React.useState<NewReportForm>({
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="rounded-xl border shadow-sm">
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">Observación</CardTitle>
+            <div className="flex items-center gap-3">
+              <span className="flex size-10 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 ring-1 ring-amber-500/20 dark:text-amber-400" aria-hidden="true">
+                <MessageSquare className="size-5" />
+              </span>
+              <div>
+                <CardTitle className="text-sm font-semibold">Observación</CardTitle>
+                <CardDescription className="text-xs">Estado del caso y descripción de lo sucedido en la llamada.</CardDescription>
+              </div>
+            </div>
           </CardHeader>
           <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
@@ -834,9 +875,17 @@ const [form, setForm] = React.useState<NewReportForm>({
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="rounded-xl border shadow-sm">
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">Evidencia (Imágenes)</CardTitle>
+            <div className="flex items-center gap-3">
+              <span className="flex size-10 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 ring-1 ring-emerald-500/20 dark:text-emerald-400" aria-hidden="true">
+                <ImageIcon className="size-5" />
+              </span>
+              <div>
+                <CardTitle className="text-sm font-semibold">Evidencia (Imágenes)</CardTitle>
+                <CardDescription className="text-xs">Adjunta capturas o fotos. Puedes pegarlas o seleccionarlas.</CardDescription>
+              </div>
+            </div>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="space-y-2">
@@ -844,7 +893,7 @@ const [form, setForm] = React.useState<NewReportForm>({
                 ref={pasteTextareaRef}
                 onPaste={handleClipboardPaste}
                 placeholder="Pega tus imágenes aquí (Ctrl+V)"
-                className="w-full min-h-[120px] p-3 border border-border/70 rounded-lg bg-muted/30 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                className="w-full min-h-[120px] p-3 border border-border rounded-xl bg-muted/40 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-ring"
               />
               <div className="flex gap-2 items-center flex-wrap">
                 <Button
@@ -874,7 +923,7 @@ const [form, setForm] = React.useState<NewReportForm>({
             {evidenceItems.length > 0 && (
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 {evidenceItems.map((item, index) => (
-                  <div key={`${item.file.name}-${index}`} className="relative rounded-lg overflow-hidden border border-border/70 bg-background">
+                  <div key={`${item.file.name}-${index}`} className="relative rounded-xl overflow-hidden border border-border bg-background shadow-sm hover-lift hover:shadow-md transition-all">
                     <img
                       src={item.preview}
                       alt={`Evidencia ${index + 1}`}
@@ -897,17 +946,17 @@ const [form, setForm] = React.useState<NewReportForm>({
         </Card>
 
         {error && (
-          <p className="text-sm text-destructive bg-destructive/10 px-4 py-2 rounded-md">{error}</p>
+          <p className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-sm font-medium text-destructive">{error}</p>
         )}
 
-        <div className="flex gap-3 justify-end">
+        <div className="flex flex-wrap gap-3 justify-end border-t border-border pt-5">
           <Button type="button" variant="outline" onClick={handleNavigateBack}>
             Cancelar
           </Button>
           <Button
             type="submit"
             disabled={saving}
-            className="gap-2 bg-destructive hover:bg-destructive/90 text-white min-w-[140px]"
+            className="brand-gradient-bg gap-2 text-white shadow-sm transition-all hover:shadow-md hover:brightness-105 min-w-[140px]"
           >
             {saving ? <Spinner className="size-4" /> : <Save className="size-4" />}
             {saving ? 'Guardando...' : (isEditMode ? 'Guardar Cambios' : 'Guardar Informe')}
