@@ -2,12 +2,12 @@ import * as React from 'react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
-import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
+import { NativeSelect, NativeSelectOptGroup, NativeSelectOption } from '@/components/ui/native-select'
 import { Spinner } from '@/components/ui/spinner'
 import { CharacterAvatar } from '@/components/CharacterAvatar'
 import { getDefaultApiBase } from '@/lib/supabase'
 import { cn } from '@/lib/utils'
-import { Lock, Shuffle, Sparkles, Upload, UserRound } from 'lucide-react'
+import { Eye, Glasses, Image as ImageIcon, Lock, Palette, Scissors, Shuffle, Smile, Sparkles, Upload, UserRound } from 'lucide-react'
 import {
   ACCESSORY_OPTIONS,
   BACKGROUND_COLORS,
@@ -18,24 +18,49 @@ import {
   EYEBROW_STYLE_OPTIONS,
   FACIAL_HAIR_OPTIONS,
   HAIR_COLORS,
-  HAIR_STYLE_OPTIONS,
+  HAIR_STYLE_GROUPS,
   MOUTH_OPTIONS,
   SKIN_TONES,
   normalizeAvatar,
   normalizeCharacter,
   randomCharacter,
 } from '@/lib/avatar'
-import type { AvatarCharacterConfig, AvatarData, AvatarMode } from '@/lib/avatar'
+import type { AvatarCharacterConfig, AvatarData, AvatarMode, HairStyle } from '@/lib/avatar'
 
 interface ProfileAvatarEditorProps {
   value: AvatarData | null
   displayName: string
   canCustomize: boolean
+  /** Permiso granular para subir/usar una imagen como avatar. Si es falso, solo
+   *  se ofrece el creador de personaje (la pestaña "Imagen" queda oculta). */
+  canUploadImage?: boolean
   saving?: boolean
   onSave: (avatar: AvatarData) => Promise<void> | void
 }
 
 /* ─── Subcomponentes de control ─── */
+
+function Section({
+  title,
+  icon,
+  children,
+  className,
+}: {
+  title: string
+  icon: React.ReactNode
+  children: React.ReactNode
+  className?: string
+}) {
+  return (
+    <div className={cn('space-y-3 rounded-xl border bg-card/40 p-3.5', className)}>
+      <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+        <span className="text-primary">{icon}</span>
+        {title}
+      </div>
+      {children}
+    </div>
+  )
+}
 
 function SwatchRow({
   label,
@@ -44,7 +69,7 @@ function SwatchRow({
   onSelect,
   disabled,
 }: {
-  label: string
+  label?: string
   colors: string[]
   selected: string
   onSelect: (color: string) => void
@@ -52,7 +77,7 @@ function SwatchRow({
 }) {
   return (
     <div className="space-y-1.5">
-      <Label className="text-xs font-medium text-muted-foreground">{label}</Label>
+      {label ? <Label className="text-xs font-medium text-muted-foreground">{label}</Label> : null}
       <div className="flex flex-wrap gap-1.5">
         {colors.map((color) => {
           const active = color.toLowerCase() === (selected || '').toLowerCase()
@@ -62,7 +87,7 @@ function SwatchRow({
               type="button"
               disabled={disabled}
               onClick={() => onSelect(color)}
-              aria-label={`${label}: ${color}`}
+              aria-label={`${label ?? 'Color'}: ${color}`}
               aria-pressed={active}
               className={cn(
                 'size-7 rounded-full border transition-transform duration-150 disabled:cursor-not-allowed disabled:opacity-50',
@@ -86,7 +111,7 @@ function SelectRow<T extends string>({
   onChange,
   disabled,
 }: {
-  label: string
+  label?: string
   value: T
   options: { value: T; label: string }[]
   onChange: (value: T) => void
@@ -94,7 +119,7 @@ function SelectRow<T extends string>({
 }) {
   return (
     <div className="space-y-1.5">
-      <Label className="text-xs font-medium text-muted-foreground">{label}</Label>
+      {label ? <Label className="text-xs font-medium text-muted-foreground">{label}</Label> : null}
       <NativeSelect
         className="w-full"
         value={value}
@@ -111,16 +136,49 @@ function SelectRow<T extends string>({
   )
 }
 
+function HairStyleSelect({
+  value,
+  onChange,
+  disabled,
+}: {
+  value: HairStyle
+  onChange: (value: HairStyle) => void
+  disabled?: boolean
+}) {
+  return (
+    <div className="space-y-1.5">
+      <Label className="text-xs font-medium text-muted-foreground">Estilo de cabello</Label>
+      <NativeSelect
+        className="w-full"
+        value={value}
+        disabled={disabled}
+        onChange={(e) => onChange(e.target.value as HairStyle)}
+      >
+        {HAIR_STYLE_GROUPS.map((group) => (
+          <NativeSelectOptGroup key={group.label} label={group.label}>
+            {group.options.map((option) => (
+              <NativeSelectOption key={option.value} value={option.value}>
+                {option.label}
+              </NativeSelectOption>
+            ))}
+          </NativeSelectOptGroup>
+        ))}
+      </NativeSelect>
+    </div>
+  )
+}
+
 export function ProfileAvatarEditor({
   value,
   displayName,
   canCustomize,
+  canUploadImage = false,
   saving = false,
   onSave,
 }: ProfileAvatarEditorProps) {
   const initial = React.useMemo(() => normalizeAvatar(value) ?? { ...DEFAULT_AVATAR }, [value])
 
-  const [mode, setMode] = React.useState<AvatarMode>(initial.mode)
+  const [mode, setMode] = React.useState<AvatarMode>(canUploadImage ? initial.mode : 'character')
   const [character, setCharacter] = React.useState<AvatarCharacterConfig>(
     () => initial.character ?? { ...DEFAULT_CHARACTER }
   )
@@ -134,11 +192,11 @@ export function ProfileAvatarEditor({
   // Reinicia el estado interno cuando cambia el avatar de origen (otro usuario / recarga).
   React.useEffect(() => {
     const next = normalizeAvatar(value) ?? { ...DEFAULT_AVATAR }
-    setMode(next.mode)
+    setMode(canUploadImage ? next.mode : 'character')
     setCharacter(next.character ?? { ...DEFAULT_CHARACTER })
     setImageUrl(next.imageUrl ?? null)
     setError(null)
-  }, [value])
+  }, [value, canUploadImage])
 
   const patchCharacter = (patch: Partial<AvatarCharacterConfig>) => {
     setCharacter((prev) => normalizeCharacter({ ...prev, ...patch }))
@@ -177,12 +235,14 @@ export function ProfileAvatarEditor({
 
   const handleSave = async () => {
     setError(null)
-    if (mode === 'image' && !imageUrl) {
+    // Sin permiso de imagen, siempre se guarda el personaje (la pestaña está oculta).
+    const effectiveMode: AvatarMode = canUploadImage ? mode : 'character'
+    if (effectiveMode === 'image' && !imageUrl) {
       setError('Sube una imagen o elige el personaje antes de guardar.')
       return
     }
     const avatar: AvatarData = {
-      mode,
+      mode: effectiveMode,
       imageUrl: imageUrl ?? null,
       character,
     }
@@ -201,30 +261,33 @@ export function ProfileAvatarEditor({
   return (
     <div className="space-y-4">
       {/* Vista previa grande */}
-      <div className="flex items-center gap-4">
-        <div className="size-24 shrink-0 overflow-hidden rounded-full border-2 border-border bg-muted shadow-sm">
+      <div className="flex flex-col items-center gap-3 rounded-2xl border bg-gradient-to-b from-muted/60 to-muted/20 px-4 py-5 text-center sm:flex-row sm:items-center sm:gap-5 sm:text-left">
+        <div className="size-32 shrink-0 overflow-hidden rounded-full border-2 border-border bg-muted shadow-md ring-4 ring-background">
           {mode === 'image' && imageUrl ? (
             <img src={imageUrl} alt={displayName} className="size-full object-cover" />
           ) : (
-            <CharacterAvatar config={character} size={96} title={`Avatar de ${displayName}`} />
+            <CharacterAvatar config={character} size={128} title={`Avatar de ${displayName}`} />
           )}
         </div>
-        <div className="min-w-0 space-y-1">
-          <p className="text-sm font-semibold text-foreground">Vista previa</p>
+        <div className="min-w-0 space-y-1.5">
+          <p className="text-base font-semibold text-foreground">{displayName}</p>
           <p className="text-xs text-muted-foreground">
             {canCustomize
-              ? 'Diseña tu personaje o sube una foto. Recuerda guardar los cambios.'
+              ? canUploadImage
+                ? 'Diseña tu personaje o sube una foto. El avatar se actualiza al instante; recuerda guardar los cambios.'
+                : 'Diseña tu personaje. El avatar se actualiza al instante; recuerda guardar los cambios.'
               : 'No tienes permiso para personalizar el avatar. Pídeselo a un administrador.'}
           </p>
-          {mode === 'image' && imageUrl ? (
-            <button
-              type="button"
-              disabled={!canCustomize || busy}
-              onClick={() => setMode('character')}
-              className="text-xs font-medium text-primary hover:underline disabled:opacity-50"
-            >
-              Usar personaje en su lugar
-            </button>
+          {canCustomize ? (
+            <div className="flex flex-wrap justify-center gap-2 pt-1 sm:justify-start">
+              <Button type="button" variant="outline" size="sm" onClick={handleRandomize} disabled={busy}>
+                <Shuffle className="size-4" />
+                Sorpréndeme
+              </Button>
+              <Button type="button" variant="ghost" size="sm" onClick={handleReset} disabled={busy}>
+                Restablecer
+              </Button>
+            </div>
           ) : null}
         </div>
       </div>
@@ -240,104 +303,128 @@ export function ProfileAvatarEditor({
         </div>
       ) : (
         <Tabs value={mode} onValueChange={(v) => setMode(v as AvatarMode)}>
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="character">
-              <UserRound className="size-4" />
-              Personaje
-            </TabsTrigger>
-            <TabsTrigger value="image">
-              <Upload className="size-4" />
-              Imagen
-            </TabsTrigger>
-          </TabsList>
+          {/* La pestaña "Imagen" solo se muestra a quien tiene el permiso
+              `upload_avatar_image`; el resto solo ve el creador de personaje. */}
+          {canUploadImage ? (
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="character">
+                <UserRound className="size-4" />
+                Personaje
+              </TabsTrigger>
+              <TabsTrigger value="image">
+                <Upload className="size-4" />
+                Imagen
+              </TabsTrigger>
+            </TabsList>
+          ) : null}
 
           {/* ── Personaje ── */}
-          <TabsContent value="character" className="space-y-4 pt-3">
-            <div className="flex flex-wrap gap-2">
-              <Button type="button" variant="outline" size="sm" onClick={handleRandomize} disabled={busy}>
-                <Shuffle className="size-4" />
-                Sorpréndeme
-              </Button>
-              <Button type="button" variant="ghost" size="sm" onClick={handleReset} disabled={busy}>
-                Restablecer
-              </Button>
-            </div>
+          <TabsContent value="character" className="pt-3">
+            <div className="grid gap-3 sm:grid-cols-2">
+              {/* Cabello (sección destacada a ancho completo) */}
+              <Section title="Cabello" icon={<Scissors className="size-4" />} className="sm:col-span-2">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <HairStyleSelect
+                    value={character.hairStyle}
+                    onChange={(v) => patchCharacter({ hairStyle: v })}
+                    disabled={busy}
+                  />
+                  <SwatchRow
+                    label="Color de cabello"
+                    colors={HAIR_COLORS}
+                    selected={character.hairColor}
+                    onSelect={(color) => patchCharacter({ hairColor: color })}
+                    disabled={busy}
+                  />
+                </div>
+              </Section>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <SwatchRow
-                label="Color de piel"
-                colors={SKIN_TONES}
-                selected={character.skinTone}
-                onSelect={(c) => patchCharacter({ skinTone: c })}
-                disabled={busy}
-              />
-              <SwatchRow
-                label="Color de cabello"
-                colors={HAIR_COLORS}
-                selected={character.hairColor}
-                onSelect={(c) => patchCharacter({ hairColor: c })}
-                disabled={busy}
-              />
-              <SelectRow
-                label="Estilo de cabello"
-                value={character.hairStyle}
-                options={HAIR_STYLE_OPTIONS}
-                onChange={(v) => patchCharacter({ hairStyle: v })}
-                disabled={busy}
-              />
-              <SwatchRow
-                label="Color de ojos"
-                colors={EYE_COLORS}
-                selected={character.eyeColor}
-                onSelect={(c) => patchCharacter({ eyeColor: c })}
-                disabled={busy}
-              />
-              <SelectRow
-                label="Forma de ojos"
-                value={character.eyeStyle}
-                options={EYE_STYLE_OPTIONS}
-                onChange={(v) => patchCharacter({ eyeStyle: v })}
-                disabled={busy}
-              />
-              <SelectRow
-                label="Cejas"
-                value={character.eyebrowStyle}
-                options={EYEBROW_STYLE_OPTIONS}
-                onChange={(v) => patchCharacter({ eyebrowStyle: v })}
-                disabled={busy}
-              />
-              <SelectRow
-                label="Vello facial"
-                value={character.facialHair}
-                options={FACIAL_HAIR_OPTIONS}
-                onChange={(v) => patchCharacter({ facialHair: v })}
-                disabled={busy}
-              />
-              <SelectRow
-                label="Boca"
-                value={character.mouth}
-                options={MOUTH_OPTIONS}
-                onChange={(v) => patchCharacter({ mouth: v })}
-                disabled={busy}
-              />
-              <SelectRow
-                label="Accesorio"
-                value={character.accessory}
-                options={ACCESSORY_OPTIONS}
-                onChange={(v) => patchCharacter({ accessory: v })}
-                disabled={busy}
-              />
-              <SwatchRow
-                label="Fondo"
-                colors={BACKGROUND_COLORS}
-                selected={character.background}
-                onSelect={(c) => patchCharacter({ background: c })}
-                disabled={busy}
-              />
+              {/* Piel */}
+              <Section title="Color de piel" icon={<Palette className="size-4" />}>
+                <SwatchRow
+                  colors={SKIN_TONES}
+                  selected={character.skinTone}
+                  onSelect={(color) => patchCharacter({ skinTone: color })}
+                  disabled={busy}
+                />
+              </Section>
+
+              {/* Fondo */}
+              <Section title="Fondo" icon={<ImageIcon className="size-4" />}>
+                <SwatchRow
+                  colors={BACKGROUND_COLORS}
+                  selected={character.background}
+                  onSelect={(color) => patchCharacter({ background: color })}
+                  disabled={busy}
+                />
+              </Section>
+
+              {/* Ojos */}
+              <Section title="Ojos" icon={<Eye className="size-4" />}>
+                <SwatchRow
+                  label="Color de ojos"
+                  colors={EYE_COLORS}
+                  selected={character.eyeColor}
+                  onSelect={(color) => patchCharacter({ eyeColor: color })}
+                  disabled={busy}
+                />
+                <SelectRow
+                  label="Forma de ojos"
+                  value={character.eyeStyle}
+                  options={EYE_STYLE_OPTIONS}
+                  onChange={(v) => patchCharacter({ eyeStyle: v })}
+                  disabled={busy}
+                />
+              </Section>
+
+              {/* Cejas */}
+              <Section title="Cejas" icon={<UserRound className="size-4" />}>
+                <SelectRow
+                  label="Estilo de cejas"
+                  value={character.eyebrowStyle}
+                  options={EYEBROW_STYLE_OPTIONS}
+                  onChange={(v) => patchCharacter({ eyebrowStyle: v })}
+                  disabled={busy}
+                />
+              </Section>
+
+              {/* Boca */}
+              <Section title="Boca" icon={<Smile className="size-4" />}>
+                <SelectRow
+                  label="Expresión"
+                  value={character.mouth}
+                  options={MOUTH_OPTIONS}
+                  onChange={(v) => patchCharacter({ mouth: v })}
+                  disabled={busy}
+                />
+              </Section>
+
+              {/* Vello facial */}
+              <Section title="Vello facial" icon={<UserRound className="size-4" />}>
+                <SelectRow
+                  label="Estilo"
+                  value={character.facialHair}
+                  options={FACIAL_HAIR_OPTIONS}
+                  onChange={(v) => patchCharacter({ facialHair: v })}
+                  disabled={busy}
+                />
+              </Section>
+
+              {/* Accesorios */}
+              <Section title="Accesorios" icon={<Glasses className="size-4" />}>
+                <SelectRow
+                  label="Gafas"
+                  value={character.accessory}
+                  options={ACCESSORY_OPTIONS}
+                  onChange={(v) => patchCharacter({ accessory: v })}
+                  disabled={busy}
+                />
+              </Section>
             </div>
           </TabsContent>
 
-          {/* ── Imagen ── */}
+          {/* ── Imagen (solo con permiso `upload_avatar_image`) ── */}
+          {canUploadImage ? (
           <TabsContent value="image" className="space-y-3 pt-3">
             <div className="rounded-lg border border-dashed bg-muted/30 px-4 py-6 text-center">
               <Sparkles className="mx-auto mb-2 size-5 text-muted-foreground" />
@@ -366,8 +453,21 @@ export function ProfileAvatarEditor({
                 {uploading ? <Spinner className="size-4" /> : <Upload className="size-4" />}
                 {uploading ? 'Subiendo…' : imageUrl ? 'Cambiar imagen' : 'Subir imagen'}
               </Button>
+              {imageUrl ? (
+                <div className="mt-3">
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => setMode('character')}
+                    className="text-xs font-medium text-primary hover:underline disabled:opacity-50"
+                  >
+                    Usar personaje en su lugar
+                  </button>
+                </div>
+              ) : null}
             </div>
           </TabsContent>
+          ) : null}
         </Tabs>
       )}
 

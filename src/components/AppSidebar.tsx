@@ -96,6 +96,15 @@ export const AppSidebar = React.memo(function AppSidebar() {
       userRoles.includes('Support'),
     [hasPermission, userRoles]
   )
+  // Permiso granular adicional: subir/usar una imagen como avatar. Restringido por
+  // defecto; solo Admin/Support y quienes lo tengan concedido ven la opción "Imagen".
+  const canUploadAvatarImage = React.useMemo(
+    () =>
+      hasPermission(PERMISSIONS.PROFILE.UPLOAD_AVATAR_IMAGE) ||
+      userRoles.includes('Admin') ||
+      userRoles.includes('Support'),
+    [hasPermission, userRoles]
+  )
   const canViewReportsModule = React.useMemo(() => hasModuleAccess('reports'), [hasModuleAccess])
   const canViewUsersModule = React.useMemo(
     () => hasModuleAccess('users') || hasPermission(PERMISSIONS.USERS.VIEW),
@@ -797,6 +806,7 @@ export const AppSidebar = React.memo(function AppSidebar() {
                   value={avatarData}
                   displayName={displayName}
                   canCustomize={canCustomizeAvatar}
+                  canUploadImage={canUploadAvatarImage}
                   onSave={handleAvatarSave}
                 />
               </div>

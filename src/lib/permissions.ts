@@ -50,9 +50,10 @@ export const PERMISSIONS = {
     ACCESS_TRASH: 'access_trash',
     PERMANENTLY_DELETE_REPORTS: 'permanently_delete_reports',
   },
-  // Profile permissions (1)
+  // Profile permissions (2)
   PROFILE: {
     CUSTOMIZE_AVATAR: 'customize_avatar',
+    UPLOAD_AVATAR_IMAGE: 'upload_avatar_image',
   },
 } as const
 
@@ -313,4 +314,5 @@ export const PERMISSION_LABELS: Record<PermissionKey, string> = {
   permanently_delete_reports: 'Eliminar permanentemente',
   // Profile
   customize_avatar: 'Personalizar avatar de perfil',
+  upload_avatar_image: 'Subir imagen como avatar',
 }
