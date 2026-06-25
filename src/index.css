@@ -105,6 +105,12 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.88 0.02 95);
   --sidebar-ring: oklch(0.708 0 0);
+
+  /* Identidad de marca "IA" (Inteligencia Asistida): cian → índigo → violeta */
+  --brand-1: #22d3ee;
+  --brand-2: #6366f1;
+  --brand-3: #a855f7;
+  --brand-gradient: linear-gradient(120deg, var(--brand-1), var(--brand-2) 52%, var(--brand-3));
 }
 
 .dark {
@@ -140,6 +146,12 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.439 0 0);
+
+  /* Marca "IA" en modo oscuro: tonos ligeramente más brillantes para que resalten */
+  --brand-1: #34dfff;
+  --brand-2: #818cf8;
+  --brand-3: #c084fc;
+  --brand-gradient: linear-gradient(120deg, var(--brand-1), var(--brand-2) 52%, var(--brand-3));
 }
 
 @layer base {
@@ -151,9 +163,10 @@
     @apply bg-background text-foreground;
     user-select: none;
     background-image:
-      linear-gradient(180deg, color-mix(in srgb, var(--background) 96%, white 4%), var(--background)),
-      radial-gradient(circle at top left, color-mix(in srgb, var(--primary) 12%, transparent), transparent 24%),
-      radial-gradient(circle at bottom right, color-mix(in srgb, var(--primary) 10%, transparent), transparent 20%);
+      radial-gradient(46rem 38rem at 4% -10%, color-mix(in srgb, var(--brand-1) 16%, transparent), transparent 60%),
+      radial-gradient(44rem 40rem at 106% 2%, color-mix(in srgb, var(--brand-3) 14%, transparent), transparent 58%),
+      radial-gradient(42rem 34rem at 50% 120%, color-mix(in srgb, var(--brand-2) 12%, transparent), transparent 60%),
+      linear-gradient(180deg, color-mix(in srgb, var(--background) 94%, white 6%), var(--background));
     background-attachment: fixed;
     box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--foreground) 6%, transparent);
   }
@@ -562,4 +575,74 @@
   mask-composite: exclude;
   animation: presence-soft-loopwave 3.2s ease-in-out infinite;
   pointer-events: none;
+}
+
+/*
+  ============================================================
+  SISTEMA DE MARCA "IA" — utilidades reutilizables
+  ============================================================
+*/
+@layer components {
+  /* Texto con gradiente de marca (titulares, wordmark) */
+  .brand-text {
+    background-image: var(--brand-gradient);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+  }
+
+  /* Fondo con gradiente de marca (barras de acento, chips) */
+  .brand-gradient-bg {
+    background-image: var(--brand-gradient);
+  }
+
+  /* Monograma "IA" / chip de icono con gradiente */
+  .brand-monogram {
+    background-image: var(--brand-gradient);
+    color: #fff;
+    box-shadow:
+      0 8px 20px -8px color-mix(in srgb, var(--brand-2) 65%, transparent),
+      inset 0 0 0 1px color-mix(in srgb, #fff 22%, transparent);
+  }
+
+  /* Superficie de cristal (glassmorphism) refinada */
+  .glass-panel {
+    background: color-mix(in srgb, var(--card) 80%, transparent);
+    backdrop-filter: blur(14px) saturate(1.15);
+    -webkit-backdrop-filter: blur(14px) saturate(1.15);
+    border: 1px solid color-mix(in srgb, var(--border) 78%, transparent);
+    box-shadow:
+      inset 0 1px 0 0 color-mix(in srgb, #fff 45%, transparent),
+      0 24px 60px -34px color-mix(in srgb, var(--foreground) 18%, transparent),
+      0 0 0 1px color-mix(in srgb, var(--border) 60%, transparent);
+  }
+
+  .dark .glass-panel {
+    background: color-mix(in srgb, var(--card) 68%, transparent);
+    box-shadow:
+      inset 0 1px 0 0 color-mix(in srgb, #fff 8%, transparent),
+      0 26px 70px -34px color-mix(in srgb, #000 60%, transparent),
+      0 0 0 1px color-mix(in srgb, var(--border) 55%, transparent);
+  }
+
+  /* Topbar global con cristal */
+  .app-header {
+    background: color-mix(in srgb, var(--card) 82%, transparent);
+    backdrop-filter: blur(14px) saturate(1.1);
+    -webkit-backdrop-filter: blur(14px) saturate(1.1);
+    border-bottom: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
+    box-shadow: 0 18px 44px -32px color-mix(in srgb, var(--foreground) 22%, transparent);
+  }
+
+  /* Elevación sutil al pasar el cursor */
+  .hover-lift {
+    transition:
+      transform 0.25s ease,
+      box-shadow 0.25s ease;
+  }
+
+  .hover-lift:hover {
+    transform: translateY(-2px);
+  }
 }

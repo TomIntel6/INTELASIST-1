@@ -514,14 +514,19 @@ export const AppSidebar = React.memo(function AppSidebar() {
         <button
           type="button"
           onClick={() => navigate('/dashboard')}
-          className="group flex items-center gap-2 text-left rounded-full px-2 py-1.5 transition-all duration-300 hover:bg-primary/10 hover:shadow-[0_0_24px_rgba(59,130,246,0.28)]"
+          className="group flex items-center gap-2.5 rounded-2xl px-2 py-1.5 text-left transition-colors duration-200 hover:bg-primary/5"
         >
-          <div className="rounded-full bg-background/90 p-1 shadow-[0_0_0_1px_rgba(59,130,246,0.12),0_0_18px_rgba(59,130,246,0.16)] transition-all duration-300 group-hover:scale-105 group-hover:shadow-[0_0_0_1px_rgba(59,130,246,0.18),0_0_24px_rgba(59,130,246,0.28)]">
-            <img src="/intelasist.png" alt="INTELASIST" className="h-12 w-12 shrink-0 object-contain" />
+          <div className="rounded-2xl bg-background/90 p-1 shadow-sm ring-1 ring-border transition-transform duration-200 group-hover:scale-105">
+            <img src="/intelasist.png" alt="INTELASIST" className="h-11 w-11 shrink-0 object-contain" />
           </div>
-          <span className="font-bold text-sm text-sidebar-foreground group-data-[collapsible=icon]:hidden transition-all duration-300 group-hover:text-primary group-hover:drop-shadow-[0_0_12px_rgba(59,130,246,0.35)]">
-            INTELASIST
-          </span>
+          <div className="leading-tight group-data-[collapsible=icon]:hidden">
+            <span className="block text-sm font-bold tracking-tight">
+              <span className="brand-text">INTELASIST</span>
+            </span>
+            <span className="block text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+              Inteligencia Asistida
+            </span>
+          </div>
         </button>
       </SidebarHeader>
 
