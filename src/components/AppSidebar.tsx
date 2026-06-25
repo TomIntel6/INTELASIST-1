@@ -542,8 +542,8 @@ export const AppSidebar = React.memo(function AppSidebar() {
             <span className="block text-sm font-bold tracking-tight">
               <span className="brand-text">INTELASIST</span>
             </span>
-            <span className="block text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
-              Inteligencia Asistida
+            <span className="block text-[10px] font-medium italic tracking-[0.18em] text-muted-foreground">
+              100% panameña
             </span>
           </div>
         </button>
