@@ -56,17 +56,53 @@ interface RoleSyncMessage {
   roles: UserRole[]
 }
 
+// La sesión vive en sessionStorage: el navegador la elimina automáticamente al
+// CERRAR la pestaña, pero la conserva al recargar, minimizar o cambiar de pestaña.
+// (Con localStorage persistía tras cerrar, por eso la sesión no se cerraba.)
+// Cambiar de pestaña / segundo plano no la toca: no dependemos de eventos.
+function readAuthRaw(): string | null {
+  if (typeof window === 'undefined') {
+    return null
+  }
+
+  const current = window.sessionStorage.getItem(AUTH_STORAGE_KEY)
+  if (current) {
+    return current
+  }
+
+  // Migración única desde el esquema anterior (localStorage) para no desloguear
+  // a quien ya tuviera sesión; luego se limpia el rastro en localStorage.
+  const legacy = window.localStorage.getItem(AUTH_STORAGE_KEY)
+  if (legacy) {
+    window.sessionStorage.setItem(AUTH_STORAGE_KEY, legacy)
+    window.localStorage.removeItem(AUTH_STORAGE_KEY)
+    return legacy
+  }
+
+  return null
+}
+
+function writeAuthRaw(value: string | null) {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  if (value === null) {
+    window.sessionStorage.removeItem(AUTH_STORAGE_KEY)
+    // Limpia cualquier resto del esquema anterior.
+    window.localStorage.removeItem(AUTH_STORAGE_KEY)
+    return
+  }
+
+  window.sessionStorage.setItem(AUTH_STORAGE_KEY, value)
+}
+
 function persistSession(session: LocalSession | null) {
   if (typeof window === 'undefined') {
     return
   }
 
-  if (!session) {
-    window.localStorage.removeItem(AUTH_STORAGE_KEY)
-    return
-  }
-
-  window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session))
+  writeAuthRaw(session ? JSON.stringify(session) : null)
 }
 
 export function getAuthToken(): string | null {
@@ -75,7 +111,7 @@ export function getAuthToken(): string | null {
   }
 
   try {
-    const raw = window.localStorage.getItem(AUTH_STORAGE_KEY)
+    const raw = readAuthRaw()
     if (!raw) return null
 
     const parsed = JSON.parse(raw) as { token?: string }
@@ -97,7 +133,7 @@ export function getAuthHeaders(): Record<string, string> {
   // poder atribuir acciones (papelera, auditoría) sin cerrar la sesión.
   if (typeof window !== 'undefined') {
     try {
-      const raw = window.localStorage.getItem(AUTH_STORAGE_KEY)
+      const raw = readAuthRaw()
       if (raw) {
         const parsed = JSON.parse(raw) as { user?: { id?: string; email?: string; user_metadata?: { full_name?: string } } }
         const user = parsed?.user
@@ -120,7 +156,7 @@ function loadSession(): LocalSession | null {
   }
 
   try {
-    const raw = window.localStorage.getItem(AUTH_STORAGE_KEY)
+    const raw = readAuthRaw()
     if (!raw) {
       return null
     }
@@ -132,7 +168,7 @@ function loadSession(): LocalSession | null {
 
     return parsed
   } catch {
-    window.localStorage.removeItem(AUTH_STORAGE_KEY)
+    writeAuthRaw(null)
     return null
   }
 }
