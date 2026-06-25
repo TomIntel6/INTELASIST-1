@@ -27,6 +27,52 @@ function isCreatedToday(createdAt: string, referenceDate = new Date()): boolean 
   )
 }
 
+/** Paleta de acento semántica por estado (claro + dark). */
+type AccentKey = 'slate' | 'emerald' | 'amber' | 'violet' | 'sky'
+const ACCENTS: Record<AccentKey, { bar: string; chipBg: string; chipFg: string; ring: string; text: string }> = {
+  slate: { bar: 'bg-slate-400/70', chipBg: 'bg-slate-500/10', chipFg: 'text-slate-600 dark:text-slate-300', ring: 'ring-slate-500/20', text: 'text-slate-600 dark:text-slate-300' },
+  emerald: { bar: 'bg-emerald-500/70', chipBg: 'bg-emerald-500/10', chipFg: 'text-emerald-600 dark:text-emerald-400', ring: 'ring-emerald-500/20', text: 'text-emerald-600 dark:text-emerald-400' },
+  amber: { bar: 'bg-amber-500/70', chipBg: 'bg-amber-500/10', chipFg: 'text-amber-600 dark:text-amber-400', ring: 'ring-amber-500/20', text: 'text-amber-600 dark:text-amber-400' },
+  violet: { bar: 'bg-violet-500/70', chipBg: 'bg-violet-500/10', chipFg: 'text-violet-600 dark:text-violet-400', ring: 'ring-violet-500/20', text: 'text-violet-600 dark:text-violet-400' },
+  sky: { bar: 'bg-sky-500/70', chipBg: 'bg-sky-500/10', chipFg: 'text-sky-600 dark:text-sky-400', ring: 'ring-sky-500/20', text: 'text-sky-600 dark:text-sky-400' },
+}
+
+function StatCard({
+  label,
+  value,
+  icon: Icon,
+  accent,
+  sub,
+}: {
+  label: string
+  value: number
+  icon: React.ComponentType<{ className?: string }>
+  accent: AccentKey
+  sub?: string
+}) {
+  const a = ACCENTS[accent]
+  return (
+    <Card className="dashboard-soft-surface group relative overflow-hidden transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg">
+      <span className={`absolute inset-x-0 top-0 h-0.5 ${a.bar}`} aria-hidden="true" />
+      <CardContent className="p-5">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
+            <p className="mt-2 text-3xl font-bold tracking-tight tabular-nums text-foreground">{value}</p>
+            {sub ? <p className="mt-2 text-xs text-muted-foreground">{sub}</p> : null}
+          </div>
+          <span
+            className={`flex size-10 shrink-0 items-center justify-center rounded-xl ring-1 transition-transform duration-300 group-hover:scale-105 ${a.chipBg} ${a.chipFg} ${a.ring}`}
+            aria-hidden="true"
+          >
+            <Icon className="size-5" />
+          </span>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
 export default function Dashboard() {
   const { user } = useAuth()
   const navigate = useNavigate()
@@ -158,76 +204,11 @@ export default function Dashboard() {
           </div>
 
           <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-            <Card className="dashboard-soft-surface">
-              <CardContent className="p-5">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">Total Informes</p>
-                    <p className="text-3xl font-bold text-foreground mt-1">{totalReports}</p>
-                    <p className="text-xs text-muted-foreground mt-2">Total de hoy</p>
-                  </div>
-                  <div className="size-10 rounded-full bg-muted flex items-center justify-center">
-                    <FileText className="size-5 text-muted-foreground" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="dashboard-soft-surface">
-              <CardContent className="p-5">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">Finalizados</p>
-                    <p className="text-3xl font-bold text-foreground mt-1">{totalFinalized}</p>
-                  </div>
-                  <div className="size-10 rounded-full bg-emerald-500/10 flex items-center justify-center">
-                    <CheckCircle2 className="size-5 text-emerald-600" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="dashboard-soft-surface">
-              <CardContent className="p-5">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">En Seguimiento</p>
-                    <p className="text-3xl font-bold text-foreground mt-1">{totalPending}</p>
-                  </div>
-                  <div className="size-10 rounded-full bg-amber-500/10 flex items-center justify-center">
-                    <Clock className="size-5 text-amber-600" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="dashboard-soft-surface">
-              <CardContent className="p-5">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">Validacion</p>
-                    <p className="text-3xl font-bold text-foreground mt-1">{totalValidacion}</p>
-                  </div>
-                  <div className="size-10 rounded-full bg-emerald-500/10 flex items-center justify-center">
-                    <ShieldCheck className="size-5 text-emerald-600" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="dashboard-soft-surface">
-              <CardContent className="p-5">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">Informativo</p>
-                    <p className="text-3xl font-bold text-foreground mt-1">{totalInformativo}</p>
-                  </div>
-                  <div className="size-10 rounded-full bg-sky-500/10 flex items-center justify-center">
-                    <Info className="size-5 text-sky-600" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <StatCard label="Total Informes" value={totalReports} icon={FileText} accent="slate" sub="Total de hoy" />
+            <StatCard label="Finalizados" value={totalFinalized} icon={CheckCircle2} accent="emerald" />
+            <StatCard label="En Seguimiento" value={totalPending} icon={Clock} accent="amber" />
+            <StatCard label="Validacion" value={totalValidacion} icon={ShieldCheck} accent="violet" />
+            <StatCard label="Informativo" value={totalInformativo} icon={Info} accent="sky" />
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
@@ -242,16 +223,19 @@ export default function Dashboard() {
               <CardContent className="space-y-3">
                 <div className="text-4xl font-bold text-foreground">{todayReports.length}</div>
                 <p className="text-sm text-muted-foreground">informes registrados hoy</p>
-                <div className="space-y-2 pt-2">
+                <div className="space-y-1 pt-2">
                   {[
-                    { label: 'Finalizados', count: todayReports.filter(r => isFinalizedStatus(r.status)).length, color: 'text-emerald-600' },
-                    { label: 'En seguimiento', count: todayReports.filter(r => r.status === 'Seguimiento de caso').length, color: 'text-amber-600' },
-                    { label: 'Validacion', count: todayReports.filter(r => r.status === 'Validacion').length, color: 'text-destructive' },
-                    { label: 'Informativo', count: todayReports.filter(r => r.status === 'Informativo').length, color: 'text-sky-600' },
-                  ].map(({ label, count, color }) => (
-                    <div key={label} className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">{label}</span>
-                      <span className={`font-medium ${color}`}>{count}</span>
+                    { label: 'Finalizados', count: todayReports.filter(r => isFinalizedStatus(r.status)).length, color: 'text-emerald-600 dark:text-emerald-400', dot: 'bg-emerald-500' },
+                    { label: 'En seguimiento', count: todayReports.filter(r => r.status === 'Seguimiento de caso').length, color: 'text-amber-600 dark:text-amber-400', dot: 'bg-amber-500' },
+                    { label: 'Validacion', count: todayReports.filter(r => r.status === 'Validacion').length, color: 'text-violet-600 dark:text-violet-400', dot: 'bg-violet-500' },
+                    { label: 'Informativo', count: todayReports.filter(r => r.status === 'Informativo').length, color: 'text-sky-600 dark:text-sky-400', dot: 'bg-sky-500' },
+                  ].map(({ label, count, color, dot }) => (
+                    <div key={label} className="flex items-center justify-between rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-accent">
+                      <span className="flex items-center gap-2 text-muted-foreground">
+                        <span className={`size-1.5 rounded-full ${dot}`} aria-hidden="true" />
+                        {label}
+                      </span>
+                      <span className={`font-semibold tabular-nums ${color}`}>{count}</span>
                     </div>
                   ))}
                 </div>
@@ -296,9 +280,12 @@ export default function Dashboard() {
                       }).length
 
                   return (
-                    <div key={label} className="rounded-lg border border-border/70 p-4">
+                    <div
+                      key={label}
+                      className="group rounded-xl border border-border/60 bg-card/50 p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-border hover:bg-accent hover:shadow-sm"
+                    >
                       <p className="text-xs uppercase tracking-wide text-muted-foreground">{label}</p>
-                      <p className={`mt-2 text-3xl font-bold ${color}`}>{count}</p>
+                      <p className={`mt-2 text-3xl font-bold tabular-nums ${color}`}>{count}</p>
                     </div>
                   )
                 })}
