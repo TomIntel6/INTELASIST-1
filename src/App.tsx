@@ -36,7 +36,8 @@ function ProtectedContent() {
 
   const { hasModuleAccess, hasPermission } = usePermissions()
   const canAccessReports = hasModuleAccess('reports')
-  const canAccessUsers = hasModuleAccess('users')
+  // Ver usuarios: por acceso al módulo (como antes) o por el permiso granular view_users.
+  const canAccessUsers = hasModuleAccess('users') || hasPermission(PERMISSIONS.USERS.VIEW)
   const canAccessAdmin = hasPermission(PERMISSIONS.SYSTEM.MANAGE_PERMISSIONS)
 
   return (

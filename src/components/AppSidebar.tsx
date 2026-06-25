@@ -82,7 +82,10 @@ export const AppSidebar = React.memo(function AppSidebar() {
   const avatarUrl = user?.user_metadata?.avatar_url as string | undefined
   const userRoles = React.useMemo(() => getUserRoles(user), [user])
   const canViewReportsModule = React.useMemo(() => hasModuleAccess('reports'), [hasModuleAccess])
-  const canViewUsersModule = React.useMemo(() => hasModuleAccess('users'), [hasModuleAccess])
+  const canViewUsersModule = React.useMemo(
+    () => hasModuleAccess('users') || hasPermission(PERMISSIONS.USERS.VIEW),
+    [hasModuleAccess, hasPermission]
+  )
   const canViewAdminModule = React.useMemo(
     () => hasPermission(PERMISSIONS.SYSTEM.MANAGE_PERMISSIONS),
     [hasPermission]
