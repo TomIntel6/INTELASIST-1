@@ -24,7 +24,7 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { fetchOnlineUsersFromServer, getNameColorClasses, getOnlineUsers, getPresenceStyleClasses, getRoleColorClasses, getUserRole, getUserRoles, useAuth, PRESENCE_STORAGE_KEY, PRESENCE_SYNC_STORAGE_KEY, USERS_SYNC_STORAGE_KEY, canAccessAdvancedAdmin } from '@/lib/auth'
+import { fetchOnlineUsersFromServer, getNameColorClasses, getOnlineUsers, getPresenceStyleClasses, getRoleColorClasses, getUserRole, getUserRoles, useAuth, PRESENCE_STORAGE_KEY, PRESENCE_SYNC_STORAGE_KEY, USERS_SYNC_STORAGE_KEY } from '@/lib/auth'
 import { getDefaultApiBase } from '@/lib/supabase'
 import { PERMISSIONS } from '@/lib/permissions'
 import { getReportFieldLabel } from '@/lib/report-alerts'
@@ -594,7 +594,10 @@ export const AppSidebar = React.memo(function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {canAccessAdvancedAdmin(user) && canViewAdminModule ? (
+        {/* Acceso al panel controlado por el permiso granular `manage_permissions`,
+            no por el rol Support. Cualquier rol al que se le otorgue ese permiso
+            verá y podrá gestionar el panel. */}
+        {canViewAdminModule ? (
           <SidebarGroup className="mt-2">
             <SidebarGroupContent>
               <SidebarMenu>
