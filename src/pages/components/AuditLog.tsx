@@ -17,7 +17,17 @@ import {
 } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { Spinner } from '@/components/ui/spinner'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import {
+  ChevronLeft,
+  ChevronRight,
+  ScrollText,
+  Search,
+  CheckCircle2,
+  XCircle,
+  Clock,
+  Trash2,
+  ShieldAlert,
+} from 'lucide-react'
 
 const MODULES = ['reports', 'users', 'evidence', 'updates', 'trash', 'system']
 const ACTIONS = [
@@ -122,13 +132,28 @@ export default function AuditLog() {
 
   const getStatusBadge = (status: string) => {
     if (status === 'success') {
-      return <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">Exitoso</Badge>
+      return (
+        <Badge variant="outline" className="gap-1 border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+          <CheckCircle2 className="size-3" aria-hidden="true" />
+          Exitoso
+        </Badge>
+      )
     }
     if (status === 'error') {
-      return <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">Error</Badge>
+      return (
+        <Badge variant="outline" className="gap-1 border-red-500/20 bg-red-500/10 text-red-600 dark:text-red-400">
+          <XCircle className="size-3" aria-hidden="true" />
+          Error
+        </Badge>
+      )
     }
 
-    return <Badge variant="outline" className="bg-slate-50 text-slate-700 border-slate-200">Pendiente</Badge>
+    return (
+      <Badge variant="outline" className="gap-1 border-amber-500/20 bg-amber-500/10 text-amber-600 dark:text-amber-400">
+        <Clock className="size-3" aria-hidden="true" />
+        Pendiente
+      </Badge>
+    )
   }
 
   const totalPages = Math.ceil(totalCount / limit)
@@ -164,33 +189,58 @@ export default function AuditLog() {
   }
 
   return (
-    <Card>
+    <div className="space-y-6">
+      {/* Page header */}
+      <div className="glass-panel relative overflow-hidden rounded-xl p-6">
+        <span className="brand-gradient-bg absolute inset-x-0 top-0 h-1" aria-hidden="true" />
+        <div className="flex items-start gap-4">
+          <span className="brand-monogram flex size-11 shrink-0 items-center justify-center rounded-xl">
+            <ScrollText className="size-5" aria-hidden="true" />
+          </span>
+          <div>
+            <p className="mb-1.5 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              <span className="brand-gradient-bg size-1.5 rounded-full" aria-hidden="true" />
+              Auditoría
+            </p>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">Auditoría del Sistema</h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Registro completo de todas las acciones realizadas en el sistema.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <Card>
       <CardHeader>
-        <CardTitle>Auditoría del Sistema</CardTitle>
+        <CardTitle className="text-base">Filtros</CardTitle>
         <CardDescription>
-          Registro completo de todas las acciones realizadas en el sistema.
+          Refina el listado por usuario, módulo o tipo de acción.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Filters */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
-            <Label htmlFor="email-filter" className="text-sm mb-2 block">
+            <Label htmlFor="email-filter" className="text-sm font-medium mb-2 block">
               Usuario (Email)
             </Label>
-            <Input
-              id="email-filter"
-              placeholder="Buscar por email..."
-              value={emailFilter}
-              onChange={(e) => {
-                setEmailFilter(e.target.value)
-                setPage(0)
-              }}
-            />
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+              <Input
+                id="email-filter"
+                placeholder="Buscar por email..."
+                value={emailFilter}
+                onChange={(e) => {
+                  setEmailFilter(e.target.value)
+                  setPage(0)
+                }}
+                className="pl-9"
+              />
+            </div>
           </div>
 
           <div>
-            <Label htmlFor="module-filter" className="text-sm mb-2 block">
+            <Label htmlFor="module-filter" className="text-sm font-medium mb-2 block">
               Módulo
             </Label>
             <Select value={moduleFilter} onValueChange={(value) => {
@@ -213,7 +263,7 @@ export default function AuditLog() {
           </div>
 
           <div>
-            <Label htmlFor="action-filter" className="text-sm mb-2 block">
+            <Label htmlFor="action-filter" className="text-sm font-medium mb-2 block">
               Acción
             </Label>
             <Select value={actionFilter} onValueChange={(value) => {
@@ -243,8 +293,9 @@ export default function AuditLog() {
         </div>
 
         {/* Results Count */}
-        <div className="text-sm text-slate-600">
-          Mostrando {logs.length} de {totalCount} registros
+        <div className="text-sm text-muted-foreground">
+          Mostrando <span className="font-medium text-foreground tabular-nums">{logs.length}</span> de{' '}
+          <span className="font-medium text-foreground tabular-nums">{totalCount}</span> registros
         </div>
 
         {/* Loading State */}
@@ -256,75 +307,85 @@ export default function AuditLog() {
 
         {/* Logs Table */}
         {deleteError && (
-          <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            {deleteError}
+          <div className="flex items-start gap-2 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-600 dark:text-red-400">
+            <ShieldAlert className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+            <span>{deleteError}</span>
           </div>
         )}
         {!loading && logs.length === 0 ? (
-          <div className="text-center py-8 text-slate-500">
-            No hay registros de auditoría con los filtros seleccionados
+          <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-border py-12 text-center">
+            <span className="flex size-10 items-center justify-center rounded-xl bg-muted text-muted-foreground ring-1 ring-border">
+              <ScrollText className="size-5" aria-hidden="true" />
+            </span>
+            <p className="text-sm text-muted-foreground">
+              No hay registros de auditoría con los filtros seleccionados
+            </p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b bg-slate-50">
-                  <th className="px-4 py-2 text-left font-medium">Fecha/Hora</th>
-                  <th className="px-4 py-2 text-left font-medium">Usuario</th>
-                  <th className="px-4 py-2 text-left font-medium">Acción</th>
-                  <th className="px-4 py-2 text-left font-medium">Módulo</th>
-                  <th className="px-4 py-2 text-left font-medium">Estado</th>
-                  <th className="px-4 py-2 text-right font-medium">Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {logs.map(log => (
-                  <tr key={log.id} className="border-b hover:bg-slate-50 transition-colors">
-                    <td className="px-4 py-2 text-xs text-slate-600">
-                      {formatDate(log.created_at)}
-                    </td>
-                    <td className="px-4 py-2">
-                      <div>
-                        <p className="font-medium text-slate-900">
-                          {getAuditUserLabel(log)}
-                        </p>
-                        <p className="text-xs text-slate-500">
-                          {log.user_email || log.user_id || '-'}
-                        </p>
-                      </div>
-                    </td>
-                    <td className="px-4 py-2">
-                      <Badge variant="outline">
-                        {AUDIT_ACTION_LABELS[log.action] || log.action}
-                      </Badge>
-                    </td>
-                    <td className="px-4 py-2 text-slate-700">{log.module}</td>
-                    <td className="px-4 py-2">{getStatusBadge(log.status || 'pending')}</td>
-                    <td className="px-4 py-2 text-right">
-                      {isSupport ? (
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={() => handleDeleteLog(String(log.id))}
-                          disabled={deletingId === String(log.id)}
-                        >
-                          {deletingId === String(log.id) ? 'Eliminando…' : 'Eliminar'}
-                        </Button>
-                      ) : (
-                        <span className="text-xs text-slate-400">Solo Support</span>
-                      )}
-                    </td>
+          <div className="overflow-hidden rounded-xl border border-border">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border bg-muted/50">
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">Fecha/Hora</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">Usuario</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">Acción</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">Módulo</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">Estado</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wide text-muted-foreground">Acciones</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {logs.map(log => (
+                    <tr key={log.id} className="border-b border-border transition-colors last:border-0 hover:bg-accent">
+                      <td className="px-4 py-3 text-xs tabular-nums text-muted-foreground">
+                        {formatDate(log.created_at)}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div>
+                          <p className="font-medium text-foreground">
+                            {getAuditUserLabel(log)}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {log.user_email || log.user_id || '-'}
+                          </p>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <Badge variant="outline" className="border-sky-500/20 bg-sky-500/10 text-sky-600 dark:text-sky-400">
+                          {AUDIT_ACTION_LABELS[log.action] || log.action}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-3 text-foreground">{log.module}</td>
+                      <td className="px-4 py-3">{getStatusBadge(log.status || 'pending')}</td>
+                      <td className="px-4 py-3 text-right">
+                        {isSupport ? (
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => handleDeleteLog(String(log.id))}
+                            disabled={deletingId === String(log.id)}
+                          >
+                            <Trash2 className="size-4" aria-hidden="true" />
+                            {deletingId === String(log.id) ? 'Eliminando…' : 'Eliminar'}
+                          </Button>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">Solo Support</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
 
         {/* Pagination */}
         <div className="flex items-center justify-between mt-4">
-          <div className="text-sm text-slate-600">
-            Página {page + 1} de {Math.max(1, totalPages)}
+          <div className="text-sm text-muted-foreground">
+            Página <span className="font-medium text-foreground tabular-nums">{page + 1}</span> de{' '}
+            <span className="font-medium text-foreground tabular-nums">{Math.max(1, totalPages)}</span>
           </div>
           <div className="flex gap-2">
             <Button
@@ -349,5 +410,6 @@ export default function AuditLog() {
         </div>
       </CardContent>
     </Card>
+    </div>
   )
 }

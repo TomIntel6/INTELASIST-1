@@ -5,15 +5,33 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 
 const API_BASE = getDefaultApiBase()
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Spinner } from '@/components/ui/spinner'
-import { AlertTriangle, CheckCircle2, AlertCircle, Zap, Users, Clock } from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { AlertTriangle, CheckCircle2, AlertCircle, Zap, Users, Clock, Activity, RefreshCw } from 'lucide-react'
 
 interface HealthIndicator {
   name: string
   status: 'healthy' | 'warning' | 'error'
   message: string
   icon: React.ReactNode
+}
+
+/** Estilos semánticos de chip por estado (claro + dark), reutilizando la escala del tema. */
+const STATUS_STYLES: Record<HealthIndicator['status'], { chip: string; bar: string }> = {
+  healthy: {
+    chip: 'bg-emerald-500/10 text-emerald-600 ring-emerald-500/20 dark:text-emerald-400',
+    bar: 'bg-emerald-500/70',
+  },
+  warning: {
+    chip: 'bg-amber-500/10 text-amber-600 ring-amber-500/20 dark:text-amber-400',
+    bar: 'bg-amber-500/70',
+  },
+  error: {
+    chip: 'bg-red-500/10 text-red-600 ring-red-500/20 dark:text-red-400',
+    bar: 'bg-red-500/70',
+  },
 }
 
 export default function SystemHealth() {
@@ -50,14 +68,14 @@ export default function SystemHealth() {
           name: 'Base de Datos',
           status: response.ok ? 'healthy' : 'error',
           message: response.ok ? 'Conexión activa' : 'No se puede conectar a la base de datos',
-          icon: <Zap className="size-4" />,
+          icon: <Zap className="size-5" />,
         })
       } catch (err) {
         checks.push({
           name: 'Base de Datos',
           status: 'error',
           message: 'Error de conexión',
-          icon: <Zap className="size-4" />,
+          icon: <Zap className="size-5" />,
         })
       }
 
@@ -70,14 +88,14 @@ export default function SystemHealth() {
           name: 'Servicio de Autenticación',
           status: health.status === 'healthy' ? 'healthy' : 'error',
           message: health.message || `${health.userCount || 0} usuarios registrados`,
-          icon: <Users className="size-4" />,
+          icon: <Users className="size-5" />,
         })
       } catch (err) {
         checks.push({
           name: 'Servicio de Autenticación',
           status: 'error',
           message: 'Servicio no disponible',
-          icon: <Users className="size-4" />,
+          icon: <Users className="size-5" />,
         })
       }
 
@@ -95,14 +113,14 @@ export default function SystemHealth() {
               : suspensionRatio > 30
                 ? `Advertencia: ${suspensionRatio.toFixed(1)}% suspendidos`
                 : `${stats.activeUsers}/${stats.totalUsers} usuarios activos`,
-          icon: <Users className="size-4" />,
+          icon: <Users className="size-5" />,
         })
       } catch (err) {
         checks.push({
           name: 'Estado de Usuarios',
           status: 'warning',
           message: 'No se puede verificar estado',
-          icon: <Users className="size-4" />,
+          icon: <Users className="size-5" />,
         })
       }
 
@@ -117,14 +135,14 @@ export default function SystemHealth() {
           name: 'Papelera',
           status,
           message: trashCount > 0 ? `${trashCount} elementos en papelera` : 'Papelera vacía',
-          icon: trashCount > 100 ? <AlertTriangle className="size-4" /> : <CheckCircle2 className="size-4" />,
+          icon: trashCount > 100 ? <AlertTriangle className="size-5" /> : <CheckCircle2 className="size-5" />,
         })
       } catch (err) {
         checks.push({
           name: 'Papelera',
           status: 'warning',
           message: 'No se puede verificar',
-          icon: <AlertCircle className="size-4" />,
+          icon: <AlertCircle className="size-5" />,
         })
       }
 
@@ -138,14 +156,14 @@ export default function SystemHealth() {
           name: 'Actividad del Sistema',
           status: hasActivity ? 'healthy' : 'warning',
           message: hasActivity ? 'Sistema con actividad normal' : 'Sin actividad en las últimas 24h',
-          icon: <Clock className="size-4" />,
+          icon: <Clock className="size-5" />,
         })
       } catch (err) {
         checks.push({
           name: 'Actividad del Sistema',
           status: 'warning',
           message: 'No se puede verificar',
-          icon: <Clock className="size-4" />,
+          icon: <Clock className="size-5" />,
         })
       }
 
@@ -160,17 +178,17 @@ export default function SystemHealth() {
   const getStatusBadge = (status: string) => {
     const badges: Record<string, React.ReactNode> = {
       healthy: (
-        <Badge className="bg-green-100 text-green-700 gap-1">
+        <Badge className="gap-1 border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
           <CheckCircle2 className="size-3" /> Saludable
         </Badge>
       ),
       warning: (
-        <Badge className="bg-amber-100 text-amber-700 gap-1">
+        <Badge className="gap-1 border-amber-500/20 bg-amber-500/10 text-amber-600 dark:text-amber-400">
           <AlertTriangle className="size-3" /> Advertencia
         </Badge>
       ),
       error: (
-        <Badge className="bg-red-100 text-red-700 gap-1">
+        <Badge className="gap-1 border-red-500/20 bg-red-500/10 text-red-600 dark:text-red-400">
           <AlertCircle className="size-3" /> Error
         </Badge>
       ),
@@ -191,6 +209,24 @@ export default function SystemHealth() {
 
   return (
     <div className="space-y-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="mb-1.5 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            <span className="brand-gradient-bg size-1.5 rounded-full" aria-hidden="true" />
+            Administración
+          </p>
+          <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight text-foreground">
+            <Activity className="size-6 text-muted-foreground" aria-hidden="true" />
+            Salud del sistema
+          </h1>
+          <p className="mt-1 text-xs text-muted-foreground">Métricas y estado de los servicios en tiempo real</p>
+        </div>
+        <Button onClick={checkHealth} variant="outline" size="sm" className="gap-2 self-start">
+          <RefreshCw className="size-4" />
+          Verificar ahora
+        </Button>
+      </div>
+
       {(hasErrors || hasWarnings) && (
         <Alert variant={hasErrors ? 'destructive' : 'default'}>
           <AlertTriangle className="h-4 w-4" />
@@ -203,59 +239,73 @@ export default function SystemHealth() {
         </Alert>
       )}
 
-      <div className="grid gap-4">
-        {indicators.map((indicator) => (
-          <Card key={indicator.name}>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3 flex-1">
-                  <div className="text-slate-600">{indicator.icon}</div>
-                  <div className="flex-1">
-                    <p className="font-medium text-slate-900">{indicator.name}</p>
-                    <p className="text-sm text-slate-600">{indicator.message}</p>
+      <div className="grid gap-4 sm:grid-cols-2">
+        {indicators.map((indicator) => {
+          const styles = STATUS_STYLES[indicator.status]
+          return (
+            <Card
+              key={indicator.name}
+              className="hover-lift relative overflow-hidden border bg-card shadow-sm transition-all hover:shadow-md"
+            >
+              <span className={cn('absolute inset-x-0 top-0 h-0.5', styles.bar)} aria-hidden="true" />
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex flex-1 items-center gap-3">
+                    <span
+                      className={cn(
+                        'flex size-10 shrink-0 items-center justify-center rounded-xl ring-1',
+                        styles.chip,
+                      )}
+                    >
+                      {indicator.icon}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                        {indicator.name}
+                      </p>
+                      <p className="text-sm font-medium text-foreground">{indicator.message}</p>
+                    </div>
                   </div>
+                  {getStatusBadge(indicator.status)}
                 </div>
-                {getStatusBadge(indicator.status)}
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+              </CardContent>
+            </Card>
+          )
+        })}
       </div>
 
-      <Card>
+      <Card className="border bg-card shadow-sm">
         <CardHeader>
-          <CardTitle>Recomendaciones</CardTitle>
-          <CardDescription>Acciones sugeridas basadas en el estado actual</CardDescription>
+          <CardTitle className="text-base font-semibold text-foreground">Recomendaciones</CardTitle>
+          <CardDescription className="text-xs text-muted-foreground">
+            Acciones sugeridas basadas en el estado actual
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-2 text-sm">
             {indicators
               .filter((i) => i.status !== 'healthy')
               .map((indicator) => (
-                <div key={indicator.name} className="flex items-start gap-2 p-2 bg-slate-50 rounded">
-                  <AlertCircle className="size-4 mt-0.5 text-amber-600 flex-shrink-0" />
-                  <div>
+                <div
+                  key={indicator.name}
+                  className="flex items-start gap-2 rounded-lg border border-border bg-amber-500/5 p-3"
+                >
+                  <AlertCircle className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                  <div className="text-foreground">
                     <span className="font-medium">{indicator.name}:</span> Revisa el estado y toma las acciones
                     necesarias
                   </div>
                 </div>
               ))}
             {indicators.every((i) => i.status === 'healthy') && (
-              <div className="flex items-start gap-2 p-2 bg-green-50 rounded">
-                <CheckCircle2 className="size-4 mt-0.5 text-green-600 flex-shrink-0" />
-                <span>Todos los sistemas funcionan correctamente</span>
+              <div className="flex items-start gap-2 rounded-lg border border-border bg-emerald-500/5 p-3">
+                <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                <span className="text-foreground">Todos los sistemas funcionan correctamente</span>
               </div>
             )}
           </div>
         </CardContent>
       </Card>
-
-      <button
-        onClick={checkHealth}
-        className="w-full px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors"
-      >
-        Verificar ahora
-      </button>
     </div>
   )
 }

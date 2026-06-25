@@ -6,8 +6,19 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 
 const API_BASE = getDefaultApiBase()
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import { Users, FileText, Trash2, Activity, TrendingUp, AlertCircle } from 'lucide-react'
+
+/** Paleta de acento semántica por estado (claro + dark). */
+type AccentKey = 'sky' | 'emerald' | 'amber' | 'rose' | 'violet'
+const ACCENTS: Record<AccentKey, { bar: string; chipBg: string; chipFg: string; ring: string }> = {
+  sky: { bar: 'bg-sky-500/70', chipBg: 'bg-sky-500/10', chipFg: 'text-sky-600 dark:text-sky-400', ring: 'ring-sky-500/20' },
+  emerald: { bar: 'bg-emerald-500/70', chipBg: 'bg-emerald-500/10', chipFg: 'text-emerald-600 dark:text-emerald-400', ring: 'ring-emerald-500/20' },
+  amber: { bar: 'bg-amber-500/70', chipBg: 'bg-amber-500/10', chipFg: 'text-amber-600 dark:text-amber-400', ring: 'ring-amber-500/20' },
+  rose: { bar: 'bg-rose-500/70', chipBg: 'bg-rose-500/10', chipFg: 'text-rose-600 dark:text-rose-400', ring: 'ring-rose-500/20' },
+  violet: { bar: 'bg-violet-500/70', chipBg: 'bg-violet-500/10', chipFg: 'text-violet-600 dark:text-violet-400', ring: 'ring-violet-500/20' },
+}
 
 interface SystemStats {
   totalUsers: number
@@ -78,14 +89,16 @@ export default function AdminOverview() {
 
   if (error) {
     return (
-      <Card className="border-red-200 bg-red-50">
+      <Card className="border-rose-500/30 bg-rose-500/5">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-red-900">
-            <AlertCircle className="size-5" />
+          <CardTitle className="flex items-center gap-2 text-rose-600 dark:text-rose-400">
+            <span className="flex size-10 items-center justify-center rounded-xl bg-rose-500/10 text-rose-600 ring-1 ring-rose-500/20 dark:text-rose-400" aria-hidden="true">
+              <AlertCircle className="size-5" />
+            </span>
             Error cargando estadísticas
           </CardTitle>
         </CardHeader>
-        <CardContent className="text-red-800">{error}</CardContent>
+        <CardContent className="text-sm text-muted-foreground">{error}</CardContent>
       </Card>
     )
   }
@@ -94,83 +107,101 @@ export default function AdminOverview() {
     return null
   }
 
-  const statCards = [
+  const statCards: Array<{
+    title: string
+    value: number | string
+    icon: React.ComponentType<{ className?: string }>
+    accent: AccentKey
+    trend: string
+  }> = [
     {
       title: 'Usuarios Totales',
       value: stats.totalUsers,
       icon: Users,
-      color: 'bg-blue-500/10 text-blue-700 border-blue-200',
+      accent: 'sky',
       trend: stats.activeUsers > 0 ? `${stats.activeUsers} activos` : 'Ninguno activo',
     },
     {
       title: 'Informes',
       value: stats.totalReports,
       icon: FileText,
-      color: 'bg-emerald-500/10 text-emerald-700 border-emerald-200',
+      accent: 'emerald',
       trend: `${(stats.totalReports / Math.max(stats.activeUsers, 1)).toFixed(1)} por usuario`,
     },
     {
       title: 'Usuarios Suspendidos',
       value: stats.suspendedUsers,
       icon: AlertCircle,
-      color: 'bg-amber-500/10 text-amber-700 border-amber-200',
+      accent: 'amber',
       trend: `${((stats.suspendedUsers / stats.totalUsers) * 100).toFixed(1)}% del total`,
     },
     {
       title: 'Papelera',
       value: stats.trashCount,
       icon: Trash2,
-      color: 'bg-red-500/10 text-red-700 border-red-200',
+      accent: 'rose',
       trend: 'Elementos pendientes',
     },
     {
       title: 'Auditoría (24h)',
       value: stats.recentAuditCount,
       icon: Activity,
-      color: 'bg-purple-500/10 text-purple-700 border-purple-200',
+      accent: 'violet',
       trend: 'Acciones registradas',
     },
     {
       title: 'Sistema',
       value: '✓',
       icon: TrendingUp,
-      color: 'bg-green-500/10 text-green-700 border-green-200',
+      accent: 'emerald',
       trend: 'Funcionando normalmente',
     },
   ]
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900">Resumen del Sistema</h2>
-          <p className="text-sm text-slate-600">Estadísticas en tiempo real del panel administrativo</p>
+          <p className="mb-1.5 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            <span className="brand-gradient-bg size-1.5 rounded-full" aria-hidden="true" />
+            Administración
+          </p>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Resumen del Sistema</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Estadísticas en tiempo real del panel administrativo</p>
         </div>
-        <button
+        <Button
+          variant="outline"
           onClick={() => {
             loadStats()
           }}
-          className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
         >
           Actualizar
-        </button>
+        </Button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
         {statCards.map((card) => {
           const Icon = card.icon
+          const a = ACCENTS[card.accent]
           return (
-            <Card key={card.title} className={`border ${card.color}`}>
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-sm font-medium">{card.title}</CardTitle>
-                  <Icon className="size-5 opacity-60" />
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  <div className="text-3xl font-bold">{card.value}</div>
-                  <p className="text-xs opacity-70">{card.trend}</p>
+            <Card
+              key={card.title}
+              className="group relative overflow-hidden rounded-xl border bg-card shadow-sm transition-all hover-lift hover:shadow-md"
+            >
+              <span className={`absolute inset-x-0 top-0 h-0.5 ${a.bar}`} aria-hidden="true" />
+              <CardContent className="p-5">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{card.title}</p>
+                    <p className="mt-2 text-3xl font-bold tabular-nums text-foreground">{card.value}</p>
+                    <p className="mt-2 text-xs text-muted-foreground">{card.trend}</p>
+                  </div>
+                  <span
+                    className={`flex size-10 shrink-0 items-center justify-center rounded-xl ring-1 transition-transform duration-300 group-hover:scale-105 ${a.chipBg} ${a.chipFg} ${a.ring}`}
+                    aria-hidden="true"
+                  >
+                    <Icon className="size-5" />
+                  </span>
                 </div>
               </CardContent>
             </Card>
@@ -179,25 +210,25 @@ export default function AdminOverview() {
       </div>
 
       {/* Quick Actions */}
-      <Card>
+      <Card className="rounded-xl border bg-card shadow-sm">
         <CardHeader>
-          <CardTitle>Acciones Rápidas</CardTitle>
+          <CardTitle className="text-base font-semibold text-foreground">Acciones Rápidas</CardTitle>
           <CardDescription>Operaciones comunes de administración</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <button className="px-3 py-2 text-sm font-medium text-slate-700 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            <Button variant="secondary" className="w-full">
               Suspender Inactivos
-            </button>
-            <button className="px-3 py-2 text-sm font-medium text-slate-700 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors">
+            </Button>
+            <Button variant="secondary" className="w-full">
               Exportar Auditoría
-            </button>
-            <button className="px-3 py-2 text-sm font-medium text-slate-700 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors">
+            </Button>
+            <Button variant="secondary" className="w-full">
               Vaciar Papelera
-            </button>
-            <button className="px-3 py-2 text-sm font-medium text-slate-700 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors">
+            </Button>
+            <Button variant="secondary" className="w-full">
               Generar Reporte
-            </button>
+            </Button>
           </div>
         </CardContent>
       </Card>
