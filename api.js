@@ -416,6 +416,7 @@ function serializeUserRecord(row) {
     rol: derivePrimaryRole(roles),
     roles,
     must_change_password: row.must_change_password === true,
+    avatar: row.avatar ?? null,
   }
 }
 
@@ -517,6 +518,7 @@ async function ensureUsersTable() {
   await pool.query(`ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS roles JSONB DEFAULT '[]'::jsonb`)
   await pool.query(`ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS must_change_password BOOLEAN DEFAULT FALSE`)
   await pool.query(`ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS creado_en TIMESTAMPTZ DEFAULT NOW()`)
+  await pool.query(`ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS avatar JSONB DEFAULT NULL`)
 
   await pool.query(`
     DO $$
@@ -1137,7 +1139,7 @@ async function updateUserRoleInSupabase(email, nextRole) {
 
 app.get('/usuarios', async (req, res) => {
   try {
-    const result = await pool.query('SELECT id, nombre, correo, rol, roles FROM usuarios')
+    const result = await pool.query('SELECT id, nombre, correo, rol, roles, avatar FROM usuarios')
     res.json(result.rows.map(serializeUserRecord))
   } catch (err) {
     console.error(err)
@@ -1156,7 +1158,7 @@ authRoutes.post('/login', async (req, res) => {
     }
 
     const result = await pool.query(
-      'SELECT id, nombre, correo, password, rol, roles, must_change_password FROM usuarios WHERE LOWER(correo) = LOWER($1)',
+      'SELECT id, nombre, correo, password, rol, roles, must_change_password, avatar FROM usuarios WHERE LOWER(correo) = LOWER($1)',
       [email]
     )
 
@@ -1389,21 +1391,52 @@ app.delete('/usuarios/:id', async (req, res) => {
 app.patch('/usuarios/:id', async (req, res) => {
   try {
     const id = Number(req.params.id)
-    const nombre = typeof req.body?.nombre === 'string' ? req.body.nombre.trim() : ''
 
     if (!Number.isInteger(id) || id <= 0) {
       res.status(400).json({ error: 'ID de usuario inválido' })
       return
     }
 
-    if (!nombre) {
+    const hasNombre = typeof req.body?.nombre === 'string'
+    const nombre = hasNombre ? req.body.nombre.trim() : ''
+    const hasAvatar = Object.prototype.hasOwnProperty.call(req.body || {}, 'avatar')
+    const avatar = hasAvatar ? req.body.avatar : undefined
+
+    if (hasNombre && !nombre) {
       res.status(400).json({ error: 'El nombre no puede estar vacío.' })
       return
     }
 
+    if (hasAvatar && avatar !== null && typeof avatar !== 'object') {
+      res.status(400).json({ error: 'El avatar debe ser un objeto o null.' })
+      return
+    }
+
+    // Construcción dinámica: se actualiza solo lo que llega en el cuerpo.
+    const sets = []
+    const values = []
+    let idx = 1
+
+    if (hasNombre) {
+      sets.push(`nombre = $${idx++}`)
+      values.push(nombre)
+    }
+
+    if (hasAvatar) {
+      sets.push(`avatar = $${idx++}`)
+      values.push(avatar === null ? null : JSON.stringify(avatar))
+    }
+
+    if (sets.length === 0) {
+      res.status(400).json({ error: 'No hay campos para actualizar.' })
+      return
+    }
+
+    values.push(id)
+
     const updated = await pool.query(
-      'UPDATE usuarios SET nombre = $1 WHERE id = $2 RETURNING id, nombre, correo, rol, roles',
-      [nombre, id]
+      `UPDATE usuarios SET ${sets.join(', ')} WHERE id = $${idx} RETURNING id, nombre, correo, rol, roles, avatar`,
+      values
     )
 
     if (updated.rowCount === 0) {
@@ -1414,7 +1447,7 @@ app.patch('/usuarios/:id', async (req, res) => {
     res.json({ ok: true, user: serializeUserRecord(updated.rows[0]) })
   } catch (err) {
     console.error(err)
-    res.status(500).json({ error: 'Error al actualizar el nombre del usuario.' })
+    res.status(500).json({ error: 'Error al actualizar el usuario.' })
   }
 })
 
@@ -2486,12 +2519,13 @@ app.get('/api/users/with-permissions', async (req, res) => {
         u.correo AS "email",
         u.nombre AS "fullName",
         u.rol AS "role",
+        u.avatar AS "avatar",
         COALESCE(up.modules_access ->> 'presence_badge_style', 'none') AS "presenceStyle",
         COALESCE(jsonb_object_agg(upd.permission_key, upd.granted) FILTER (WHERE upd.permission_key IS NOT NULL), '{}'::jsonb) AS "permissions"
       FROM usuarios u
       LEFT JOIN user_permissions up ON up.user_id = u.id
       LEFT JOIN user_permission_details upd ON upd.permission_id = up.id
-      GROUP BY u.id, u.correo, u.nombre, u.rol, up.modules_access
+      GROUP BY u.id, u.correo, u.nombre, u.rol, u.avatar, up.modules_access
       ORDER BY u.nombre ASC
     `)
 
@@ -2521,6 +2555,7 @@ app.get('/api/users/with-permissions', async (req, res) => {
         email: row.email,
         fullName: row.fullName,
         role: row.role,
+        avatar: row.avatar ?? null,
         presenceStyle: row.presenceStyle || 'none',
         permissions: completePermissions,
       }
@@ -2559,7 +2594,7 @@ app.get('/api/users/with-modules', async (req, res) => {
 
     // Fallback to expected module keys when DB has no stored modules_access values yet
     if (allModuleKeys.size === 0) {
-      allModuleKeys = new Set(['reports', 'evidence', 'updates', 'users', 'system', 'admin'])
+      allModuleKeys = new Set(['reports', 'evidence', 'updates', 'users', 'system', 'admin', 'profile'])
     }
 
     const usersWithModules = usersResult.rows.map(user => {

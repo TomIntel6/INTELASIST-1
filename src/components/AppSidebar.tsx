@@ -12,7 +12,6 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from '@/components/ui/sidebar'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -31,6 +30,11 @@ import { PERMISSIONS } from '@/lib/permissions'
 import { getReportFieldLabel } from '@/lib/report-alerts'
 import { PermissionsManagementService } from '@/lib/permissions-management'
 import { usePermissions } from '@/lib/permissions-context'
+import { UserAvatar } from '@/components/UserAvatar'
+import { ProfileAvatarEditor } from '@/components/ProfileAvatarEditor'
+import { normalizeAvatar } from '@/lib/avatar'
+import type { AvatarData } from '@/lib/avatar'
+import { toast } from 'sonner'
 import { LayoutDashboard, FileText, LogOut, FilePlus, Users, AlertCircle, Settings } from 'lucide-react'
 
 const ONLINE_USER_FETCH_INTERVAL_MS = 5 * 60 * 1000
@@ -69,7 +73,7 @@ const navItems = [
 ]
 
 export const AppSidebar = React.memo(function AppSidebar() {
-  const { user, signOut, updateCurrentUserProfile } = useAuth()
+  const { user, signOut, updateCurrentUserProfile, updateCurrentUserAvatar } = useAuth()
   const { permissions, hasModuleAccess, hasPermission } = usePermissions()
   const navigate = useNavigate()
   const location = useLocation()
@@ -81,7 +85,17 @@ export const AppSidebar = React.memo(function AppSidebar() {
   const rawDisplayName = (user?.user_metadata?.full_name as string) ?? user?.email ?? 'Usuario'
   const displayName = profileName || rawDisplayName
   const avatarUrl = user?.user_metadata?.avatar_url as string | undefined
+  const avatarData = React.useMemo(() => normalizeAvatar(user?.user_metadata?.avatar), [user])
   const userRoles = React.useMemo(() => getUserRoles(user), [user])
+  // El permiso granular controla la personalización; Admin/Support la conservan
+  // siempre porque son quienes administran los permisos.
+  const canCustomizeAvatar = React.useMemo(
+    () =>
+      hasPermission(PERMISSIONS.PROFILE.CUSTOMIZE_AVATAR) ||
+      userRoles.includes('Admin') ||
+      userRoles.includes('Support'),
+    [hasPermission, userRoles]
+  )
   const canViewReportsModule = React.useMemo(() => hasModuleAccess('reports'), [hasModuleAccess])
   const canViewUsersModule = React.useMemo(
     () => hasModuleAccess('users') || hasPermission(PERMISSIONS.USERS.VIEW),
@@ -109,15 +123,7 @@ export const AppSidebar = React.memo(function AppSidebar() {
   )
   const [onlineUsers, setOnlineUsers] = React.useState<ReturnType<typeof getOnlineUsers>>(() => getOnlineUsers())
   const [presenceStyles, setPresenceStyles] = React.useState<Record<string, string>>({})
-  const initials = React.useMemo(() =>
-    displayName
-      .split(' ')
-      .map((n: string) => n[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2),
-    [displayName]
-  )
+  const [avatarsByEmail, setAvatarsByEmail] = React.useState<Record<string, AvatarData | null>>({})
   const lastServerUsersRef = React.useRef<ReturnType<typeof getOnlineUsers> | null>(null)
   const remoteIntervalRef = React.useRef<number | null>(null)
   const isMountedRef = React.useRef(true)
@@ -131,10 +137,19 @@ export const AppSidebar = React.memo(function AppSidebar() {
 
   const refreshPresenceStyles = React.useCallback(async () => {
     try {
-      const nextStyles = await PermissionsManagementService.getPresenceStyles()
+      // Una sola petición trae estilo de presencia + avatar de cada usuario.
+      const directory = await PermissionsManagementService.getProfileDirectory()
+      const nextStyles: Record<string, string> = {}
+      const nextAvatars: Record<string, AvatarData | null> = {}
+      for (const [email, profile] of Object.entries(directory)) {
+        nextStyles[email] = profile.presenceStyle
+        nextAvatars[email] = profile.avatar
+      }
       setPresenceStyles(nextStyles)
+      setAvatarsByEmail(nextAvatars)
     } catch {
       setPresenceStyles(prev => prev)
+      setAvatarsByEmail(prev => prev)
     }
   }, [])
 
@@ -403,14 +418,18 @@ export const AppSidebar = React.memo(function AppSidebar() {
   }, [refreshPresenceStyles])
 
   const visibleUsers = React.useMemo(() => {
-    const list = onlineUsers.map(user => ({
-      email: user.email.trim().toLowerCase(),
-      fullName: user.fullName,
-      role: user.role,
-      roles: Array.isArray(user.roles) ? user.roles : (user.role ? [user.role] : []),
-      presenceStyle: user.presenceStyle || presenceStyles[user.email.trim().toLowerCase()] || 'none',
-      reportsCreated: 0,
-    }))
+    const list = onlineUsers.map(user => {
+      const email = user.email.trim().toLowerCase()
+      return {
+        email,
+        fullName: user.fullName,
+        role: user.role,
+        roles: Array.isArray(user.roles) ? user.roles : (user.role ? [user.role] : []),
+        presenceStyle: user.presenceStyle || presenceStyles[email] || 'none',
+        avatar: avatarsByEmail[email] ?? null,
+        reportsCreated: 0,
+      }
+    })
 
     const currentUser = user ? {
       email: String(user.email).trim().toLowerCase(),
@@ -418,6 +437,8 @@ export const AppSidebar = React.memo(function AppSidebar() {
       role: getUserRole(user),
       roles: getUserRoles(user),
       presenceStyle: presenceStyles[String(user.email).trim().toLowerCase()] || 'none',
+      // El avatar propio sale de la sesión (más actual que el directorio remoto).
+      avatar: avatarData ?? avatarsByEmail[String(user.email).trim().toLowerCase()] ?? null,
       reportsCreated: 0,
     } : null
 
@@ -439,15 +460,7 @@ export const AppSidebar = React.memo(function AppSidebar() {
     }
 
     return Array.from(mergedByEmail.values())
-  }, [onlineUsers, user, presenceStyles])
-
-  const getUserInitials = (value: string) => value
-    .split(' ')
-    .map(part => part?.trim())
-    .filter(Boolean)
-    .slice(0, 2)
-    .map(part => part[0]?.toUpperCase())
-    .join('')
+  }, [onlineUsers, user, presenceStyles, avatarsByEmail, avatarData])
 
   const openProfile = (open: boolean) => {
     setProfileOpen(open)
@@ -503,6 +516,12 @@ export const AppSidebar = React.memo(function AppSidebar() {
     } finally {
       setProfileSaving(false)
     }
+  }
+
+  const handleAvatarSave = async (avatar: AvatarData) => {
+    // Si lanza, el editor mostrará el error en línea; el toast solo corre en éxito.
+    await updateCurrentUserAvatar(avatar)
+    toast.success('Avatar actualizado correctamente.')
   }
 
   return (
@@ -641,11 +660,12 @@ export const AppSidebar = React.memo(function AppSidebar() {
                     <div key={user.email} className={`flex items-center justify-between gap-1.5 rounded-md border border-transparent bg-sidebar/80 px-1.5 py-1 shadow-[0_4px_12px_-12px_rgba(15,23,42,0.25)] transition-all duration-300 ${getPresenceStyleClasses(user.presenceStyle)}`}>
                       <div className="flex items-center gap-1.5 min-w-0">
                         <div className="relative shrink-0">
-                          <Avatar className="size-6 border border-white/40 bg-primary/10 text-primary">
-                            <AvatarFallback className="text-[8px] font-semibold">
-                              {getUserInitials(user.fullName || user.email || 'U') || 'U'}
-                            </AvatarFallback>
-                          </Avatar>
+                          <UserAvatar
+                            avatar={user.avatar}
+                            name={user.fullName || user.email || 'U'}
+                            size={24}
+                            className="border border-white/40"
+                          />
                           <span className="absolute -bottom-0.5 -right-0.5 inline-flex h-2 w-2 rounded-full border-1 border-sidebar bg-emerald-500" />
                         </div>
                         <div className="min-w-0">
@@ -678,10 +698,20 @@ export const AppSidebar = React.memo(function AppSidebar() {
           <div className="h-px bg-gradient-to-r from-transparent via-border to-transparent" />
         </div>
         <div className="flex items-center gap-3 px-2 py-1 group-data-[collapsible=icon]:justify-center">
-          <Avatar size="sm" className="transition-transform duration-150 hover:scale-105 hover:shadow-[0_0_18px_rgba(59,130,246,0.22)]">
-            <AvatarImage src={avatarUrl} alt={displayName} />
-            <AvatarFallback>{initials}</AvatarFallback>
-          </Avatar>
+          <button
+            type="button"
+            onClick={() => openProfile(true)}
+            title="Editar perfil y avatar"
+            className="shrink-0 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+          >
+            <UserAvatar
+              avatar={avatarData}
+              name={displayName}
+              fallbackImageUrl={avatarUrl}
+              size={36}
+              className="border border-white/40 shadow-sm transition-transform duration-150 hover:scale-105 hover:shadow-[0_0_18px_rgba(59,130,246,0.22)]"
+            />
+          </button>
           <div className="flex flex-col min-w-0 flex-1 group-data-[collapsible=icon]:hidden">
             <button
               type="button"
@@ -713,28 +743,36 @@ export const AppSidebar = React.memo(function AppSidebar() {
         </div>
 
         <Dialog open={profileOpen} onOpenChange={openProfile}>
-          <DialogContent className="sm:max-w-md">
+          <DialogContent className="sm:max-w-2xl max-h-[88vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Perfil del usuario</DialogTitle>
               <DialogDescription>
-                Actualiza tu nombre visible en la aplicación y en el listado de usuarios conectados.
+                Actualiza tu nombre y personaliza tu avatar (foto o personaje).
               </DialogDescription>
             </DialogHeader>
 
-            <div className="space-y-4 py-1">
-              <div className="space-y-2">
-                <Label htmlFor="profile-name">Nombre completo</Label>
-                <Input
-                  id="profile-name"
-                  value={profileName}
-                  onChange={event => setProfileName(event.target.value)}
-                  placeholder="Nombre completo"
-                />
+            <div className="space-y-5 py-1">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="profile-name">Nombre completo</Label>
+                  <Input
+                    id="profile-name"
+                    value={profileName}
+                    onChange={event => setProfileName(event.target.value)}
+                    placeholder="Nombre completo"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="profile-email">Correo</Label>
+                  <Input id="profile-email" value={user?.email ?? ''} disabled />
+                </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="profile-email">Correo</Label>
-                <Input id="profile-email" value={user?.email ?? ''} disabled />
+              <div className="flex justify-end">
+                <Button size="sm" onClick={handleProfileSave} disabled={profileSaving}>
+                  {profileSaving ? 'Guardando...' : 'Guardar nombre'}
+                </Button>
               </div>
 
               {profileMessage ? (
@@ -742,14 +780,31 @@ export const AppSidebar = React.memo(function AppSidebar() {
                   {profileMessage}
                 </p>
               ) : null}
+
+              <div className="relative">
+                <div className="h-px bg-gradient-to-r from-transparent via-border to-transparent" />
+              </div>
+
+              <div className="space-y-3">
+                <div>
+                  <h3 className="text-sm font-semibold text-foreground">Avatar de perfil</h3>
+                  <p className="text-xs text-muted-foreground">
+                    Personaliza color de piel, ojos, cejas, cabello y más, o sube una imagen.
+                  </p>
+                </div>
+
+                <ProfileAvatarEditor
+                  value={avatarData}
+                  displayName={displayName}
+                  canCustomize={canCustomizeAvatar}
+                  onSave={handleAvatarSave}
+                />
+              </div>
             </div>
 
             <DialogFooter>
               <Button variant="outline" onClick={() => openProfile(false)} disabled={profileSaving}>
-                Cancelar
-              </Button>
-              <Button onClick={handleProfileSave} disabled={profileSaving}>
-                {profileSaving ? 'Guardando...' : 'Guardar cambios'}
+                Cerrar
               </Button>
             </DialogFooter>
           </DialogContent>

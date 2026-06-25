@@ -1,4 +1,6 @@
 import * as React from 'react'
+import type { AvatarData } from '@/lib/avatar'
+import { normalizeAvatar } from '@/lib/avatar'
 
 export type UserRole = 'Agente' | 'Admin' | 'Support' | 'Gerente'
 
@@ -13,6 +15,7 @@ export interface LocalUser {
     roles?: UserRole[]
     must_change_password?: boolean
     avatar_url?: string
+    avatar?: AvatarData | null
   }
 }
 
@@ -26,6 +29,7 @@ interface AuthContextValue {
   updatePassword: (newPassword: string) => Promise<void>
   updateCurrentUserRole: (role: UserRole) => Promise<void>
   updateCurrentUserProfile: (fullName: string) => Promise<void>
+  updateCurrentUserAvatar: (avatar: AvatarData | null) => Promise<void>
   signOut: () => Promise<void>
 }
 
@@ -220,6 +224,7 @@ function normalizeUserRecord(record: Record<string, unknown>): LocalUser | null 
     : roleFromRecord
       ? [roleFromRecord]
       : []
+  const avatar = normalizeAvatar(record.avatar)
 
   return {
     id,
@@ -229,6 +234,7 @@ function normalizeUserRecord(record: Record<string, unknown>): LocalUser | null 
       role: derivePrimaryRole(roles),
       roles: roles.length > 0 ? roles : undefined,
       must_change_password: false,
+      avatar,
     },
   }
 }
@@ -1217,6 +1223,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     upsertOnlineUser(nextUser)
   }, [persistCurrentUser, user])
 
+  const updateCurrentUserAvatar = React.useCallback(async (avatar: AvatarData | null) => {
+    if (!user) {
+      return
+    }
+
+    const normalized = normalizeAvatar(avatar)
+
+    const nextUser: LocalUser = {
+      ...user,
+      user_metadata: {
+        ...user.user_metadata,
+        avatar: normalized,
+      },
+    }
+
+    // Persistir en el backend localizando el id numérico del usuario.
+    try {
+      const registros = await requestJson<Record<string, unknown>[]>(`${API_BASE_URL}/usuarios`)
+      const record = (Array.isArray(registros) ? registros : []).find(r => typeof r?.correo === 'string' && r.correo.toLowerCase() === (user.email ?? '').toLowerCase())
+      const id = record && (typeof record.id === 'number' || typeof record.id === 'string') ? String(record.id) : null
+
+      if (id) {
+        await requestJson(`${API_BASE_URL}/usuarios/${encodeURIComponent(id)}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ avatar: normalized }),
+        })
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      throw new Error(`No se pudo actualizar el avatar: ${msg}`)
+    }
+
+    persistCurrentUser(nextUser)
+    upsertOnlineUser(nextUser)
+  }, [persistCurrentUser, user])
+
   const signOut = async () => {
     await removeOnlineUser(user?.id)
     setUser(null)
@@ -1235,6 +1277,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       updatePassword,
       updateCurrentUserRole,
       updateCurrentUserProfile,
+      updateCurrentUserAvatar,
       signOut,
     }}>
       {children}
@@ -1262,6 +1305,7 @@ export function useAuth() {
       },
       updateCurrentUserRole: async () => undefined,
       updateCurrentUserProfile: async () => {},
+      updateCurrentUserAvatar: async () => {},
       signOut: async () => {},
     } satisfies AuthContextValue
   }

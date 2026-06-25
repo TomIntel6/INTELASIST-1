@@ -2,6 +2,8 @@ import { getDefaultApiBase } from '@/lib/supabase'
 import type { PermissionKey } from '@/lib/permissions'
 import { PERMISSIONS, DEFAULT_ROLE_PERMISSIONS, DEFAULT_MODULE_ACCESS, getAllPermissionKeys, getModuleKeyForPermission } from '@/lib/permissions'
 import type { UserRole } from '@/lib/auth'
+import type { AvatarData } from '@/lib/avatar'
+import { normalizeAvatar } from '@/lib/avatar'
 import { AuditService } from '@/lib/audit-service'
 
 const API_BASE = getDefaultApiBase()
@@ -14,6 +16,7 @@ export interface UserPermissionData {
 interface UserWithPermissionsPayload {
   email?: string
   presenceStyle?: string
+  avatar?: AvatarData | null
   permissions?: Record<string, unknown>
 }
 
@@ -74,10 +77,11 @@ export class PermissionsManagementService {
     const response = await fetch(`${API_BASE}/api/users/with-permissions`)
     if (!response.ok) throw new Error('Failed to fetch users with permissions')
 
-    const users = await response.json() as Array<UserWithPermissionsPayload & { permissions?: Record<string, unknown>; presenceStyle?: string }>
+    const users = await response.json() as Array<UserWithPermissionsPayload & { permissions?: Record<string, unknown>; presenceStyle?: string; avatar?: unknown }>
     return users.map((user) => ({
       ...user,
       presenceStyle: typeof user.presenceStyle === 'string' && user.presenceStyle.trim() ? user.presenceStyle : 'none',
+      avatar: normalizeAvatar(user.avatar),
       permissions: normalizePermissionMap(user.permissions),
     }))
   }
@@ -88,6 +92,24 @@ export class PermissionsManagementService {
       const email = String(user.email || '').trim().toLowerCase()
       if (email) {
         acc[email] = user.presenceStyle || 'none'
+      }
+      return acc
+    }, {})
+  }
+
+  /**
+   * Directorio de perfiles por email: estilo de presencia + avatar. Una sola
+   * petición que alimenta el panel "Conectados" (animación e imagen/personaje).
+   */
+  static async getProfileDirectory(): Promise<Record<string, { presenceStyle: string; avatar: AvatarData | null }>> {
+    const users = await this.getUsersWithPermissions()
+    return users.reduce<Record<string, { presenceStyle: string; avatar: AvatarData | null }>>((acc, user) => {
+      const email = String(user.email || '').trim().toLowerCase()
+      if (email) {
+        acc[email] = {
+          presenceStyle: user.presenceStyle || 'none',
+          avatar: user.avatar ?? null,
+        }
       }
       return acc
     }, {})

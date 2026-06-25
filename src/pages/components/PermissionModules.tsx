@@ -172,6 +172,7 @@ export default function PermissionModules() {
                       orange: 'bg-orange-100 text-orange-700 border-orange-200',
                       red: 'bg-red-100 text-red-700 border-red-200',
                       pink: 'bg-pink-100 text-pink-700 border-pink-200',
+                      teal: 'bg-teal-100 text-teal-700 border-teal-200',
                     }
 
                     return (
