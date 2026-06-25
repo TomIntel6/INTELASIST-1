@@ -173,15 +173,20 @@ export default function Dashboard() {
 
   return (
     <div className="p-6">
-      <div className="floating-surface min-h-[calc(100vh-5rem)] rounded-[2rem] border border-primary/20 bg-card/95 p-6 shadow-[0_34px_110px_-36px_rgba(59,130,246,0.34),0_18px_42px_-24px_rgba(15,23,42,0.3)] backdrop-blur-md md:p-8 dark:border-primary/35 dark:shadow-[0_34px_120px_-36px_rgba(96,165,250,0.42),0_20px_48px_-26px_rgba(15,23,42,0.38)]">
+      <div className="floating-surface relative min-h-[calc(100vh-5rem)] overflow-hidden rounded-[2rem] border border-border/60 bg-card/95 p-6 shadow-[0_30px_90px_-46px_rgba(15,23,42,0.45)] backdrop-blur-md md:p-8">
+        <span className="brand-gradient-bg pointer-events-none absolute inset-x-0 top-0 h-1 opacity-80" aria-hidden="true" />
         <div className="space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
+              <p className="mb-1.5 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                <span className="brand-gradient-bg size-1.5 rounded-full" aria-hidden="true" />
+                Panel de control
+              </p>
               <h1 className="text-2xl font-bold text-foreground">
                 Bienvenido, <span className={getNameColorClasses(displayName)}>{displayName.split(' ')[0]}</span>
               </h1>
               <p className="text-sm text-muted-foreground mt-1">
-                Panel de control — Hoy, {currentDay.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                Hoy, {currentDay.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
               </p>
               <div className="mt-2 flex flex-wrap items-center gap-2">
                 {userRoles.map(role => (

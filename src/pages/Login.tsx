@@ -131,9 +131,14 @@ export default function Login() {
               <div className="flex size-12 items-center justify-center rounded-2xl bg-slate-900/80 ring-1 ring-cyan-500/20">
                 <img src="/intelasist.png" alt="Logo INTELASIST" className="size-8 object-contain" />
               </div>
-              <span className="text-sm font-semibold uppercase tracking-[0.25em] text-cyan-300">
-                INTELASIST
-              </span>
+              <div className="leading-tight">
+                <span className="block text-sm font-semibold uppercase tracking-[0.25em] text-cyan-300">
+                  INTELASIST
+                </span>
+                <span className="block text-[11px] tracking-wide text-slate-400">
+                  Inteligencia Asistida · IA
+                </span>
+              </div>
             </div>
 
             <h2 className="mt-10 max-w-md text-4xl font-semibold leading-tight tracking-tight text-white">
