@@ -22,7 +22,7 @@ import { usePermissions } from '@/lib/permissions-context'
 import type { PermissionKey } from '@/lib/permissions'
 import { AuditService } from '@/lib/audit-service'
 import { PERMISSIONS } from '@/lib/permissions'
-import { ArrowLeft, Send, User, Calendar, Car, FileText, Wrench, Image as ImageIcon, ZoomIn, Copy, History } from 'lucide-react'
+import { ArrowLeft, Send, User, Calendar, Car, FileText, Wrench, Image as ImageIcon, ZoomIn, Copy, History, Pencil } from 'lucide-react'
 
 const STATUS_BADGE: Record<string, string> = {
   'Caso Finalizado': 'bg-emerald-500/15 text-emerald-700 border-emerald-200',
@@ -119,6 +119,8 @@ export default function ReportDetail() {
   const canViewReports = hasPermission(PERMISSIONS.REPORTS.VIEW as PermissionKey) || hasPermission(PERMISSIONS.REPORTS.VIEW_ALL as PermissionKey)
   const canAddUpdates = hasPermission(PERMISSIONS.UPDATES.ADD as PermissionKey)
   const canChangeReportStatus = hasPermission(PERMISSIONS.REPORTS.CHANGE_STATUS as PermissionKey)
+  // La edición de informes ya creados requiere el permiso de gestión de permisos.
+  const canEditReports = hasPermission(PERMISSIONS.SYSTEM.MANAGE_PERMISSIONS as PermissionKey)
 
   const cachedReport = id ? getCachedReportById(id) : null
   const [report, setReport] = React.useState<Report | null>(cachedReport)
@@ -423,17 +425,30 @@ export default function ReportDetail() {
             </p>
           </div>
         </div>
-        {hasPermission(PERMISSIONS.SYSTEM.VIEW_AUDIT_LOGS as PermissionKey) && (
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={() => setShowAuditPanel(!showAuditPanel)}
-            className="gap-2"
-          >
-            <History className="size-4" />
-            Historial
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          {canEditReports && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate(`/informes/${report.id}/editar`)}
+              className="gap-2"
+            >
+              <Pencil className="size-4" />
+              Editar
+            </Button>
+          )}
+          {hasPermission(PERMISSIONS.SYSTEM.VIEW_AUDIT_LOGS as PermissionKey) && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowAuditPanel(!showAuditPanel)}
+              className="gap-2"
+            >
+              <History className="size-4" />
+              Historial
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">

@@ -53,6 +53,10 @@ function ProtectedContent() {
           element={canAccessReports ? <NewReport /> : <Navigate to="/dashboard" replace />}
         />
         <Route
+          path="informes/:id/editar"
+          element={canAccessReports && canAccessAdmin ? <NewReport /> : <Navigate to="/dashboard" replace />}
+        />
+        <Route
           path="informes/:id"
           element={canAccessReports ? <ReportDetail /> : <Navigate to="/dashboard" replace />}
         />

@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/select'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Spinner } from '@/components/ui/spinner'
-import { SERVICE_TYPES, REPORT_STATUSES, MONTHS, type ReportStatus, createReport, uploadEvidenceFile } from '@/lib/supabase'
+import { SERVICE_TYPES, REPORT_STATUSES, MONTHS, type ReportStatus, type Report, createReport, updateReport, loadReportWithUpdates, uploadEvidenceFile } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth'
 import { usePermissions } from '@/lib/permissions-context'
 import { AuditService } from '@/lib/audit-service'
@@ -23,13 +23,31 @@ import { PERMISSIONS } from '@/lib/permissions'
 import { ArrowLeft, Save, Upload, X } from 'lucide-react'
 import { buildIncompleteReportSummary } from '@/lib/report-alerts'
 
+// El comentario se guarda con el prefijo "Motivo: ..." cuando el estado es
+// Validacion/Informativo. Al editar separamos el motivo del texto libre.
+function splitObservationComment(comment: string): { reason: string | null; text: string } {
+  const trimmed = (comment ?? '').trim()
+  const prefix = 'Motivo:'
+  if (trimmed.startsWith(prefix)) {
+    const [firstLine, ...rest] = trimmed.split(/\r?\n/)
+    return { reason: firstLine.slice(prefix.length).trim() || null, text: rest.join('\n').trim() }
+  }
+  return { reason: null, text: trimmed }
+}
+
 export default function NewReport() {
   const navigate = useNavigate()
+  const { id: editId } = useParams<{ id?: string }>()
+  const isEditMode = Boolean(editId)
   const { user } = useAuth()
   const { hasPermission } = usePermissions()
   const canCreateReports = hasPermission(PERMISSIONS.REPORTS.CREATE as PermissionKey)
+  // La edición de informes ya creados queda restringida al permiso de gestión de permisos.
+  const canEditReports = hasPermission(PERMISSIONS.SYSTEM.MANAGE_PERMISSIONS as PermissionKey)
   const canUploadEvidence = hasPermission(PERMISSIONS.EVIDENCE.UPLOAD as PermissionKey)
   const [saving, setSaving] = React.useState(false)
+  const [loadingReport, setLoadingReport] = React.useState(isEditMode)
+  const existingReportRef = React.useRef<Report | null>(null)
   const [error, setError] = React.useState<string | null>(null)
   const [periodDate, setPeriodDate] = React.useState(() => new Date())
 
@@ -87,6 +105,54 @@ const [form, setForm] = React.useState<NewReportForm>({
       isMountedRef.current = false
     }
   }, [])
+
+  // Modo edición: carga el informe existente y precarga el formulario.
+  React.useEffect(() => {
+    if (!editId || !canEditReports) {
+      return
+    }
+
+    let cancelled = false
+    setLoadingReport(true)
+    setError(null)
+
+    void (async () => {
+      const report = await loadReportWithUpdates(editId)
+      if (cancelled) {
+        return
+      }
+
+      if (!report) {
+        setError('No se pudo cargar el informe a editar.')
+        setLoadingReport(false)
+        return
+      }
+
+      existingReportRef.current = report
+      const { reason, text } = splitObservationComment(report.observation_comment)
+      setForm({
+        month: report.month,
+        year: report.year,
+        insured_name: report.insured_name ?? '',
+        plate: report.plate ?? '',
+        policy: report.policy ?? '',
+        service_type: report.service_type ?? '',
+        coverage: report.coverage ?? '',
+        brand: report.brand ?? '',
+        model: report.model ?? '',
+        color: report.color ?? '',
+        year_vehicle: report.year_vehicle != null ? String(report.year_vehicle) : '',
+        status: report.status,
+        observation_comment: text,
+        motivo: reason ?? '',
+      })
+      setLoadingReport(false)
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [editId, canEditReports])
 
   type EvidenceItem = { file: File; preview: string }
   const [evidenceItems, setEvidenceItems] = React.useState<EvidenceItem[]>([])
@@ -151,6 +217,11 @@ const [form, setForm] = React.useState<NewReportForm>({
 
   // Función para registrar intento fallido (reutilizable)
   const registerFailedAttempt = React.useCallback(async () => {
+    // En modo edición no se registran "intentos fallidos": el informe ya existe.
+    if (isEditMode) {
+      return
+    }
+
     if (failedAttemptRegisteredRef.current) {
       console.log('⏹️ Intento fallido ya registrado, se omite duplicado')
       return
@@ -211,7 +282,7 @@ const [form, setForm] = React.useState<NewReportForm>({
         }
       }
     }
-  }, [user])
+  }, [user, isEditMode])
 
   // Efecto para detectar cuando el usuario abandona la página (desmonta el componente)
   React.useEffect(() => {
@@ -230,7 +301,7 @@ const [form, setForm] = React.useState<NewReportForm>({
     const hasIncompleteData = summary.missingFields.length > 0
 
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (!hasSomeInput || !hasIncompleteData || saving) {
+      if (isEditMode || !hasSomeInput || !hasIncompleteData || saving) {
         return
       }
 
@@ -265,7 +336,7 @@ const [form, setForm] = React.useState<NewReportForm>({
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload)
     }
-  }, [form, user, saving])
+  }, [form, user, saving, isEditMode])
 
   React.useEffect(() => {
     const now = new Date()
@@ -278,12 +349,16 @@ const [form, setForm] = React.useState<NewReportForm>({
   }, [periodDate])
 
   React.useEffect(() => {
+    // En modo edición el período proviene del informe cargado; no se sobrescribe.
+    if (isEditMode) {
+      return
+    }
     setForm(prev => ({
       ...prev,
       month: MONTHS[periodDate.getMonth()],
       year: periodDate.getFullYear(),
     }))
-  }, [periodDate])
+  }, [periodDate, isEditMode])
 
   const set = (field: string, value: string | number) =>
     setForm(prev => ({ ...prev, [field]: value }))
@@ -357,12 +432,17 @@ const [form, setForm] = React.useState<NewReportForm>({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    // Check permission to create reports
-    if (!canCreateReports) {
+    // Permisos: crear requiere create_reports; editar requiere manage_permissions.
+    if (isEditMode) {
+      if (!canEditReports) {
+        setError('No tienes permisos para editar informes.')
+        return
+      }
+    } else if (!canCreateReports) {
       setError('No tienes permisos para crear informes.')
       return
     }
-    
+
     // Validar campos requeridos
     const requiredFields = {
       service_type: 'tipo de servicio',
@@ -405,21 +485,12 @@ const [form, setForm] = React.useState<NewReportForm>({
 
     const displayName = user?.user_metadata?.full_name ?? user?.email ?? ''
 
-    let evidencePayload: {
-      evidence_url: string | null
-      evidence_filename: string | null
-      evidence_path: string | null
-      evidence_urls: Array<{ url: string; filename: string; path: string }> | null
-    } = {
-      evidence_url: null,
-      evidence_filename: null,
-      evidence_path: null,
-      evidence_urls: null,
-    }
-
+    // Subir evidencias nuevas (si las hay). En modo edición se añaden a las ya
+    // existentes; nunca se eliminan las anteriores.
+    let uploadedItems: Array<{ url: string; filename: string; path: string }> = []
     if (evidenceItems.length > 0) {
       try {
-        const uploadedItems = await Promise.all(
+        uploadedItems = await Promise.all(
           evidenceItems.map(async (item) => {
             const uploaded = await uploadEvidenceFile(item.file)
             return {
@@ -432,13 +503,6 @@ const [form, setForm] = React.useState<NewReportForm>({
 
         if (!isMountedRef.current) {
           return
-        }
-
-        evidencePayload = {
-          evidence_url: uploadedItems[0]?.url ?? null,
-          evidence_filename: uploadedItems[0]?.filename ?? null,
-          evidence_path: uploadedItems[0]?.path ?? null,
-          evidence_urls: uploadedItems,
         }
       } catch (uploadError) {
         if (isMountedRef.current) {
@@ -454,7 +518,7 @@ const [form, setForm] = React.useState<NewReportForm>({
       ? `Motivo: ${form.motivo}${observationComment ? `\n\n${observationComment}` : ''}`
       : observationComment
 
-    const basePayload = {
+    const coreFields = {
       month: form.month,
       year: form.year,
       insured_name: form.insured_name.trim(),
@@ -467,22 +531,71 @@ const [form, setForm] = React.useState<NewReportForm>({
       year_vehicle: form.year_vehicle ? parseInt(form.year_vehicle) : null,
       status: form.status as ReportStatus,
       observation_comment: fullObservationComment,
-      ...evidencePayload,
+      coverage: form.coverage || null,
+    }
+
+    if (isEditMode && editId) {
+      // ----- EDICIÓN -----
+      const changes: Partial<Report> = { ...coreFields }
+
+      if (uploadedItems.length > 0) {
+        const existingEvidence = existingReportRef.current?.evidence_urls ?? []
+        const mergedEvidence = [...existingEvidence, ...uploadedItems]
+        changes.evidence_urls = mergedEvidence
+        changes.evidence_url = mergedEvidence[0]?.url ?? null
+        changes.evidence_filename = mergedEvidence[0]?.filename ?? null
+        changes.evidence_path = mergedEvidence[0]?.path ?? null
+      }
+
+      try {
+        const updatedReport = await updateReport(editId, changes)
+
+        if (!isMountedRef.current) {
+          return
+        }
+
+        try {
+          await AuditService.logReportUpdated(
+            updatedReport.id,
+            existingReportRef.current ?? {},
+            {
+              insured_name: updatedReport.insured_name,
+              plate: updatedReport.plate,
+              policy: updatedReport.policy,
+              service_type: updatedReport.service_type,
+              status: updatedReport.status,
+            }
+          )
+        } catch (auditErr) {
+          console.error('Error logging audit event:', auditErr)
+        }
+
+        setSaving(false)
+        navigate(`/informes/${updatedReport.id}`)
+      } catch (err) {
+        if (isMountedRef.current) {
+          setSaving(false)
+          setError(err instanceof Error ? err.message : 'No se pudo guardar el informe.')
+        }
+      }
+      return
+    }
+
+    // ----- CREACIÓN -----
+    const payload = {
+      ...coreFields,
+      evidence_url: uploadedItems[0]?.url ?? null,
+      evidence_filename: uploadedItems[0]?.filename ?? null,
+      evidence_path: uploadedItems[0]?.path ?? null,
+      evidence_urls: uploadedItems.length > 0 ? uploadedItems : null,
       created_by: user?.id ?? null,
       created_by_name: displayName,
       created_by_email: user?.email ?? '',
     }
 
-    const payload = form.coverage
-      ? {
-          ...basePayload,
-          coverage: form.coverage,
-        }
-      : basePayload
-
     try {
       const createdReport = await createReport(payload)
-      
+
       if (!isMountedRef.current) {
         return
       }
@@ -491,7 +604,7 @@ const [form, setForm] = React.useState<NewReportForm>({
       if (!createdReport?.id || typeof createdReport.id !== 'string' || createdReport.id.trim() === '') {
         throw new Error('El servidor no retornó un ID válido para el informe.')
       }
-      
+
       // Log audit event for report creation
       try {
         await AuditService.logReportCreated(createdReport.id, {
@@ -505,7 +618,7 @@ const [form, setForm] = React.useState<NewReportForm>({
         console.error('Error logging audit event:', auditErr)
         // Don't fail the operation if audit logging fails
       }
-      
+
       setSaving(false)
       navigate(`/informes/${createdReport.id}`)
     } catch (err) {
@@ -525,16 +638,27 @@ const [form, setForm] = React.useState<NewReportForm>({
     navigate(-1)
   }
 
-  if (!canCreateReports) {
+  const lacksAccess = isEditMode ? !canEditReports : !canCreateReports
+  if (lacksAccess) {
     return (
       <div className="p-6 max-w-4xl mx-auto text-center">
-        <p className="text-lg font-semibold text-destructive">No tienes permisos para crear informes.</p>
+        <p className="text-lg font-semibold text-destructive">
+          {isEditMode ? 'No tienes permisos para editar informes.' : 'No tienes permisos para crear informes.'}
+        </p>
         <p className="mt-2 text-sm text-muted-foreground">Solicita a un administrador el permiso correspondiente.</p>
         <div className="mt-4 flex justify-center">
           <Button variant="outline" onClick={() => navigate(-1)}>
             Volver
           </Button>
         </div>
+      </div>
+    )
+  }
+
+  if (isEditMode && loadingReport) {
+    return (
+      <div className="p-6 max-w-4xl mx-auto flex items-center justify-center min-h-[40vh]">
+        <Spinner className="size-6" />
       </div>
     )
   }
@@ -546,8 +670,10 @@ const [form, setForm] = React.useState<NewReportForm>({
           <ArrowLeft className="size-4" />
         </Button>
         <div>
-          <h1 className="text-xl font-bold text-foreground">Nuevo Informe</h1>
-          <p className="text-sm text-muted-foreground">Completa la información del servicio</p>
+          <h1 className="text-xl font-bold text-foreground">{isEditMode ? 'Editar Informe' : 'Nuevo Informe'}</h1>
+          <p className="text-sm text-muted-foreground">
+            {isEditMode ? 'Modifica la información del informe' : 'Completa la información del servicio'}
+          </p>
         </div>
       </div>
 
@@ -784,7 +910,7 @@ const [form, setForm] = React.useState<NewReportForm>({
             className="gap-2 bg-destructive hover:bg-destructive/90 text-white min-w-[140px]"
           >
             {saving ? <Spinner className="size-4" /> : <Save className="size-4" />}
-            {saving ? 'Guardando...' : 'Guardar Informe'}
+            {saving ? 'Guardando...' : (isEditMode ? 'Guardar Cambios' : 'Guardar Informe')}
           </Button>
         </div>
       </form>
