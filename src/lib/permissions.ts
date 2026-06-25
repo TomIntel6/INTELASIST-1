@@ -50,6 +50,10 @@ export const PERMISSIONS = {
     ACCESS_TRASH: 'access_trash',
     PERMANENTLY_DELETE_REPORTS: 'permanently_delete_reports',
   },
+  // Profile permissions (1)
+  PROFILE: {
+    CUSTOMIZE_AVATAR: 'customize_avatar',
+  },
 } as const
 
 type PermissionCategory = typeof PERMISSIONS[keyof typeof PERMISSIONS]
@@ -120,6 +124,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, PermissionKey[]> = {
     PERMISSIONS.EVIDENCE.UPLOAD,
     PERMISSIONS.EVIDENCE.DOWNLOAD,
     PERMISSIONS.UPDATES.ADD,
+    PERMISSIONS.PROFILE.CUSTOMIZE_AVATAR,
   ] as PermissionKey[],
   Gerente: [
     PERMISSIONS.REPORTS.CREATE,
@@ -135,6 +140,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, PermissionKey[]> = {
     PERMISSIONS.USERS.VIEW,
     PERMISSIONS.SYSTEM.VIEW_ALERTS,
     PERMISSIONS.SYSTEM.VIEW_AUDIT_LOGS,
+    PERMISSIONS.PROFILE.CUSTOMIZE_AVATAR,
   ] as PermissionKey[],
   Admin: Object.values(PERMISSIONS)
     .flatMap((category) => Object.values(category)) as PermissionKey[],
@@ -180,6 +186,11 @@ export const PERMISSION_MODULES = {
     permissions: PERMISSIONS.ADMIN,
     color: 'pink',
   },
+  profile: {
+    label: 'Perfil',
+    permissions: PERMISSIONS.PROFILE,
+    color: 'teal',
+  },
 } as const
 
 export type ModuleKey = keyof typeof PERMISSION_MODULES
@@ -191,6 +202,7 @@ export const DEFAULT_MODULE_ACCESS: Record<ModuleKey, boolean> = {
   users: true,
   system: true,
   admin: false,
+  profile: true,
 }
 
 const permissionModuleEntries = Object.entries(PERMISSION_MODULES) as Array<[ModuleKey, typeof PERMISSION_MODULES[ModuleKey]]>
@@ -299,4 +311,6 @@ export const PERMISSION_LABELS: Record<PermissionKey, string> = {
   restore_users: 'Restaurar usuarios',
   access_trash: 'Acceder a papelera',
   permanently_delete_reports: 'Eliminar permanentemente',
+  // Profile
+  customize_avatar: 'Personalizar avatar de perfil',
 }
