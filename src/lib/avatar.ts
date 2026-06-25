@@ -12,7 +12,24 @@
 
 export type AvatarMode = 'character' | 'image'
 
-export type HairStyle = 'none' | 'buzz' | 'short' | 'wavy' | 'curly' | 'long' | 'bun' | 'mohawk'
+export type HairStyle =
+  | 'none'
+  | 'buzz'
+  | 'fade'
+  | 'undercut'
+  | 'short'
+  | 'spiky'
+  | 'pompadour'
+  | 'medium'
+  | 'wavy'
+  | 'bob'
+  | 'curly'
+  | 'afro'
+  | 'long'
+  | 'ponytail'
+  | 'bun'
+  | 'braids'
+  | 'mohawk'
 export type EyebrowStyle = 'default' | 'raised' | 'serious' | 'worried'
 export type EyeStyle = 'default' | 'round' | 'sleepy' | 'wink'
 export type FacialHair = 'none' | 'stubble' | 'mustache' | 'goatee' | 'beard'
@@ -41,40 +58,76 @@ export interface AvatarData {
 /* ──────────────────────────────  Paletas  ────────────────────────────── */
 
 export const SKIN_TONES: string[] = [
-  '#ffe0bd', '#ffcd94', '#f1c27d', '#e0ac69',
-  '#c68642', '#a56c42', '#8d5524', '#5c3a21',
+  '#ffe8d6', '#ffe0bd', '#ffcd94', '#f1c27d', '#e0ac69', '#cf9b6b',
+  '#c68642', '#a56c42', '#8d5524', '#6b4423', '#5c3a21', '#3d2817',
 ]
 
 export const HAIR_COLORS: string[] = [
-  '#1a1a1a', '#2c1b18', '#4a312c', '#6f4e37',
-  '#a55728', '#c68642', '#d6b370', '#e6cea8',
-  '#b0b0b0', '#ededed', '#8b3a62', '#5b51c9',
-  '#2f7dd1', '#2f9e6f',
+  '#0d0d0d', '#1a1a1a', '#2c1b18', '#3a2a22', '#4a312c', '#6f4e37',
+  '#7a3b2e', '#a55728', '#c68642', '#d6b370', '#e6cea8', '#f5f0e6',
+  '#9a9a9a', '#cfcfcf', '#ededed', '#8b3a62', '#e85d9c', '#5b51c9',
+  '#2f7dd1', '#1fb6a6', '#2f9e6f', '#e2402f',
 ]
 
 export const EYE_COLORS: string[] = [
-  '#5b3a1e', '#7b4b2a', '#3f7d4f', '#3b6ea5',
-  '#6b7280', '#8a6d3b', '#1f2937',
+  '#3b2415', '#5b3a1e', '#7b4b2a', '#b5651d', '#8a6d3b',
+  '#3f7d4f', '#2f9e6f', '#3b6ea5', '#6fb1e0', '#6b7280',
+  '#7c5cbf', '#1f2937',
 ]
 
 export const BACKGROUND_COLORS: string[] = [
-  '#e0f2fe', '#ede9fe', '#fce7f3', '#dcfce7',
-  '#fef9c3', '#ffedd5', '#cffafe', '#e2e8f0',
-  '#fee2e2', '#1e293b',
+  '#e0f2fe', '#dbeafe', '#ede9fe', '#fae8ff', '#fce7f3', '#dcfce7',
+  '#d1fae5', '#fef9c3', '#ffedd5', '#cffafe', '#e2e8f0', '#fee2e2',
+  '#334155', '#1e293b',
 ]
 
 /* ────────────────────────  Opciones para selectores  ───────────────────── */
 
-export const HAIR_STYLE_OPTIONS: { value: HairStyle; label: string }[] = [
-  { value: 'none', label: 'Sin cabello' },
-  { value: 'buzz', label: 'Rapado' },
-  { value: 'short', label: 'Corto' },
-  { value: 'wavy', label: 'Ondulado' },
-  { value: 'curly', label: 'Rizado' },
-  { value: 'long', label: 'Largo' },
-  { value: 'bun', label: 'Recogido' },
-  { value: 'mohawk', label: 'Cresta' },
+/** Peinados agrupados por categoría (para listas desplegables con optgroup). */
+export const HAIR_STYLE_GROUPS: { label: string; options: { value: HairStyle; label: string }[] }[] = [
+  {
+    label: 'Sin cabello',
+    options: [{ value: 'none', label: 'Calvo / sin cabello' }],
+  },
+  {
+    label: 'Cortos',
+    options: [
+      { value: 'buzz', label: 'Rapado (buzz cut)' },
+      { value: 'fade', label: 'Degradado (fade)' },
+      { value: 'undercut', label: 'Undercut' },
+      { value: 'short', label: 'Corto clásico' },
+      { value: 'spiky', label: 'En puntas' },
+      { value: 'pompadour', label: 'Pompadour' },
+    ],
+  },
+  {
+    label: 'Medios',
+    options: [
+      { value: 'medium', label: 'Medio' },
+      { value: 'wavy', label: 'Ondulado' },
+      { value: 'bob', label: 'Media melena (bob)' },
+      { value: 'curly', label: 'Rizado' },
+      { value: 'afro', label: 'Afro' },
+    ],
+  },
+  {
+    label: 'Largos y recogidos',
+    options: [
+      { value: 'long', label: 'Largo' },
+      { value: 'ponytail', label: 'Coleta' },
+      { value: 'bun', label: 'Moño / recogido' },
+      { value: 'braids', label: 'Trenzas' },
+    ],
+  },
+  {
+    label: 'Especiales',
+    options: [{ value: 'mohawk', label: 'Cresta (mohawk)' }],
+  },
 ]
+
+export const HAIR_STYLE_OPTIONS: { value: HairStyle; label: string }[] = HAIR_STYLE_GROUPS.flatMap(
+  (group) => group.options
+)
 
 export const EYE_STYLE_OPTIONS: { value: EyeStyle; label: string }[] = [
   { value: 'default', label: 'Normales' },
@@ -116,10 +169,10 @@ export const ACCESSORY_OPTIONS: { value: AccessoryStyle; label: string }[] = [
 /* ──────────────────────────────  Defaults  ───────────────────────────── */
 
 export const DEFAULT_CHARACTER: AvatarCharacterConfig = {
-  skinTone: SKIN_TONES[2],
+  skinTone: SKIN_TONES[4],
   hairStyle: 'short',
-  hairColor: HAIR_COLORS[1],
-  eyeColor: EYE_COLORS[0],
+  hairColor: HAIR_COLORS[2],
+  eyeColor: EYE_COLORS[1],
   eyeStyle: 'default',
   eyebrowStyle: 'default',
   facialHair: 'none',
@@ -143,7 +196,7 @@ const FACIAL_HAIR_VALUES = new Set(FACIAL_HAIR_OPTIONS.map((o) => o.value))
 const MOUTH_VALUES = new Set(MOUTH_OPTIONS.map((o) => o.value))
 const ACCESSORY_VALUES = new Set(ACCESSORY_OPTIONS.map((o) => o.value))
 
-function pickColor(value: unknown, palette: string[], fallback: string): string {
+function pickColor(value: unknown, _palette: string[], fallback: string): string {
   if (typeof value === 'string' && /^#[0-9a-fA-F]{6}$/.test(value.trim())) {
     return value.trim().toLowerCase()
   }
@@ -250,5 +303,16 @@ export function darken(hex: string, amount = 0.2): string {
   const r = Math.max(0, Math.round(((num >> 16) & 0xff) * (1 - amount)))
   const g = Math.max(0, Math.round(((num >> 8) & 0xff) * (1 - amount)))
   const b = Math.max(0, Math.round((num & 0xff) * (1 - amount)))
+  return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')}`
+}
+
+/** Aclara un color hex un porcentaje dado (0-1), mezclándolo hacia el blanco. */
+export function lighten(hex: string, amount = 0.2): string {
+  const normalized = hex.replace('#', '')
+  if (normalized.length !== 6) return hex
+  const num = parseInt(normalized, 16)
+  const r = Math.min(255, Math.round(((num >> 16) & 0xff) + (255 - ((num >> 16) & 0xff)) * amount))
+  const g = Math.min(255, Math.round(((num >> 8) & 0xff) + (255 - ((num >> 8) & 0xff)) * amount))
+  const b = Math.min(255, Math.round((num & 0xff) + (255 - (num & 0xff)) * amount))
   return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')}`
 }
