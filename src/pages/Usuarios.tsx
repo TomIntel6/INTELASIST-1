@@ -7,6 +7,8 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Spinner } from '@/components/ui/spinner'
 import { canCreateUsers, canDeleteUsers, canManageAgents, canViewPasswords, fetchOnlineUsersFromServer, getNameColorClasses, useAuth, USERS_SYNC_STORAGE_KEY, type UserRole } from '@/lib/auth'
+import { usePermissions } from '@/lib/permissions-context'
+import { PERMISSIONS, type PermissionKey } from '@/lib/permissions'
 import { getDefaultApiBase } from '@/lib/supabase'
 
 interface Usuario {
@@ -94,6 +96,7 @@ function mergeUsers(currentUsers: Usuario[], nextUsers: Usuario[]) {
 
 export default function Usuarios() {
   const { user } = useAuth()
+  const { hasPermission } = usePermissions()
   const cachedUsuarios = loadCachedUsuarios()
   const [usuarios, setUsuarios] = React.useState<Usuario[]>(cachedUsuarios)
   const [loading, setLoading] = React.useState(cachedUsuarios.length === 0)
@@ -110,7 +113,9 @@ export default function Usuarios() {
   const [editingUserId, setEditingUserId] = React.useState<number | null>(null)
   const [editingUserName, setEditingUserName] = React.useState('')
 
-  const canCreateUserAccess = canCreateUsers(user)
+  // La opción de crear usuarios aparece tanto por rol como por el permiso
+  // granular "create_users" otorgado desde Gestión de permisos (no solo por rol).
+  const canCreateUserAccess = canCreateUsers(user) || hasPermission(PERMISSIONS.USERS.CREATE as PermissionKey)
   const canShowPasswords = canViewPasswords(user)
   const canEditUserNames = canManageAgents(user)
   const roleOptions = ROLE_OPTIONS
