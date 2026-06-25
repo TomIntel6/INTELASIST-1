@@ -6,6 +6,7 @@ import {
   SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
+  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
@@ -530,6 +531,7 @@ export const AppSidebar = React.memo(function AppSidebar() {
 
       <SidebarContent className="py-2">
         <SidebarGroup>
+          <SidebarGroupLabel>Principal</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {navItems.map(({ to, label, icon: Icon }) => {
@@ -545,10 +547,10 @@ export const AppSidebar = React.memo(function AppSidebar() {
                         : location.pathname.startsWith(to)}
                       tooltip={label}
                       onClick={() => navigate(to)}
-                      className="rounded-xl transition-colors duration-150 hover:bg-primary/10 hover:text-primary hover:shadow-[0_0_20px_rgba(59,130,246,0.18)] data-[active=true]:bg-primary/10 data-[active=true]:text-primary"
+                      className="relative rounded-xl transition-all duration-200 before:absolute before:left-0 before:top-1/2 before:h-5 before:w-1 before:-translate-y-1/2 before:rounded-full before:bg-primary before:opacity-0 before:transition-opacity before:content-[''] hover:bg-primary/5 data-[active=true]:bg-primary/10 data-[active=true]:font-medium data-[active=true]:text-foreground data-[active=true]:before:opacity-100"
                     >
-                      <Icon className="transition-transform duration-150 group-hover:scale-105" />
-                      <span className="transition-colors duration-150 group-hover:drop-shadow-[0_0_10px_rgba(59,130,246,0.28)]">{label}</span>
+                      <Icon className="shrink-0" />
+                      <span>{label}</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 )
@@ -558,6 +560,7 @@ export const AppSidebar = React.memo(function AppSidebar() {
         </SidebarGroup>
 
         <SidebarGroup className="mt-2">
+          <SidebarGroupLabel>Acciones</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
@@ -599,6 +602,7 @@ export const AppSidebar = React.memo(function AppSidebar() {
             verá y podrá gestionar el panel. */}
         {canViewAdminModule ? (
           <SidebarGroup className="mt-2">
+            <SidebarGroupLabel>Administración</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
                 <SidebarMenuItem>

@@ -227,6 +227,38 @@
       0 18px 34px -26px color-mix(in srgb, var(--foreground) 18%, transparent),
       0 0 0 1px color-mix(in srgb, var(--border) 56%, transparent);
   }
+
+  /* Selección de texto con tinte de marca */
+  ::selection {
+    background: color-mix(in srgb, var(--primary) 16%, transparent);
+  }
+
+  /* Scrollbar refinada en toda la plataforma */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--foreground) 18%, transparent) transparent;
+  }
+
+  *::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background: color-mix(in srgb, var(--foreground) 16%, transparent);
+    background-clip: padding-box;
+    border: 2px solid transparent;
+    border-radius: 9999px;
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background: color-mix(in srgb, var(--foreground) 30%, transparent);
+    background-clip: padding-box;
+  }
 }
 
 @keyframes support-stripe-shift {
