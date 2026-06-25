@@ -116,6 +116,8 @@ export default function Usuarios() {
   // La opción de crear usuarios aparece tanto por rol como por el permiso
   // granular "create_users" otorgado desde Gestión de permisos (no solo por rol).
   const canCreateUserAccess = canCreateUsers(user) || hasPermission(PERMISSIONS.USERS.CREATE as PermissionKey)
+  // Eliminar usuarios: por rol o por el permiso granular delete_users.
+  const canDeleteUsersAccess = canDeleteUsers(user) || hasPermission(PERMISSIONS.USERS.DELETE as PermissionKey)
   const canShowPasswords = canViewPasswords(user)
   const canEditUserNames = canManageAgents(user)
   const roleOptions = ROLE_OPTIONS
@@ -160,7 +162,7 @@ export default function Usuarios() {
   }, [])
 
   const eliminarUsuario = async (usuario: Usuario) => {
-    if (!canDeleteUsers(user)) {
+    if (!canDeleteUsersAccess) {
       setError('No tienes permisos para eliminar usuarios.')
       return
     }
@@ -645,7 +647,7 @@ export default function Usuarios() {
                       <Badge variant={usuario.estado === 'Activo' ? 'default' : 'secondary'}>
                         {usuario.estado ?? 'Desconectado'}
                       </Badge>
-                      {canDeleteUsers(user) ? (
+                      {canDeleteUsersAccess ? (
                         <Button
                           variant="destructive"
                           size="sm"
