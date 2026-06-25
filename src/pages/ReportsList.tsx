@@ -35,7 +35,7 @@ import type { PermissionKey } from '@/lib/permissions'
 import { AuditService } from '@/lib/audit-service'
 import { TrashService } from '@/lib/trash-service'
 import { PERMISSIONS } from '@/lib/permissions'
-import { FilePlus, Download, Search, Eye, Trash2, Shield, AlertCircle, Clock, CheckCircle2, Zap, XCircle, FileText } from 'lucide-react'
+import { FilePlus, Download, Search, Eye, Trash2, Shield, AlertCircle, Clock, CheckCircle2, Zap, XCircle, FileText, Pencil } from 'lucide-react'
 import * as XLSX from 'xlsx'
 
 const STATUS_BADGE: Record<string, string> = {
@@ -57,6 +57,8 @@ export default function ReportsList() {
   const canCreateReports = hasPermission(PERMISSIONS.REPORTS.CREATE as PermissionKey)
   const canExportReports = hasPermission(PERMISSIONS.REPORTS.EXPORT as PermissionKey)
   const canDeleteReportsPermission = canDeleteReports(user) && hasPermission(PERMISSIONS.REPORTS.DELETE as PermissionKey)
+  // La edición de informes ya creados requiere el permiso de gestión de permisos.
+  const canEditReportsPermission = hasPermission(PERMISSIONS.SYSTEM.MANAGE_PERMISSIONS as PermissionKey)
 
   const currentYear = new Date().getFullYear()
   const currentMonthIdx = new Date().getMonth()
@@ -531,6 +533,16 @@ export default function ReportsList() {
                           >
                             <Eye className="size-4" />
                           </Button>
+                          {canEditReportsPermission ? (
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              onClick={e => { e.stopPropagation(); navigate(`/informes/${report.id}/editar`) }}
+                              title="Editar informe"
+                            >
+                              <Pencil className="size-4" />
+                            </Button>
+                          ) : null}
                           {canDeleteReportsPermission ? (
                             <Button
                               variant="ghost"
