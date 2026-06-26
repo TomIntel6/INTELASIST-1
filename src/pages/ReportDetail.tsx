@@ -185,58 +185,9 @@ export default function ReportDetail() {
     void fetchData()
   }, [id, fetchData])
 
-  React.useEffect(() => {
-    if (!report) return
-
-    let intervalId: number | null = null
-
-    const refreshIfVisible = () => {
-      if (document.visibilityState === 'visible') {
-        void fetchData()
-      }
-    }
-
-    const startPolling = () => {
-      if (intervalId !== null) {
-        return
-      }
-
-      intervalId = window.setInterval(() => {
-        if (document.visibilityState !== 'visible') {
-          return
-        }
-
-        void fetchData()
-      }, 60000)
-    }
-
-    const stopPolling = () => {
-      if (intervalId !== null) {
-        window.clearInterval(intervalId)
-        intervalId = null
-      }
-    }
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        refreshIfVisible()
-        startPolling()
-      } else {
-        stopPolling()
-      }
-    }
-
-    if (document.visibilityState === 'visible') {
-      startPolling()
-    }
-
-    window.addEventListener('visibilitychange', handleVisibilityChange)
-
-    return () => {
-      stopPolling()
-      window.removeEventListener('visibilitychange', handleVisibilityChange)
-    }
-  }, [report, fetchData])
+  // Sin polling ni refetch por 'visibilitychange' del detalle: se carga una vez
+  // al abrir el informe y se refresca tras añadir una actualización (handleAddUpdate).
+  // Esto elimina consultas repetidas a GET /reports/:id contra el pooler de Supabase.
 
   React.useEffect(() => {
     if (!report || !showAuditPanel) {

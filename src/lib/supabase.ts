@@ -318,6 +318,18 @@ function normalizeReport(raw: Record<string, unknown>): Report {
   }
 }
 
+// Normaliza una fila cruda de la tabla `reports` (p.ej. el payload.new que llega
+// por Supabase Realtime) al tipo Report que usa la UI.
+export function normalizeReportRecord(raw: Record<string, unknown>): Report {
+  return normalizeReport(raw)
+}
+
+// Mezcla uno o varios informes en la caché local por id (sin reemplazar el mes
+// completo). Se usa para persistir un informe recibido en tiempo real.
+export function cacheReports(reports: Report[]) {
+  writeCache(reports, { replaceMonth: false })
+}
+
 async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
   try {
     console.info('[requestJson] fetch', { url: `${API_BASE_URL}${path}`, method: init?.method || 'GET' })
@@ -446,6 +458,22 @@ export function getCachedReportById(id: string): Report | null {
 
 function getFallbackReports(): Report[] {
   return getCachedReports()
+}
+
+export interface DashboardStats {
+  date: string
+  total: number
+  byStatus: Record<string, number>
+}
+
+export async function fetchDashboardStats(date?: string): Promise<DashboardStats> {
+  const qs = date ? `?date=${encodeURIComponent(date)}` : ''
+  const payload = await requestJson<DashboardStats>(`/reports/dashboard-stats${qs}`)
+  return {
+    date: String(payload?.date ?? ''),
+    total: Number(payload?.total ?? 0),
+    byStatus: (payload?.byStatus ?? {}) as Record<string, number>,
+  }
 }
 
 export async function loadAllReports(): Promise<Report[]> {

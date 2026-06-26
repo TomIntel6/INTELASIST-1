@@ -28,7 +28,9 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog'
-import { MONTHS, type Report, loadReportsForMonth, deleteReport, getCachedReportsForMonth } from '@/lib/supabase'
+import { MONTHS, type Report, loadReportsForMonth, deleteReport, getCachedReportsForMonth, normalizeReportRecord, cacheReports } from '@/lib/supabase'
+import { useRealtimeReports } from '@/hooks/useRealtime'
+import type { RealtimeEvent } from '@/lib/realtime-service'
 import { useAuth, canDeleteReports } from '@/lib/auth'
 import { usePermissions } from '@/lib/permissions-context'
 import type { PermissionKey } from '@/lib/permissions'
@@ -112,33 +114,36 @@ export default function ReportsList() {
     const cached = getCachedReportsForMonth(selectedMonth, selectedYear)
     setReports(cached)
     setLoading(cached.length === 0)
+    // Carga ÚNICA al montar o al cambiar de mes/año (cache-first).
+    // Se elimina el polling por intervalo y el refetch en 'visibilitychange'
+    // para minimizar el egress del pooler de Supabase: cada disparo ejecutaba
+    // GET /reports (una consulta al pooler) mientras hubiera pestañas abiertas.
     void loadReports(selectedMonth, selectedYear, false)
+  }, [loadReports, selectedMonth, selectedYear])
 
-    const refreshReports = () => {
-      if (document.visibilityState !== 'visible') {
+  // Realtime: el informe que se crea aparece EN VIVO en la lista (y los cambios
+  // de estado / eliminaciones también se reflejan), sin polling. El evento llega
+  // por Supabase Realtime —barato— en lugar de consultar el pooler.
+  const handleRealtimeReport = React.useCallback((event: RealtimeEvent<any>) => {
+    if (event.type === 'INSERT' || event.type === 'UPDATE') {
+      const incoming = normalizeReportRecord(event.record as Record<string, unknown>)
+      cacheReports([incoming])
+      if (incoming.month !== selectedMonth || incoming.year !== selectedYear) {
         return
       }
-
-      void loadReports(selectedMonth, selectedYear, false)
-    }
-
-    const intervalId = window.setInterval(() => {
-      refreshReports()
-    }, 60000)
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        refreshReports()
+      setReports(prev => {
+        const next = [incoming, ...prev.filter(r => r.id !== incoming.id)]
+        return next.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      })
+    } else if (event.type === 'DELETE') {
+      const removedId = String((event.oldRecord ?? event.record)?.id ?? '')
+      if (removedId) {
+        setReports(prev => prev.filter(r => r.id !== removedId))
       }
     }
+  }, [selectedMonth, selectedYear])
 
-    window.addEventListener('visibilitychange', handleVisibilityChange)
-
-    return () => {
-      window.clearInterval(intervalId)
-      window.removeEventListener('visibilitychange', handleVisibilityChange)
-    }
-  }, [loadReports, selectedMonth, selectedYear])
+  useRealtimeReports(handleRealtimeReport)
 
   const filtered = reports.filter(r => {
     const q = search.toLowerCase()

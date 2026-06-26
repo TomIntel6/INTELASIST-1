@@ -81,6 +81,14 @@ export class RealtimeService {
   }
 
   /**
+   * Subscribe to report changes (new reports appear live, status updates, deletions).
+   * Uses the cheap Realtime channel instead of polling the pooler.
+   */
+  static subscribeToReports(callback: (event: RealtimeEvent<any>) => void) {
+    return this.subscribeToTable('reports', callback)
+  }
+
+  /**
    * Generic table subscription
    */
   private static subscribeToTable(tableName: string, callback: (event: RealtimeEvent<any>) => void) {
@@ -137,10 +145,20 @@ export class RealtimeService {
   /**
    * Unsubscribe from a channel
    */
-  static unsubscribe(channelName: string) {
-    const channel = this.channels.get(channelName)
-    if (channel) {
-      supabase.removeChannel(channel)
+  static unsubscribe(channelName: string, callback?: (payload: unknown) => void) {
+    // Si se pasa el callback, quitar solo ese listener; cerrar el canal compartido
+    // unicamente cuando ya no queden listeners (evita cortar eventos a otros consumidores).
+    const listeners = this.listeners.get(channelName)
+    if (listeners && callback) {
+      listeners.delete(callback as Function)
+    }
+
+    const stillHasListeners = !!listeners && listeners.size > 0
+    if (!stillHasListeners) {
+      const channel = this.channels.get(channelName)
+      if (channel) {
+        supabase.removeChannel(channel)
+      }
       this.channels.delete(channelName)
       this.listeners.delete(channelName)
       console.log(`✓ Unsubscribed from ${channelName}`)

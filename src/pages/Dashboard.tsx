@@ -3,7 +3,9 @@ import { useNavigate } from 'react-router-dom'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { hasValidReportMeta, isFinalizedStatus, type Report, loadAllReports, getCachedReportsForYear } from '@/lib/supabase'
+import { hasValidReportMeta, isFinalizedStatus, type Report, loadReportsForMonth, getCachedReportsForMonth, MONTHS, normalizeReportRecord, cacheReports } from '@/lib/supabase'
+import { useRealtimeReports } from '@/hooks/useRealtime'
+import type { RealtimeEvent } from '@/lib/realtime-service'
 import { getNameColorClasses, getRoleColorClasses, getUserRoles, useAuth } from '@/lib/auth'
 import {
   FilePlus,
@@ -78,7 +80,10 @@ export default function Dashboard() {
   const navigate = useNavigate()
   const [currentDay, setCurrentDay] = React.useState(new Date())
   const currentYear = currentDay.getFullYear()
-  const initialReports = getCachedReportsForYear(currentYear)
+  const currentMonth = MONTHS[currentDay.getMonth()]
+  // El Dashboard solo necesita los informes del mes en curso (de ahi derivamos "hoy"),
+  // no todo el historico: pedimos al backend solo el mes => WHERE month/year (no full scan).
+  const initialReports = getCachedReportsForMonth(currentMonth, currentYear)
   const [_loading, setLoading] = React.useState(initialReports.length === 0)
   const [reports, setReports] = React.useState<Report[]>(initialReports)
   const reportsRef = React.useRef<Report[]>(initialReports)
@@ -99,7 +104,7 @@ export default function Dashboard() {
           setLoading(true)
         }
 
-        const normalizedReports = (await loadAllReports()).filter((report): report is Report => hasValidReportMeta(report))
+        const normalizedReports = (await loadReportsForMonth(currentMonth, currentYear)).filter((report): report is Report => hasValidReportMeta(report))
 
         if (!isMounted) {
           return
@@ -111,7 +116,7 @@ export default function Dashboard() {
       } catch (err) {
         console.error('Error sincronizando reportes:', err)
         if (isMounted) {
-          const cachedReports = getCachedReportsForYear(currentYear).filter((report): report is Report => hasValidReportMeta(report))
+          const cachedReports = getCachedReportsForMonth(currentMonth, currentYear).filter((report): report is Report => hasValidReportMeta(report))
           setReports(cachedReports)
           reportsRef.current = cachedReports
           lastSyncRef.current = Date.now()
@@ -123,23 +128,14 @@ export default function Dashboard() {
       }
     }
 
-    const refreshIfVisible = () => {
-      if (document.visibilityState === 'visible') {
-        void syncReports(false)
-      }
-    }
-
+    // Carga única al montar (sin refetch por 'visibilitychange') para minimizar
+    // el egress del pooler. Usa la lista ligera de informes del mes (GET /reports).
     void syncReports(true)
-
-    window.addEventListener('visibilitychange', refreshIfVisible)
-    window.addEventListener('focus', refreshIfVisible)
 
     return () => {
       isMounted = false
-      window.removeEventListener('visibilitychange', refreshIfVisible)
-      window.removeEventListener('focus', refreshIfVisible)
     }
-  }, [currentYear])
+  }, [currentYear, currentMonth])
 
   React.useEffect(() => {
     const ticker = window.setInterval(() => {
@@ -153,6 +149,31 @@ export default function Dashboard() {
       window.clearInterval(ticker)
     }
   }, [currentDay])
+
+  // Realtime: un informe creado por cualquier usuario aparece EN VIVO en el panel
+  // (actualiza los conteos de "hoy") sin polling, vía Supabase Realtime.
+  const handleRealtimeReport = React.useCallback((event: RealtimeEvent<any>) => {
+    if (event.type === 'INSERT' || event.type === 'UPDATE') {
+      const incoming = normalizeReportRecord(event.record as Record<string, unknown>)
+      cacheReports([incoming])
+      if (incoming.month !== currentMonth || incoming.year !== currentYear) {
+        return
+      }
+      const next = [incoming, ...reportsRef.current.filter(r => r.id !== incoming.id)]
+      reportsRef.current = next
+      setReports(next)
+    } else if (event.type === 'DELETE') {
+      const removedId = String((event.oldRecord ?? event.record)?.id ?? '')
+      if (!removedId) {
+        return
+      }
+      const next = reportsRef.current.filter(r => r.id !== removedId)
+      reportsRef.current = next
+      setReports(next)
+    }
+  }, [currentMonth, currentYear])
+
+  useRealtimeReports(handleRealtimeReport)
 
   const displayName = user?.user_metadata?.full_name ?? user?.email ?? 'Usuario'
   const userRoles = getUserRoles(user)

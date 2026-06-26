@@ -390,7 +390,7 @@ export default function Usuarios() {
         }
 
         void cargarUsuarios()
-      }, 60000)
+      }, 300000)
     }
 
     const stopInterval = () => {
