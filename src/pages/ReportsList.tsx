@@ -382,7 +382,7 @@ export default function ReportsList() {
       </div>
 
       {/* Categories Palette */}
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
         {/* Total de Informes */}
         <Card className="relative overflow-hidden rounded-xl border bg-card shadow-sm">
           <span className="brand-gradient-bg absolute inset-x-0 top-0 h-0.5" aria-hidden="true" />
