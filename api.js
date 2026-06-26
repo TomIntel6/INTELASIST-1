@@ -1035,10 +1035,57 @@ async function ensureUserActivityLogTable() {
   `)
 }
 
-async function loadReportsWithUpdates(query = '', values = []) {
+// Columnas que SI usa la vista de lista (ReportsList): NO incluye evidence_* (solo el detalle las usa).
+const REPORTS_LIST_COLUMNS = `
+  id, month, year, insured_name, plate, policy, service_type, coverage,
+  brand, model, color, year_vehicle, status, observation_comment,
+  created_by, created_by_name, created_by_email, created_at, updated_at
+`
+
+// LISTA: proyeccion de columnas, SIN segunda query a report_updates, con LIMIT opcional.
+// Devuelve report_updates: [] para conservar el shape que espera normalizeReport.
+async function loadReportsListProjection(query = '', values = [], limit = null) {
+  const params = [...values]
+  let limitClause = ''
+  if (Number.isFinite(limit) && limit > 0) {
+    params.push(limit)
+    limitClause = `LIMIT $${params.length}`
+  }
+
   const reportsResult = await pool.query(
     `
-      SELECT * FROM reports
+      SELECT ${REPORTS_LIST_COLUMNS} FROM reports
+      ${query}
+      ORDER BY created_at DESC
+      ${limitClause}
+    `,
+    params
+  )
+
+  console.log('[API] loadReportsListProjection', { query: query.trim(), values, limit, count: reportsResult.rows.length })
+
+  return reportsResult.rows.map(row => ({
+    ...serializeReportRow(row),
+    report_updates: [],
+  }))
+}
+
+// DETALLE/legacy: se conserva intacto para usos que requieran reports + updates completos.
+async function loadReportsWithUpdates(query = '', values = []) {
+  // LISTA de informes (endpoint más consultado por el frontend).
+  // Optimización de egress del pooler de Supabase:
+  //  - Proyección de columnas LIGERAS en vez de "SELECT *": se excluyen las
+  //    columnas grandes que la lista NO muestra (observation_comment y todas las
+  //    evidence_*), que antes se descargaban del pooler en cada poll.
+  //  - NO se cargan los report_updates aquí: el detalle (loadSingleReportWithUpdates)
+  //    ya los trae cuando se abre un informe. La lista devuelve report_updates: []
+  //    para conservar el shape esperado por el frontend.
+  const reportsResult = await pool.query(
+    `
+      SELECT id, month, year, insured_name, plate, policy, service_type, coverage,
+             brand, model, color, year_vehicle, status, observation_comment,
+             created_by, created_by_name, created_by_email, created_at, updated_at
+      FROM reports
       ${query}
       ORDER BY created_at DESC
     `,
@@ -1051,23 +1098,9 @@ async function loadReportsWithUpdates(query = '', values = []) {
     return []
   }
 
-  const updatesResult = await pool.query(
-    `
-      SELECT * FROM report_updates
-      WHERE report_id = ANY($1)
-      ORDER BY created_at ASC
-    `,
-    [reportsResult.rows.map(row => row.id)]
-  )
-
-  const updatesByReportId = updatesResult.rows.reduce((acc, row) => {
-    acc[row.report_id] = [...(acc[row.report_id] || []), serializeUpdateRow(row)]
-    return acc
-  }, {})
-
   return reportsResult.rows.map(row => ({
     ...serializeReportRow(row),
-    report_updates: updatesByReportId[row.id] || [],
+    report_updates: [],
   }))
 }
 
@@ -1471,13 +1504,46 @@ app.get('/reports', async (req, res) => {
       conditions.push(`year = $${values.length}`)
     }
 
+    const limitRaw = typeof req.query.limit === 'string' ? Number(req.query.limit) : 200
+    const limit = Number.isFinite(limitRaw) && limitRaw > 0 ? Math.min(limitRaw, 500) : 200
+
     const query = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
-    const reports = await loadReportsWithUpdates(query, values)
+    const reports = await loadReportsListProjection(query, values, limit)
 
     res.json({ reports })
   } catch (error) {
     console.error(error)
     res.status(500).json({ error: 'Error al obtener informes' })
+  }
+})
+
+app.get('/reports/dashboard-stats', async (req, res) => {
+  try {
+    const date = typeof req.query.date === 'string' && req.query.date.trim()
+      ? req.query.date.trim()
+      : new Date().toISOString().slice(0, 10)
+
+    const result = await pool.query(
+      `
+        SELECT status, COUNT(*)::int AS count
+        FROM reports
+        WHERE created_at >= $1::date AND created_at < ($1::date + INTERVAL '1 day')
+        GROUP BY status
+      `,
+      [date]
+    )
+
+    const byStatus = result.rows.reduce((acc, row) => {
+      acc[String(row.status)] = Number(row.count)
+      return acc
+    }, {})
+
+    const total = result.rows.reduce((sum, row) => sum + Number(row.count), 0)
+
+    res.json({ date, total, byStatus })
+  } catch (error) {
+    console.error('Error en /reports/dashboard-stats:', error)
+    res.status(500).json({ error: 'Error al obtener estadisticas del dashboard' })
   }
 })
 
@@ -1885,19 +1951,32 @@ app.get('/failed-report-attempts', async (req, res) => {
   try {
     const days = Math.max(1, Number(req.query.days) || 30)
     const result = await pool.query(`
-      SELECT 
+      SELECT
         user_email,
         user_name,
-        COUNT(DISTINCT failed_report_attempts.id) as attempt_count,
+        COUNT(DISTINCT fra.id) as attempt_count,
         MAX(attempted_at) as last_attempt,
-        COALESCE(array_agg(DISTINCT unnest_missing) FILTER (WHERE unnest_missing IS NOT NULL), ARRAY[]::TEXT[]) as all_missing_fields,
-        COALESCE(array_agg(DISTINCT unnest_completed) FILTER (WHERE unnest_completed IS NOT NULL), ARRAY[]::TEXT[]) as all_completed_fields
-      FROM failed_report_attempts
-      LEFT JOIN LATERAL unnest(missing_fields) as unnest_missing ON TRUE
-      LEFT JOIN LATERAL unnest(completed_fields) as unnest_completed ON TRUE
+        COALESCE((
+          SELECT array_agg(DISTINCT m)
+          FROM failed_report_attempts fra2, unnest(fra2.missing_fields) AS m
+          WHERE fra2.user_email IS NOT DISTINCT FROM fra.user_email
+            AND fra2.user_name IS NOT DISTINCT FROM fra.user_name
+            AND fra2.attempted_at >= NOW() - ($1::int * INTERVAL '1 day')
+            AND m IS NOT NULL
+        ), ARRAY[]::TEXT[]) as all_missing_fields,
+        COALESCE((
+          SELECT array_agg(DISTINCT c)
+          FROM failed_report_attempts fra3, unnest(fra3.completed_fields) AS c
+          WHERE fra3.user_email IS NOT DISTINCT FROM fra.user_email
+            AND fra3.user_name IS NOT DISTINCT FROM fra.user_name
+            AND fra3.attempted_at >= NOW() - ($1::int * INTERVAL '1 day')
+            AND c IS NOT NULL
+        ), ARRAY[]::TEXT[]) as all_completed_fields
+      FROM failed_report_attempts fra
       WHERE attempted_at >= NOW() - ($1::int * INTERVAL '1 day')
       GROUP BY user_email, user_name
       ORDER BY MAX(attempted_at) DESC
+      LIMIT 100
     `, [days])
 
     console.log(`✓ GET /failed-report-attempts - Se encontraron ${result.rows.length} usuarios con intentos fallidos`)
@@ -2281,106 +2360,47 @@ app.get('/api/users/with-activity', async (req, res) => {
     console.log(`[${new Date().toISOString()}] 📊 ${endpoint} - INICIO`)
     console.log(`  Query params: ${JSON.stringify(req.query)}`)
     console.log(`  User: ${req.user?.email || 'anonymous'}`)
-    
-    // Step 1: Verificar que la tabla usuarios existe
-    console.log(`  [1/3] Verificando esquema de tabla usuarios...`)
-    const usuariosSchema = await pool.query(`
-      SELECT column_name, data_type, is_nullable 
-      FROM information_schema.columns 
-      WHERE table_name = 'usuarios'
-      ORDER BY ordinal_position
-    `)
-    if (usuariosSchema.rows.length === 0) {
-      throw new Error('Tabla "usuarios" no encontrada')
-    }
-    console.log(`  ✓ Tabla usuarios tiene ${usuariosSchema.rows.length} columnas:`, usuariosSchema.rows.map(r => `${r.column_name}(${r.data_type})`).join(', '))
-    
-    // Step 2: Verificar que la tabla user_activity_log existe
-    console.log(`  [2/3] Verificando esquema de tabla user_activity_log...`)
-    const activitySchema = await pool.query(`
-      SELECT column_name, data_type, is_nullable 
-      FROM information_schema.columns 
-      WHERE table_name = 'user_activity_log'
-      ORDER BY ordinal_position
-    `)
-    if (activitySchema.rows.length === 0) {
-      console.warn(`  ⚠️  Tabla user_activity_log no encontrada, usando datos solo de usuarios`)
-    } else {
-      console.log(`  ✓ Tabla user_activity_log tiene ${activitySchema.rows.length} columnas:`, activitySchema.rows.map(r => `${r.column_name}(${r.data_type})`).join(', '))
-    }
-    
-    // Step 3: Ejecutar query
-    console.log(`  [3/3] Ejecutando query de usuarios...`)
-    
-    // First, try a simple query without the JOIN to verify usuarios table works
-    try {
-      const checkUsarios = await pool.query('SELECT COUNT(*) as count FROM usuarios')
-      console.log(`  ✓ Tabla usuarios tiene ${checkUsarios.rows[0].count} registros`)
-    } catch (checkErr) {
-      console.warn(`  ⚠️  No se pudo contar usuarios:`, checkErr.message)
-    }
-    
-    // Try to get activity log count
-    try {
-      const checkActivity = await pool.query('SELECT COUNT(*) as count FROM user_activity_log')
-      console.log(`  ✓ Tabla user_activity_log tiene ${checkActivity.rows[0].count} registros`)
-    } catch (checkErr) {
-      console.warn(`  ⚠️  No se pudo contar activity_log:`, checkErr.message)
-    }
-    
-    // Get user id type from schema
-    const idTypeQuery = await pool.query(`
-      SELECT data_type FROM information_schema.columns 
-      WHERE table_name = 'usuarios' AND column_name = 'id'
-    `)
-    const idType = idTypeQuery.rows[0]?.data_type || 'unknown'
-    console.log(`  ℹ️  Tipo de usuarios.id: ${idType}`)
-    
-    const userIdTypeQuery = await pool.query(`
-      SELECT data_type FROM information_schema.columns 
-      WHERE table_name = 'user_activity_log' AND column_name = 'user_id'
-    `)
-    const userIdType = userIdTypeQuery.rows[0]?.data_type || 'unknown'
-    console.log(`  ℹ️  Tipo de user_activity_log.user_id: ${userIdType}`)
-    
-    // Build appropriate JOIN condition based on types
-    let joinCondition = 'u.id = ual.user_id'
-    if (idType !== userIdType) {
-      // If types don't match, cast both to text
-      joinCondition = 'u.id::text = ual.user_id::text'
-    }
-    console.log(`  ℹ️  Condición de JOIN: ${joinCondition}`)
-    
-    // Verify reports table exists
-    try {
-      const checkReports = await pool.query('SELECT COUNT(*) as count FROM reports')
-      console.log(`  ✓ Tabla reports tiene ${checkReports.rows[0].count} registros`)
-    } catch (checkErr) {
-      console.warn(`  ⚠️  No se pudo contar reports:`, checkErr.message)
-    }
-    
+
+    // Las verificaciones de esquema (information_schema) y los COUNT de diagnostico se ELIMINARON
+    // del hot path: anadian ~8 round-trips por request en polling. El JOIN castea a ::text una sola
+    // vez (cubre el caso de tipos distintos entre usuarios.id y user_activity_log.user_id).
+    // Las subconsultas correlacionadas N+1 se sustituyen por:
+    //  - una CTE de conteo de reports agrupada (un solo scan), y
+    //  - un LEFT JOIN LATERAL con DISTINCT ON (la fila de actividad mas reciente por usuario).
+    // El shape de salida (claves y tipos) se conserva identico.
     const result = await pool.query(`
-      SELECT 
+      WITH report_counts AS (
+        SELECT u.id AS user_id, COUNT(r.id) AS reports_created
+        FROM usuarios u
+        LEFT JOIN reports r
+          ON (r.created_by IS NOT NULL AND r.created_by::text = u.id::text)
+          OR (r.created_by_email IS NOT NULL AND LOWER(TRIM(r.created_by_email)) = LOWER(TRIM(u.correo)))
+        GROUP BY u.id
+      )
+      SELECT
         u.id,
         u.correo as email,
         u.nombre,
         u.rol as role,
-        COALESCE((
-          SELECT COUNT(*)
-          FROM reports r
-          WHERE (r.created_by IS NOT NULL AND r.created_by::text = u.id::text)
-            OR (r.created_by_email IS NOT NULL AND LOWER(TRIM(r.created_by_email)) = LOWER(TRIM(u.correo)))
-        ), 0) AS "reportsCreated",
-        (SELECT last_login FROM user_activity_log WHERE user_id = u.id ORDER BY last_login DESC LIMIT 1) AS "lastLogin",
-        (SELECT last_activity FROM user_activity_log WHERE user_id = u.id ORDER BY last_activity DESC LIMIT 1) AS "lastActivity",
-        COALESCE((SELECT is_suspended FROM user_activity_log WHERE user_id = u.id LIMIT 1), false) AS "isSuspended",
-        (SELECT suspension_reason FROM user_activity_log WHERE user_id = u.id LIMIT 1) AS "suspensionReason",
-        (SELECT suspended_at FROM user_activity_log WHERE user_id = u.id LIMIT 1) AS "suspendedAt",
-        (SELECT suspended_by FROM user_activity_log WHERE user_id = u.id LIMIT 1) AS "suspendedBy"
+        COALESCE(rc.reports_created, 0) AS "reportsCreated",
+        act.last_login AS "lastLogin",
+        act.last_activity AS "lastActivity",
+        COALESCE(act.is_suspended, false) AS "isSuspended",
+        act.suspension_reason AS "suspensionReason",
+        act.suspended_at AS "suspendedAt",
+        act.suspended_by AS "suspendedBy"
       FROM usuarios u
+      LEFT JOIN report_counts rc ON rc.user_id = u.id
+      LEFT JOIN LATERAL (
+        SELECT last_login, last_activity, is_suspended, suspension_reason, suspended_at, suspended_by
+        FROM user_activity_log ual
+        WHERE ual.user_id::text = u.id::text
+        ORDER BY last_login DESC NULLS LAST, last_activity DESC NULLS LAST
+        LIMIT 1
+      ) act ON TRUE
       ORDER BY u.nombre ASC
     `)
-    
+
     console.log(`  ✓ Query ejecutada, recuperadas ${result.rows.length} filas`)
     
     const mappedData = result.rows.map((row, idx) => {
@@ -3804,26 +3824,56 @@ app.use((req, res) => {
 })
 
 async function startCleanupTask() {
-  // Limpia usuarios con presencia expirada cada 20 segundos
+  // Limpia usuarios con presencia expirada. El cutoff debe ser MAYOR que el heartbeat
+  // del frontend (PRESENCE_SYNC_INTERVAL_MS = 300s) para no marcar offline a usuarios
+  // activos entre latidos. Usamos rowCount (sin RETURNING) para reducir egress.
   setInterval(async () => {
     try {
-      const cutoff = Date.now() - 1000 * 45
+      const cutoff = Date.now() - 1000 * 420 // 7 min > heartbeat de 5 min
       const result = await pool.query(
-        'DELETE FROM online_presence WHERE last_seen < $1 RETURNING user_id',
+        'DELETE FROM online_presence WHERE last_seen < $1',
         [cutoff]
       )
-      
-      if (result.rows.length > 0) {
-        console.log(`Limpiados ${result.rows.length} usuarios inactivos`)
+
+      if (result.rowCount > 0) {
+        console.log(`Limpiados ${result.rowCount} usuarios inactivos`)
       }
     } catch (err) {
       console.error('Error limpiando presencia expirada:', err)
     }
-  }, 20000)
+  }, 60000)
 }
 
 async function ensurePgcryptoExtension() {
   await pool.query(`CREATE EXTENSION IF NOT EXISTS pgcrypto`)
+}
+
+// Habilita Supabase Realtime para la tabla `reports` añadiéndola a la publicación
+// `supabase_realtime`, para que un informe recién creado aparezca EN VIVO en el
+// frontend (vía canal Realtime barato, sin polling al pooler). Idempotente y
+// best-effort: si el rol de la conexión no puede alterar la publicación, se avisa
+// y se continúa (en ese caso, habilita Realtime para `reports` desde el panel de Supabase).
+async function ensureReportsRealtime() {
+  try {
+    await pool.query(`
+      DO $$
+      BEGIN
+        IF EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'supabase_realtime') THEN
+          IF NOT EXISTS (
+            SELECT 1 FROM pg_publication_tables
+            WHERE pubname = 'supabase_realtime'
+              AND schemaname = 'public'
+              AND tablename = 'reports'
+          ) THEN
+            ALTER PUBLICATION supabase_realtime ADD TABLE public.reports;
+          END IF;
+        END IF;
+      END $$;
+    `)
+    console.log('Realtime habilitado para public.reports')
+  } catch (err) {
+    console.warn('No se pudo habilitar Realtime para reports (habilítalo en el panel de Supabase si hace falta):', err instanceof Error ? err.message : err)
+  }
 }
 
 async function start() {
@@ -3837,6 +3887,7 @@ async function start() {
     await ensureUsersPasswordConstraint()
     await ensureReportsTable()
     await ensureReportUpdatesTableWrapper()
+    await ensureReportsRealtime()
     await ensureFailedReportAttemptsTable()
     await ensureUserPermissionsTable()
     await ensureUserPermissionDetailsTable()

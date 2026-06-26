@@ -10,7 +10,7 @@ export function useRealtimeAuditLogs(callback: (event: RealtimeEvent<any>) => vo
     const channelName = RealtimeService.subscribeToAuditLogs(callback)
 
     return () => {
-      RealtimeService.unsubscribe(channelName)
+      RealtimeService.unsubscribe(channelName, callback)
     }
   }, [callback])
 }
@@ -23,7 +23,7 @@ export function useRealtimePermissions(userId: string, callback: (event: Realtim
     const channelName = RealtimeService.subscribeToUserPermissions(userId, callback)
 
     return () => {
-      RealtimeService.unsubscribe(channelName)
+      RealtimeService.unsubscribe(channelName, callback)
     }
   }, [userId, callback])
 }
@@ -36,7 +36,7 @@ export function useRealtimeDeletedReports(callback: (event: RealtimeEvent<any>) 
     const channelName = RealtimeService.subscribeToDeletedReports(callback)
 
     return () => {
-      RealtimeService.unsubscribe(channelName)
+      RealtimeService.unsubscribe(channelName, callback)
     }
   }, [callback])
 }
@@ -49,7 +49,21 @@ export function useRealtimeUserActivity(callback: (event: RealtimeEvent<any>) =>
     const channelName = RealtimeService.subscribeToUserActivity(callback)
 
     return () => {
-      RealtimeService.unsubscribe(channelName)
+      RealtimeService.unsubscribe(channelName, callback)
+    }
+  }, [callback])
+}
+
+/**
+ * Hook for subscribing to real-time report changes (e.g. a newly created report
+ * appearing live in the list). Cleans up the subscription on unmount.
+ */
+export function useRealtimeReports(callback: (event: RealtimeEvent<any>) => void) {
+  React.useEffect(() => {
+    const channelName = RealtimeService.subscribeToReports(callback)
+
+    return () => {
+      RealtimeService.unsubscribe(channelName, callback)
     }
   }, [callback])
 }

@@ -37,8 +37,8 @@ import type { AvatarData } from '@/lib/avatar'
 import { toast } from 'sonner'
 import { LayoutDashboard, FileText, LogOut, FilePlus, Users, AlertCircle, Settings } from 'lucide-react'
 
-const ONLINE_USER_FETCH_INTERVAL_MS = 5 * 60 * 1000
-const FAILED_ATTEMPTS_REFRESH_INTERVAL_MS = 5 * 60 * 1000
+const ONLINE_USER_FETCH_INTERVAL_MS = 10 * 60 * 1000
+const FAILED_ATTEMPTS_REFRESH_INTERVAL_MS = 10 * 60 * 1000
 
 function areOnlineUsersEqual(a: Array<ReturnType<typeof getOnlineUsers>[number]>, b: Array<ReturnType<typeof getOnlineUsers>[number]>) {
   if (a.length !== b.length) {
@@ -417,11 +417,9 @@ export const AppSidebar = React.memo(function AppSidebar() {
       }
     }
 
-    window.addEventListener('focus', handleVisibilityChange)
     window.addEventListener('visibilitychange', handleVisibilityChange)
 
     return () => {
-      window.removeEventListener('focus', handleVisibilityChange)
       window.removeEventListener('visibilitychange', handleVisibilityChange)
     }
   }, [refreshPresenceStyles])
