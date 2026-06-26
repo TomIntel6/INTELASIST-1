@@ -319,6 +319,42 @@ export default function ReportsList() {
 
   const years = Array.from({ length: 5 }, (_, i) => currentYear - 2 + i)
 
+  const ReportRowActions = ({ report }: { report: (typeof filtered)[number] }) => (
+    <>
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        onClick={e => { e.stopPropagation(); navigate(`/informes/${report.id}`) }}
+        disabled={!canViewReports}
+        title={!canViewReports ? 'No tienes permiso para ver informes' : 'Ver'}
+      >
+        <Eye className="size-4" />
+      </Button>
+      {canEditReportsPermission ? (
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          onClick={e => { e.stopPropagation(); navigate(`/informes/${report.id}/editar`) }}
+          title="Editar informe"
+        >
+          <Pencil className="size-4" />
+        </Button>
+      ) : null}
+      {canDeleteReportsPermission ? (
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          className="text-destructive hover:text-destructive"
+          onClick={e => { e.stopPropagation(); void handleDeleteReport(report.id) }}
+          disabled={deletingReportId === report.id}
+          title="Eliminar informe"
+        >
+          {deletingReportId === report.id ? <Spinner className="size-4" /> : <Trash2 className="size-4" />}
+        </Button>
+      ) : null}
+    </>
+  )
+
   if (!canViewReports) {
     return (
       <div className="p-6 max-w-4xl mx-auto text-center">
@@ -462,7 +498,7 @@ export default function ReportsList() {
             {selectedMonth} {selectedYear}
           </CardTitle>
         </CardHeader>
-        <CardContent className="p-0 overflow-x-auto">
+        <CardContent className="p-0 overflow-x-hidden">
           {deleteError ? (
             <div className="px-4 pt-4">
               <p className="flex items-center gap-2 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive ring-1 ring-inset ring-destructive/20">
@@ -494,99 +530,111 @@ export default function ReportsList() {
               ) : null}
             </div>
           ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-muted/40 hover:bg-muted/40">
-                    <TableHead className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Asegurado</TableHead>
-                    <TableHead className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Placa</TableHead>
-                    <TableHead className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Servicio</TableHead>
-                    <TableHead className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Cobertura</TableHead>
-                    <TableHead className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Vehículo</TableHead>
-                    <TableHead className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Estado</TableHead>
-                    <TableHead className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Creado por</TableHead>
-                    <TableHead className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Fecha</TableHead>
-                    <TableHead className="text-xs font-medium uppercase tracking-wide text-muted-foreground text-right">Acciones</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filtered.map(report => (
-                    <TableRow
-                      key={report.id}
-                      className={`border-border transition-colors hover:bg-accent ${canViewReports ? 'cursor-pointer' : 'cursor-not-allowed'}`}
-                      onClick={() => canViewReports && navigate(`/informes/${report.id}`)}
-                    >
-                      <TableCell className="font-medium text-sm text-foreground">{report.insured_name}</TableCell>
-                      <TableCell className="text-sm font-mono tabular-nums text-foreground">{report.plate}</TableCell>
-                      <TableCell className="text-sm">
-                        <Badge variant="outline" className="text-xs whitespace-nowrap">
-                          {report.service_type}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {report.coverage && report.coverage.trim() ? report.coverage : 'No'}
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {report.brand} {report.model}
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          className={`text-xs font-medium ${STATUS_BADGE[report.status] ?? 'bg-secondary text-secondary-foreground ring-1 ring-inset ring-border'}`}
-                        >
-                          {report.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {report.created_by_name || report.created_by_email}
-                      </TableCell>
-                      <TableCell className="text-xs text-muted-foreground tabular-nums whitespace-nowrap">
-                        {formatDateTimeWithMeridiem(report.created_at)}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            onClick={e => { e.stopPropagation(); navigate(`/informes/${report.id}`) }}
-                            disabled={!canViewReports}
-                            title={!canViewReports ? 'No tienes permiso para ver informes' : undefined}
-                          >
-                            <Eye className="size-4" />
-                          </Button>
-                          {canEditReportsPermission ? (
-                            <Button
-                              variant="ghost"
-                              size="icon-sm"
-                              onClick={e => { e.stopPropagation(); navigate(`/informes/${report.id}/editar`) }}
-                              title="Editar informe"
-                            >
-                              <Pencil className="size-4" />
-                            </Button>
-                          ) : null}
-                          {canDeleteReportsPermission ? (
-                            <Button
-                              variant="ghost"
-                              size="icon-sm"
-                              className="text-destructive hover:text-destructive"
-                              onClick={e => {
-                                e.stopPropagation()
-                                void handleDeleteReport(report.id)
-                              }}
-                              disabled={deletingReportId === report.id}
-                              title="Eliminar informe"
-                            >
-                              {deletingReportId === report.id ? (
-                                <Spinner className="size-4" />
-                              ) : (
-                                <Trash2 className="size-4" />
-                              )}
-                            </Button>
-                          ) : null}
-                        </div>
-                      </TableCell>
+            <>
+              {/* DESKTOP / TABLET (>=768px): tabla compacta de ancho fijo */}
+              <div className="hidden md:block">
+                <Table className="w-full table-fixed text-[13px]">
+                  <colgroup>
+                    <col className="w-[17%]" /> {/* Asegurado */}
+                    <col className="w-[9%]" />  {/* Placa */}
+                    <col className="w-[12%]" /> {/* Servicio */}
+                    <col className="w-[10%]" /> {/* Cobertura */}
+                    <col className="w-[13%]" /> {/* Vehículo */}
+                    <col className="w-[11%]" /> {/* Estado */}
+                    <col className="w-[11%]" /> {/* Creado por */}
+                    <col className="w-[9%]" />  {/* Fecha */}
+                    <col className="w-[8%]" />  {/* Acciones */}
+                  </colgroup>
+                  <TableHeader>
+                    <TableRow className="bg-muted/40 hover:bg-muted/40">
+                      <TableHead className="px-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">Asegurado</TableHead>
+                      <TableHead className="px-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">Placa</TableHead>
+                      <TableHead className="px-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">Servicio</TableHead>
+                      <TableHead className="px-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">Cobertura</TableHead>
+                      <TableHead className="px-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">Vehículo</TableHead>
+                      <TableHead className="px-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">Estado</TableHead>
+                      <TableHead className="px-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">Creado por</TableHead>
+                      <TableHead className="px-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">Fecha</TableHead>
+                      <TableHead className="px-2 text-right text-xs font-medium uppercase tracking-wide text-muted-foreground">Acciones</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {filtered.map(report => (
+                      <TableRow
+                        key={report.id}
+                        className={`border-border transition-colors hover:bg-accent ${canViewReports ? 'cursor-pointer' : 'cursor-not-allowed'}`}
+                        onClick={() => canViewReports && navigate(`/informes/${report.id}`)}
+                      >
+                        <TableCell className="px-2 py-1.5 font-medium text-foreground truncate" title={report.insured_name}>{report.insured_name}</TableCell>
+                        <TableCell className="px-2 py-1.5 font-mono tabular-nums text-foreground truncate" title={report.plate}>{report.plate}</TableCell>
+                        <TableCell className="px-2 py-1.5">
+                          <Badge variant="outline" className="max-w-full truncate text-xs" title={report.service_type}>{report.service_type}</Badge>
+                        </TableCell>
+                        <TableCell className="px-2 py-1.5 text-muted-foreground truncate" title={report.coverage && report.coverage.trim() ? report.coverage : 'No'}>{report.coverage && report.coverage.trim() ? report.coverage : 'No'}</TableCell>
+                        <TableCell className="px-2 py-1.5 text-muted-foreground truncate" title={`${report.brand} ${report.model}`}>{report.brand} {report.model}</TableCell>
+                        <TableCell className="px-2 py-1.5">
+                          <Badge className={`max-w-full truncate text-xs font-medium ${STATUS_BADGE[report.status] ?? 'bg-secondary text-secondary-foreground ring-1 ring-inset ring-border'}`} title={report.status}>{report.status}</Badge>
+                        </TableCell>
+                        <TableCell className="px-2 py-1.5 text-muted-foreground truncate" title={report.created_by_name || report.created_by_email}>{report.created_by_name || report.created_by_email}</TableCell>
+                        <TableCell className="px-2 py-1.5 text-xs text-muted-foreground tabular-nums truncate" title={formatDateTimeWithMeridiem(report.created_at)}>{formatDateTimeWithMeridiem(report.created_at)}</TableCell>
+                        <TableCell className="px-2 py-1.5 text-right">
+                          <div className="flex justify-end gap-0.5">
+                            <ReportRowActions report={report} />
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* MÓVIL (<768px): tarjetas apiladas */}
+              <div className="block md:hidden divide-y divide-border">
+                {filtered.map(report => (
+                  <div
+                    key={report.id}
+                    role={canViewReports ? 'button' : undefined}
+                    tabIndex={canViewReports ? 0 : undefined}
+                    onClick={() => canViewReports && navigate(`/informes/${report.id}`)}
+                    onKeyDown={e => { if (canViewReports && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); navigate(`/informes/${report.id}`) } }}
+                    className={`p-4 space-y-3 transition-colors hover:bg-accent ${canViewReports ? 'cursor-pointer' : 'cursor-not-allowed'}`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="font-semibold text-sm text-foreground truncate">{report.insured_name}</p>
+                        <p className="text-xs font-mono tabular-nums text-muted-foreground">{report.plate}</p>
+                      </div>
+                      <Badge className={`shrink-0 text-xs font-medium ${STATUS_BADGE[report.status] ?? 'bg-secondary text-secondary-foreground ring-1 ring-inset ring-border'}`}>{report.status}</Badge>
+                    </div>
+                    <dl className="grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
+                      <div className="min-w-0">
+                        <dt className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Servicio</dt>
+                        <dd className="mt-0.5"><Badge variant="outline" className="max-w-full truncate text-xs">{report.service_type}</Badge></dd>
+                      </div>
+                      <div className="min-w-0">
+                        <dt className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Cobertura</dt>
+                        <dd className="text-foreground truncate">{report.coverage && report.coverage.trim() ? report.coverage : 'No'}</dd>
+                      </div>
+                      <div className="min-w-0">
+                        <dt className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Vehículo</dt>
+                        <dd className="text-foreground truncate">{report.brand} {report.model}</dd>
+                      </div>
+                      <div className="min-w-0">
+                        <dt className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Creado por</dt>
+                        <dd className="text-foreground truncate">{report.created_by_name || report.created_by_email}</dd>
+                      </div>
+                      <div className="col-span-2">
+                        <dt className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Fecha</dt>
+                        <dd className="text-muted-foreground tabular-nums">{formatDateTimeWithMeridiem(report.created_at)}</dd>
+                      </div>
+                    </dl>
+                    <div className="flex justify-end gap-1 border-t border-border pt-3">
+                      <ReportRowActions report={report} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
           )}
         </CardContent>
       </Card>
