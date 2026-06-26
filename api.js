@@ -1504,10 +1504,18 @@ app.get('/reports', async (req, res) => {
       conditions.push(`year = $${values.length}`)
     }
 
-    const limitRaw = typeof req.query.limit === 'string' ? Number(req.query.limit) : 200
-    const limit = Number.isFinite(limitRaw) && limitRaw > 0 ? Math.min(limitRaw, 500) : 200
+    // Límite de la lista: tope de 5000 informes.
+    //  - Por defecto se devuelven hasta 5000 informes (cubre con holgura el volumen
+    //    actual: ~1380 en un mes; antes el tope de 200 ocultaba el resto).
+    //  - Si el cliente envía ?limit explícito, se respeta pero nunca supera 5000.
+    const MAX_REPORTS = 5000
+    const hasFilter = conditions.length > 0
+    const limitRaw = typeof req.query.limit === 'string' ? Number(req.query.limit) : NaN
+    const limit = Number.isFinite(limitRaw) && limitRaw > 0
+      ? Math.min(limitRaw, MAX_REPORTS)
+      : MAX_REPORTS
 
-    const query = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
+    const query = hasFilter ? `WHERE ${conditions.join(' AND ')}` : ''
     const reports = await loadReportsListProjection(query, values, limit)
 
     res.json({ reports })
