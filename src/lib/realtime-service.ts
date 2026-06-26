@@ -145,7 +145,7 @@ export class RealtimeService {
   /**
    * Unsubscribe from a channel
    */
-  static unsubscribe(channelName: string, callback?: (payload: unknown) => void) {
+  static unsubscribe(channelName: string, callback?: (event: RealtimeEvent<any>) => void) {
     // Si se pasa el callback, quitar solo ese listener; cerrar el canal compartido
     // unicamente cuando ya no queden listeners (evita cortar eventos a otros consumidores).
     const listeners = this.listeners.get(channelName)
