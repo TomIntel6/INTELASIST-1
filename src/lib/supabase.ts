@@ -502,6 +502,125 @@ export async function loadReportsForMonth(month: string, year: number): Promise<
   }
 }
 
+// ---- Paginación server-side de la lista de informes ----
+// Solo se descarga UNA página (por defecto 50 filas) en lugar de todo el mes.
+// El servidor devuelve además `total` para los controles de paginación.
+export interface ReportsPage {
+  reports: Report[]
+  total: number
+  page: number
+  pageSize: number
+}
+
+export const REPORTS_PAGE_SIZE = 50
+
+export async function loadReportsPage(params: {
+  month: string
+  year: number
+  page: number
+  pageSize?: number
+  search?: string
+}): Promise<ReportsPage> {
+  const { month, year, page } = params
+  const pageSize = params.pageSize ?? REPORTS_PAGE_SIZE
+  const search = (params.search ?? '').trim()
+
+  const qs = new URLSearchParams({
+    month,
+    year: String(year),
+    page: String(page),
+    pageSize: String(pageSize),
+  })
+  if (search) {
+    qs.set('search', search)
+  }
+
+  try {
+    const payload = await requestJson<{ reports: unknown[]; total: number; page: number; pageSize: number }>(
+      `/reports?${qs.toString()}`
+    )
+    const reports = payload.reports.map(item => normalizeReport(item as Record<string, unknown>))
+    // Mezclar (sin reemplazar el mes) para mantener caliente el detalle/offline.
+    cacheReports(reports)
+    return {
+      reports: sortReports(reports),
+      total: Number(payload.total ?? reports.length),
+      page: Number(payload.page ?? page),
+      pageSize: Number(payload.pageSize ?? pageSize),
+    }
+  } catch (error) {
+    console.warn('No se pudo cargar la página de informes desde el servidor. Usando caché local.', error)
+    // Fallback offline: paginar/buscar sobre lo que haya en caché del mes.
+    const all = sortReports(getCachedReportsForMonth(month, year))
+    const q = search.toLowerCase()
+    const matched = q
+      ? all.filter(r =>
+          r.insured_name.toLowerCase().includes(q) ||
+          r.plate.toLowerCase().includes(q) ||
+          r.policy.toLowerCase().includes(q) ||
+          r.service_type.toLowerCase().includes(q) ||
+          r.brand.toLowerCase().includes(q)
+        )
+      : all
+    const start = (page - 1) * pageSize
+    return {
+      reports: matched.slice(start, start + pageSize),
+      total: matched.length,
+      page,
+      pageSize,
+    }
+  }
+}
+
+// ---- Estadísticas por motivo (tarjetas) ----
+// Endpoint INDEPENDIENTE de la lista: una sola consulta agregada en el servidor
+// que cuenta SOAT, Saldo moroso, etc. sobre TODO el mes (no solo la página).
+export interface ReportCategoryStats {
+  total: number
+  categories: Record<string, number>
+}
+
+const REPORT_MOTIVO_KEYWORDS = [
+  'SOAT',
+  'SALDO MOROSO',
+  'RENOVACION NO PAGADA',
+  'SERVICIO UTILIZADO',
+  'BENEFICIO EN 24H',
+  'POLIZA CANCELADA',
+  'NO CUBIERTO POR LA POLIZA',
+]
+
+export function computeCategoryStatsFromReports(reports: Report[]): ReportCategoryStats {
+  const categories: Record<string, number> = {}
+  for (const kw of REPORT_MOTIVO_KEYWORDS) {
+    categories[kw] = reports.filter(r =>
+      r.observation_comment.toLowerCase().includes(kw.toLowerCase()) ||
+      r.service_type.toLowerCase().includes(kw.toLowerCase())
+    ).length
+  }
+  categories['OTROS'] = reports.filter(r => {
+    const text = `${r.observation_comment} ${r.service_type}`.toUpperCase()
+    return REPORT_MOTIVO_KEYWORDS.every(kw => !text.includes(kw))
+  }).length
+  return { total: reports.length, categories }
+}
+
+export async function fetchReportCategoryStats(month: string, year: number): Promise<ReportCategoryStats> {
+  const qs = new URLSearchParams({ month, year: String(year) })
+  try {
+    const payload = await requestJson<{ total: number; categories: Record<string, number> }>(
+      `/reports/category-stats?${qs.toString()}`
+    )
+    return {
+      total: Number(payload?.total ?? 0),
+      categories: (payload?.categories ?? {}) as Record<string, number>,
+    }
+  } catch (error) {
+    console.warn('No se pudieron obtener las estadísticas de categorías. Calculando desde caché local.', error)
+    return computeCategoryStatsFromReports(getCachedReportsForMonth(month, year))
+  }
+}
+
 export async function uploadEvidenceFile(file: File): Promise<{ filename: string; path: string; url: string }> {
   if (!file) {
     throw new Error('No se recibió ningún archivo para subir.')

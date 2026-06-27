@@ -1488,8 +1488,9 @@ app.get('/reports', async (req, res) => {
   try {
     const month = typeof req.query.month === 'string' ? req.query.month.trim() : ''
     const year = typeof req.query.year === 'string' && req.query.year.trim() ? Number(req.query.year) : null
+    const search = typeof req.query.search === 'string' ? req.query.search.trim() : ''
 
-    console.log('[API] GET /reports request', { month, year, query: req.query })
+    console.log('[API] GET /reports request', { month, year, search, query: req.query })
 
     const conditions = []
     const values = []
@@ -1504,19 +1505,63 @@ app.get('/reports', async (req, res) => {
       conditions.push(`year = $${values.length}`)
     }
 
+    // Búsqueda server-side sobre los MISMOS campos que filtra el frontend
+    // (asegurado, placa, póliza, servicio, marca). Permite buscar en TODO el mes
+    // aunque la tabla solo tenga 50 filas cargadas.
+    if (search) {
+      values.push(`%${search}%`)
+      const p = `$${values.length}`
+      conditions.push(
+        `(insured_name ILIKE ${p} OR plate ILIKE ${p} OR policy ILIKE ${p} OR service_type ILIKE ${p} OR brand ILIKE ${p})`
+      )
+    }
+
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
+
+    // ---- Modo PAGINADO (server-side): el cliente envía ?page ----
+    //  - Devuelve solo `pageSize` filas (por defecto 50) con LIMIT/OFFSET.
+    //  - Incluye `total` (COUNT con el mismo filtro) para los controles de paginación.
+    const pageRaw = typeof req.query.page === 'string' ? Number(req.query.page) : NaN
+    if (Number.isFinite(pageRaw) && pageRaw >= 1) {
+      const DEFAULT_PAGE_SIZE = 50
+      const MAX_PAGE_SIZE = 200
+      const pageSizeRaw = typeof req.query.pageSize === 'string' ? Number(req.query.pageSize) : NaN
+      const pageSize = Number.isFinite(pageSizeRaw) && pageSizeRaw > 0
+        ? Math.min(Math.floor(pageSizeRaw), MAX_PAGE_SIZE)
+        : DEFAULT_PAGE_SIZE
+      const page = Math.max(1, Math.floor(pageRaw))
+      const offset = (page - 1) * pageSize
+
+      const countResult = await pool.query(`SELECT COUNT(*)::int AS total FROM reports ${whereClause}`, values)
+      const total = Number(countResult.rows[0]?.total ?? 0)
+
+      const pageParams = [...values, pageSize, offset]
+      const pageResult = await pool.query(
+        `SELECT ${REPORTS_LIST_COLUMNS} FROM reports
+         ${whereClause}
+         ORDER BY created_at DESC
+         LIMIT $${pageParams.length - 1} OFFSET $${pageParams.length}`,
+        pageParams
+      )
+      const reports = pageResult.rows.map(row => ({ ...serializeReportRow(row), report_updates: [] }))
+
+      console.log('[API] GET /reports paginado', { month, year, search, page, pageSize, total, returned: reports.length })
+      res.json({ reports, total, page, pageSize })
+      return
+    }
+
+    // ---- Modo COMPLETO (legacy / Exportar Excel) ----
     // Límite de la lista: tope de 5000 informes.
-    //  - Por defecto se devuelven hasta 5000 informes (cubre con holgura el volumen
-    //    actual: ~1380 en un mes; antes el tope de 200 ocultaba el resto).
+    //  - Se usa para la exportación (debe incluir el 100% del mes) y para usos
+    //    legacy (Dashboard) que no envían ?page.
     //  - Si el cliente envía ?limit explícito, se respeta pero nunca supera 5000.
     const MAX_REPORTS = 5000
-    const hasFilter = conditions.length > 0
     const limitRaw = typeof req.query.limit === 'string' ? Number(req.query.limit) : NaN
     const limit = Number.isFinite(limitRaw) && limitRaw > 0
       ? Math.min(limitRaw, MAX_REPORTS)
       : MAX_REPORTS
 
-    const query = hasFilter ? `WHERE ${conditions.join(' AND ')}` : ''
-    const reports = await loadReportsListProjection(query, values, limit)
+    const reports = await loadReportsListProjection(whereClause, values, limit)
 
     res.json({ reports })
   } catch (error) {
@@ -1573,6 +1618,84 @@ app.get('/reports/count', async (req, res) => {
   } catch (error) {
     console.error(error)
     res.status(500).json({ error: 'Error al contar informes' })
+  }
+})
+
+// Palabras clave de "motivo" que se muestran en las tarjetas de estadísticas de
+// la vista de Informes. Debe coincidir EXACTAMENTE con MOTIVO_ORDER del frontend
+// (src/pages/ReportsList.tsx). "OTROS" se calcula aparte (ninguna coincide).
+const REPORT_MOTIVO_KEYWORDS = [
+  'SOAT',
+  'SALDO MOROSO',
+  'RENOVACION NO PAGADA',
+  'SERVICIO UTILIZADO',
+  'BENEFICIO EN 24H',
+  'POLIZA CANCELADA',
+  'NO CUBIERTO POR LA POLIZA',
+]
+
+// Estadísticas por motivo del mes/año, calculadas en el servidor (una sola
+// consulta agregada) e INDEPENDIENTES de la lista paginada. Replica la lógica
+// del frontend:
+//   - countByKeyword: la palabra aparece en observation_comment O en service_type.
+//   - countOtherReports ("OTROS"): ninguna palabra aparece en el texto combinado.
+// Todas las comparaciones son por substring, sin distinguir mayúsculas/minúsculas.
+app.get('/reports/category-stats', async (req, res) => {
+  try {
+    const month = typeof req.query.month === 'string' ? req.query.month.trim() : ''
+    const year = typeof req.query.year === 'string' && req.query.year.trim() ? Number(req.query.year) : null
+
+    const conditions = []
+    const values = []
+
+    if (month) {
+      values.push(month)
+      conditions.push(`month = $${values.length}`)
+    }
+    if (year !== null && Number.isFinite(year)) {
+      values.push(year)
+      conditions.push(`year = $${values.length}`)
+    }
+
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
+
+    // Un parámetro (en minúsculas) por cada palabra clave.
+    const keywordParams = REPORT_MOTIVO_KEYWORDS.map(kw => kw.toLowerCase())
+    const baseLen = values.length
+
+    const perCategorySelects = REPORT_MOTIVO_KEYWORDS.map((_, i) => {
+      const p = `$${baseLen + i + 1}`
+      return `COUNT(*) FILTER (WHERE position(${p} in lower(coalesce(observation_comment, ''))) > 0 OR position(${p} in lower(coalesce(service_type, ''))) > 0)::int AS cat_${i}`
+    })
+
+    const otrosConditions = REPORT_MOTIVO_KEYWORDS.map((_, i) => {
+      const p = `$${baseLen + i + 1}`
+      return `position(${p} in lower(coalesce(observation_comment, '') || ' ' || coalesce(service_type, ''))) = 0`
+    })
+    const otrosSelect = `COUNT(*) FILTER (WHERE ${otrosConditions.join(' AND ')})::int AS otros`
+
+    const sql = `
+      SELECT
+        COUNT(*)::int AS total,
+        ${perCategorySelects.join(',\n        ')},
+        ${otrosSelect}
+      FROM reports
+      ${whereClause}
+    `
+
+    const result = await pool.query(sql, [...values, ...keywordParams])
+    const row = result.rows[0] || {}
+
+    const categories = {}
+    REPORT_MOTIVO_KEYWORDS.forEach((kw, i) => {
+      categories[kw] = Number(row[`cat_${i}`] || 0)
+    })
+    categories['OTROS'] = Number(row.otros || 0)
+
+    res.json({ total: Number(row.total || 0), categories })
+  } catch (error) {
+    console.error('Error en /reports/category-stats:', error)
+    res.status(500).json({ error: 'Error al obtener estadísticas de categorías' })
   }
 })
 
