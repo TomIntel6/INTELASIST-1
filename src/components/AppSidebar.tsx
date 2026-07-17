@@ -540,9 +540,9 @@ export const AppSidebar = React.memo(function AppSidebar() {
         <button
           type="button"
           onClick={() => navigate('/dashboard')}
-          className="group flex items-center gap-2.5 rounded-2xl px-2 py-1.5 text-left transition-colors duration-200 hover:bg-primary/5"
+          className="group flex items-center gap-2.5 rounded-2xl px-2 py-1.5 text-left transition-all duration-200 hover:bg-primary/5"
         >
-          <div className="rounded-2xl bg-background/90 p-1 shadow-sm ring-1 ring-border transition-transform duration-200 group-hover:scale-105">
+          <div className="rounded-2xl bg-background/90 p-1 shadow-sm ring-1 ring-border transition-all duration-200 group-hover:scale-105 group-hover:shadow-[0_12px_30px_-18px_rgba(99,102,241,0.7)]">
             <img src="/intelasist.png" alt="INTELASIST" className="h-11 w-11 shrink-0 object-contain" />
           </div>
           <div className="leading-tight group-data-[collapsible=icon]:hidden">
@@ -562,7 +562,9 @@ export const AppSidebar = React.memo(function AppSidebar() {
 
       <SidebarContent className="py-2">
         <SidebarGroup>
-          <SidebarGroupLabel>Principal</SidebarGroupLabel>
+          <SidebarGroupLabel className="px-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground/80">
+            Principal
+          </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {navItems.map(({ to, label, icon: Icon }) => {
@@ -578,9 +580,9 @@ export const AppSidebar = React.memo(function AppSidebar() {
                         : location.pathname.startsWith(to)}
                       tooltip={label}
                       onClick={() => navigate(to)}
-                      className="relative rounded-xl transition-all duration-200 before:absolute before:left-0 before:top-1/2 before:h-5 before:w-1 before:-translate-y-1/2 before:rounded-full before:bg-primary before:opacity-0 before:transition-opacity before:content-[''] hover:bg-primary/5 data-[active=true]:bg-primary/10 data-[active=true]:font-medium data-[active=true]:text-foreground data-[active=true]:before:opacity-100"
+                      className="group relative rounded-xl px-2.5 py-2.5 text-sm font-medium transition-all duration-200 hover:bg-accent/70 hover:text-foreground data-[active=true]:bg-gradient-to-r data-[active=true]:from-primary/12 data-[active=true]:to-primary/6 data-[active=true]:text-foreground data-[active=true]:shadow-[0_10px_30px_-18px_rgba(99,102,241,0.72)]"
                     >
-                      <Icon className="shrink-0" />
+                      <Icon className="size-4 shrink-0 transition-transform duration-200 group-hover:scale-105" />
                       <span>{label}</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -591,36 +593,36 @@ export const AppSidebar = React.memo(function AppSidebar() {
         </SidebarGroup>
 
         <SidebarGroup className="mt-2">
-          <SidebarGroupLabel>Acciones</SidebarGroupLabel>
+          <SidebarGroupLabel className="px-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground/80">
+            Acciones
+          </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
                 <SidebarMenuButton
                   tooltip="Nuevo Informe"
                   onClick={() => navigate('/informes/nuevo')}
-                  className="rounded-xl bg-destructive/10 text-destructive font-medium transition-colors duration-150 hover:bg-destructive/20 hover:text-destructive hover:shadow-[0_0_22px_rgba(244,63,94,0.2)]"
+                  className="rounded-xl bg-gradient-to-r from-rose-500/12 to-rose-500/6 text-rose-600 font-semibold transition-all duration-200 hover:from-rose-500/18 hover:to-rose-500/10 hover:text-rose-600 hover:shadow-[0_12px_30px_-18px_rgba(244,63,94,0.7)]"
                 >
-                  <FilePlus className="transition-transform duration-150 group-hover:scale-105" />
-                  <span className="transition-colors duration-150 group-hover:drop-shadow-[0_0_10px_rgba(244,63,94,0.22)]">Nuevo Informe</span>
+                  <FilePlus className="size-4 transition-transform duration-200 group-hover:scale-105" />
+                  <span>Nuevo Informe</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
               {canViewAlerts ? (
                 <SidebarMenuItem>
                   <button
                     onClick={() => setAlertsOpen(true)}
-                    className={`w-full rounded-xl font-medium transition-colors duration-150 px-2 py-2 flex items-center gap-2 group ${
+                    className={`w-full rounded-xl px-2.5 py-2.5 font-medium transition-all duration-200 flex items-center gap-2 group ${
                       failedAttempts.length > 0
-                        ? 'bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 hover:text-amber-700 hover:shadow-[0_0_22px_rgba(217,119,6,0.2)]'
-                        : 'bg-slate-500/10 text-slate-600 hover:bg-slate-500/20 hover:text-slate-700 hover:shadow-[0_0_22px_rgba(71,85,105,0.2)]'
+                        ? 'bg-amber-500/10 text-amber-600 hover:bg-amber-500/15 hover:text-amber-700 hover:shadow-[0_12px_30px_-18px_rgba(217,119,6,0.65)]'
+                        : 'bg-slate-500/10 text-slate-600 hover:bg-slate-500/15 hover:text-slate-700 hover:shadow-[0_12px_30px_-18px_rgba(71,85,105,0.6)]'
                     }`}
                     title={failedAttempts.length > 0 ? `${failedAttempts.length} usuario(s) con intentos incompletos` : 'Sin alertas'}
                   >
-                    <AlertCircle className={`size-4 shrink-0 transition-transform duration-150 group-hover:scale-105 ${
+                    <AlertCircle className={`size-4 shrink-0 transition-transform duration-200 group-hover:scale-105 ${
                       failedAttempts.length > 0 ? 'group-hover:animate-pulse' : ''
                     }`} />
-                    <span className="transition-colors duration-150 group-hover:drop-shadow-[0_0_10px_rgba(217,119,6,0.22)]">
-                      {failedAttempts.length > 0 ? `${failedAttempts.length} alerta${failedAttempts.length !== 1 ? 's' : ''}` : 'Sin alertas'}
-                    </span>
+                    <span>{failedAttempts.length > 0 ? `${failedAttempts.length} alerta${failedAttempts.length !== 1 ? 's' : ''}` : 'Sin alertas'}</span>
                   </button>
                 </SidebarMenuItem>
               ) : null}
@@ -628,22 +630,21 @@ export const AppSidebar = React.memo(function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* Acceso al panel controlado por el permiso granular `manage_permissions`,
-            no por el rol Support. Cualquier rol al que se le otorgue ese permiso
-            verá y podrá gestionar el panel. */}
         {canViewAdminModule ? (
           <SidebarGroup className="mt-2">
-            <SidebarGroupLabel>Administración</SidebarGroupLabel>
+            <SidebarGroupLabel className="px-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground/80">
+              Administración
+            </SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
                 <SidebarMenuItem>
                   <SidebarMenuButton
-                    tooltip="Gestion de Permisos"
+                    tooltip="Gestión de Permisos"
                     onClick={() => navigate('/admin/permisos')}
-                    className="rounded-xl bg-purple-500/10 text-purple-600 font-medium transition-colors duration-150 hover:bg-purple-500/20 hover:text-purple-700 hover:shadow-[0_0_20px_rgba(168,85,247,0.18)]"
+                    className="rounded-xl bg-gradient-to-r from-violet-500/12 to-violet-500/5 text-violet-600 font-semibold transition-all duration-200 hover:from-violet-500/18 hover:to-violet-500/10 hover:text-violet-700 hover:shadow-[0_12px_30px_-18px_rgba(168,85,247,0.65)]"
                   >
-                    <Settings className="transition-transform duration-150 group-hover:scale-105" />
-                    <span className="transition-colors duration-150 group-hover:drop-shadow-[0_0_10px_rgba(168,85,247,0.28)]"> Gestion de Permisos</span>
+                    <Settings className="size-4 transition-transform duration-200 group-hover:scale-105" />
+                    <span>Gestión de Permisos</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               </SidebarMenu>
