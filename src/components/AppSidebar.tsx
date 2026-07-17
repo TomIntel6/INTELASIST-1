@@ -22,8 +22,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { fetchOnlineUsersFromServer, getNameColorClasses, getOnlineUsers, getPresenceStyleClasses, getRoleColorClasses, getUserRole, getUserRoles, useAuth, PRESENCE_STORAGE_KEY, PRESENCE_SYNC_STORAGE_KEY, USERS_SYNC_STORAGE_KEY } from '@/lib/auth'
 import { getDefaultApiBase } from '@/lib/supabase'
 import { PERMISSIONS } from '@/lib/permissions'
@@ -31,7 +29,6 @@ import { getReportFieldLabel } from '@/lib/report-alerts'
 import { PermissionsManagementService } from '@/lib/permissions-management'
 import { usePermissions } from '@/lib/permissions-context'
 import { UserAvatar } from '@/components/UserAvatar'
-import { ProfileAvatarEditor } from '@/components/ProfileAvatarEditor'
 import { normalizeAvatar } from '@/lib/avatar'
 import type { AvatarData } from '@/lib/avatar'
 import { toast } from 'sonner'
@@ -73,38 +70,16 @@ const navItems = [
 ]
 
 export const AppSidebar = React.memo(function AppSidebar() {
-  const { user, signOut, updateCurrentUserProfile, updateCurrentUserAvatar } = useAuth()
+  const { user, signOut } = useAuth()
   const { permissions, hasModuleAccess, hasPermission } = usePermissions()
   const navigate = useNavigate()
   const location = useLocation()
-  const [profileOpen, setProfileOpen] = React.useState(false)
-  const [profileName, setProfileName] = React.useState('')
-  const [profileSaving, setProfileSaving] = React.useState(false)
-  const [profileMessage, setProfileMessage] = React.useState<string | null>(null)
 
   const rawDisplayName = (user?.user_metadata?.full_name as string) ?? user?.email ?? 'Usuario'
-  const displayName = profileName || rawDisplayName
+  const displayName = rawDisplayName
   const avatarUrl = user?.user_metadata?.avatar_url as string | undefined
   const avatarData = React.useMemo(() => normalizeAvatar(user?.user_metadata?.avatar), [user])
   const userRoles = React.useMemo(() => getUserRoles(user), [user])
-  // El permiso granular controla la personalización; Admin/Support la conservan
-  // siempre porque son quienes administran los permisos.
-  const canCustomizeAvatar = React.useMemo(
-    () =>
-      hasPermission(PERMISSIONS.PROFILE.CUSTOMIZE_AVATAR) ||
-      userRoles.includes('Admin') ||
-      userRoles.includes('Support'),
-    [hasPermission, userRoles]
-  )
-  // Permiso granular adicional: subir/usar una imagen como avatar. Restringido por
-  // defecto; solo Admin/Support y quienes lo tengan concedido ven la opción "Imagen".
-  const canUploadAvatarImage = React.useMemo(
-    () =>
-      hasPermission(PERMISSIONS.PROFILE.UPLOAD_AVATAR_IMAGE) ||
-      userRoles.includes('Admin') ||
-      userRoles.includes('Support'),
-    [hasPermission, userRoles]
-  )
   const canViewReportsModule = React.useMemo(() => hasModuleAccess('reports'), [hasModuleAccess])
   const canViewUsersModule = React.useMemo(
     () => hasModuleAccess('users') || hasPermission(PERMISSIONS.USERS.VIEW),
@@ -216,10 +191,6 @@ export const AppSidebar = React.memo(function AppSidebar() {
   const [alertsOpen, setAlertsOpen] = React.useState(false)
   const isAdminRole = userRoles.includes('Admin') || userRoles.includes('Support') || userRoles.includes('Gerente')
   const canAccessFailedAlerts = canViewAlerts || isAdminRole
-
-  React.useEffect(() => {
-    setProfileName(rawDisplayName)
-  }, [rawDisplayName])
 
   React.useEffect(() => {
     isMountedRef.current = true
@@ -469,14 +440,6 @@ export const AppSidebar = React.memo(function AppSidebar() {
     return Array.from(mergedByEmail.values())
   }, [onlineUsers, user, presenceStyles, avatarsByEmail, avatarData])
 
-  const openProfile = (open: boolean) => {
-    setProfileOpen(open)
-    if (open) {
-      setProfileName(rawDisplayName)
-      setProfileMessage(null)
-    }
-  }
-
   const handleDeleteAttempt = async (id: number) => {
     try {
       console.log(`🗑️ Intentando borrar intento con ID: ${id}`)
@@ -497,38 +460,6 @@ export const AppSidebar = React.memo(function AppSidebar() {
     } catch (err) {
       console.error('Error borrando intento:', err)
     }
-  }
-
-  const handleProfileSave = async () => {
-    if (!user) {
-      return
-    }
-
-    const nextName = profileName.trim()
-
-    if (!nextName) {
-      setProfileMessage('El nombre no puede estar vacío.')
-      return
-    }
-
-    setProfileSaving(true)
-    setProfileMessage(null)
-
-    try {
-      await updateCurrentUserProfile(nextName)
-      setProfileOpen(false)
-      setProfileMessage('Perfil actualizado correctamente.')
-    } catch (error) {
-      setProfileMessage(error instanceof Error ? error.message : 'No se pudo actualizar el perfil.')
-    } finally {
-      setProfileSaving(false)
-    }
-  }
-
-  const handleAvatarSave = async (avatar: AvatarData) => {
-    // Si lanza, el editor mostrará el error en línea; el toast solo corre en éxito.
-    await updateCurrentUserAvatar(avatar)
-    toast.success('Avatar actualizado correctamente.')
   }
 
   return (
@@ -706,30 +637,22 @@ export const AppSidebar = React.memo(function AppSidebar() {
           <div className="h-px bg-gradient-to-r from-transparent via-border to-transparent" />
         </div>
         <div className="flex items-center gap-3 px-2 py-1 group-data-[collapsible=icon]:justify-center">
-          <button
-            type="button"
-            onClick={() => openProfile(true)}
-            title="Editar perfil y avatar"
-            className="shrink-0 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+          <div
+            title="Perfil del usuario"
+            className="shrink-0 rounded-full outline-none"
           >
             <UserAvatar
               avatar={avatarData}
               name={displayName}
               fallbackImageUrl={avatarUrl}
               size={36}
-              className="border border-white/40 shadow-sm transition-transform duration-150 hover:scale-105 hover:shadow-[0_0_18px_rgba(59,130,246,0.22)]"
+              className="border border-white/40 shadow-sm"
             />
-          </button>
+          </div>
           <div className="flex flex-col min-w-0 flex-1 group-data-[collapsible=icon]:hidden">
-            <button
-              type="button"
-              onClick={() => openProfile(true)}
-              className="rounded-xl px-2 py-1 text-left transition-all duration-150 hover:bg-primary/10 hover:shadow-[0_0_20px_rgba(59,130,246,0.16)]"
-            >
-              <span className={`block text-xs font-medium text-sidebar-foreground truncate transition-all duration-150 hover:text-primary hover:drop-shadow-[0_0_10px_rgba(59,130,246,0.28)] ${getNameColorClasses(displayName)}`}>
-                {displayName}
-              </span>
-            </button>
+            <span className={`block px-2 py-1 text-xs font-medium text-sidebar-foreground truncate ${getNameColorClasses(displayName)}`}>
+              {displayName}
+            </span>
             <span className="px-2 text-xs text-sidebar-foreground/85 truncate">{user?.email}</span>
             <div className="flex flex-wrap gap-1 px-2 mt-1">
               {userRoles.map(role => (
@@ -749,75 +672,6 @@ export const AppSidebar = React.memo(function AppSidebar() {
             <LogOut className="size-4" />
           </Button>
         </div>
-
-        <Dialog open={profileOpen} onOpenChange={openProfile}>
-          <DialogContent className="sm:max-w-2xl max-h-[88vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Perfil del usuario</DialogTitle>
-              <DialogDescription>
-                Actualiza tu nombre y personaliza tu avatar (foto o personaje).
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="space-y-5 py-1">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="profile-name">Nombre completo</Label>
-                  <Input
-                    id="profile-name"
-                    value={profileName}
-                    onChange={event => setProfileName(event.target.value)}
-                    placeholder="Nombre completo"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="profile-email">Correo</Label>
-                  <Input id="profile-email" value={user?.email ?? ''} disabled />
-                </div>
-              </div>
-
-              <div className="flex justify-end">
-                <Button size="sm" onClick={handleProfileSave} disabled={profileSaving}>
-                  {profileSaving ? 'Guardando...' : 'Guardar nombre'}
-                </Button>
-              </div>
-
-              {profileMessage ? (
-                <p className="text-sm text-muted-foreground bg-muted/60 px-3 py-2 rounded-md">
-                  {profileMessage}
-                </p>
-              ) : null}
-
-              <div className="relative">
-                <div className="h-px bg-gradient-to-r from-transparent via-border to-transparent" />
-              </div>
-
-              <div className="space-y-3">
-                <div>
-                  <h3 className="text-sm font-semibold text-foreground">Avatar de perfil</h3>
-                  <p className="text-xs text-muted-foreground">
-                    Personaliza color de piel, ojos, cejas, cabello y más, o sube una imagen.
-                  </p>
-                </div>
-
-                <ProfileAvatarEditor
-                  value={avatarData}
-                  displayName={displayName}
-                  canCustomize={canCustomizeAvatar}
-                  canUploadImage={canUploadAvatarImage}
-                  onSave={handleAvatarSave}
-                />
-              </div>
-            </div>
-
-            <DialogFooter>
-              <Button variant="outline" onClick={() => openProfile(false)} disabled={profileSaving}>
-                Cerrar
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
 
         <Dialog open={alertsOpen} onOpenChange={setAlertsOpen}>
           <DialogContent className="sm:max-w-md max-h-[80vh] overflow-y-auto">
