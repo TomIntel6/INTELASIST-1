@@ -1393,6 +1393,8 @@ app.put('/usuarios/:email/password', async (req, res) => {
 })
 
 app.delete('/usuarios/:id', async (req, res) => {
+  const client = await pool.connect()
+
   try {
     const id = Number(req.params.id)
 
@@ -1401,23 +1403,59 @@ app.delete('/usuarios/:id', async (req, res) => {
       return
     }
 
-    const existing = await pool.query('SELECT correo FROM usuarios WHERE id = $1', [id])
+    await client.query('BEGIN')
+
+    const existing = await client.query('SELECT id, correo FROM usuarios WHERE id = $1', [id])
     if (existing.rowCount === 0) {
+      await client.query('ROLLBACK')
       res.status(404).json({ error: 'Usuario no encontrado' })
       return
     }
 
-    const result = await pool.query('DELETE FROM usuarios WHERE id = $1 RETURNING id', [id])
+    const deletedUserEmail = String(existing.rows[0]?.correo ?? '').trim().toLowerCase()
+
+    if (deletedUserEmail) {
+      await client.query(
+        `
+          UPDATE reports
+          SET
+            created_by_name = 'INTELASIST',
+            created_by_email = 'intelasist@intelasist.com',
+            updated_at = NOW()
+          WHERE LOWER(TRIM(created_by_email)) = LOWER(TRIM($1))
+             OR (created_by IS NOT NULL AND created_by::text = $2)
+        `,
+        [deletedUserEmail, String(id)]
+      )
+
+      await client.query(
+        `
+          UPDATE report_updates
+          SET
+            added_by_name = 'INTELASIST',
+            added_by_email = 'intelasist@intelasist.com'
+          WHERE LOWER(TRIM(added_by_email)) = LOWER(TRIM($1))
+        `,
+        [deletedUserEmail]
+      )
+    }
+
+    const result = await client.query('DELETE FROM usuarios WHERE id = $1 RETURNING id', [id])
 
     if (result.rowCount === 0) {
+      await client.query('ROLLBACK')
       res.status(404).json({ error: 'Usuario no encontrado' })
       return
     }
 
-    res.json({ ok: true, id })
+    await client.query('COMMIT')
+    res.json({ ok: true, id, reassignedTo: 'INTELASIST' })
   } catch (err) {
+    await client.query('ROLLBACK').catch(() => {})
     console.error(err)
     res.status(500).json({ error: 'Error al eliminar usuario' })
+  } finally {
+    client.release()
   }
 })
 
