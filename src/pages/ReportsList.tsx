@@ -523,21 +523,24 @@ export default function ReportsList() {
 
   if (!canViewReports) {
     return (
-      <div className="p-6 max-w-4xl mx-auto text-center">
-        <span className="mx-auto mb-4 flex size-12 items-center justify-center rounded-xl bg-destructive/10 text-destructive ring-1 ring-destructive/20">
-          <Shield className="size-6" />
-        </span>
-        <p className="text-lg font-semibold text-destructive">No tienes permisos para ver informes.</p>
-        <p className="mt-2 text-sm text-muted-foreground">Solicita a un administrador el permiso correspondiente.</p>
-        <div className="mt-4 flex justify-center">
-          {canCreateReports && (
-            <Button
-              variant="outline"
-              onClick={() => navigate('/informes/nuevo')}
-            >
-              Crear informe
-            </Button>
-          )}
+      <div className="mx-auto max-w-4xl p-6 text-center">
+        <div className="glass-panel relative overflow-hidden rounded-[1.5rem] p-8">
+          <span className="brand-gradient-bg pointer-events-none absolute inset-x-0 top-0 h-1 opacity-80" aria-hidden="true" />
+          <span className="mx-auto mb-4 flex size-12 items-center justify-center rounded-xl bg-destructive/10 text-destructive ring-1 ring-destructive/20">
+            <Shield className="size-6" />
+          </span>
+          <p className="text-lg font-semibold text-destructive">No tienes permisos para ver informes.</p>
+          <p className="mt-2 text-sm text-muted-foreground">Solicita a un administrador el permiso correspondiente.</p>
+          <div className="mt-4 flex justify-center">
+            {canCreateReports && (
+              <Button
+                variant="outline"
+                onClick={() => navigate('/informes/nuevo')}
+              >
+                Crear informe
+              </Button>
+            )}
+          </div>
         </div>
       </div>
     )
@@ -555,49 +558,57 @@ export default function ReportsList() {
   })
 
   return (
-    <div className="p-6 space-y-5">
+    <div className="mx-auto max-w-7xl space-y-5 p-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <p className="mb-1.5 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-            <span className="brand-gradient-bg size-1.5 rounded-full" aria-hidden="true" />
-            Informes
-          </p>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Informes</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            {total} informe{total !== 1 ? 's' : ''} en {selectedMonth} {selectedYear}
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {canExportReports && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowExportModal(true)}
-              disabled={stats.total === 0}
-              className="gap-2"
-            >
-              <Download className="size-4" />
-              Exportar Excel
-            </Button>
-          )}
-          {hasPermission(PERMISSIONS.REPORTS.CREATE as PermissionKey) && (
-            <Button
-              size="sm"
-              onClick={() => navigate('/informes/nuevo')}
-              className="gap-2 bg-destructive hover:bg-destructive/90 text-white"
-            >
-              <FilePlus className="size-4" />
-              Nuevo Informe
-            </Button>
-          )}
+      <div className="glass-panel relative overflow-hidden rounded-[1.5rem] p-5 sm:p-6">
+        <span className="brand-gradient-bg pointer-events-none absolute inset-x-0 top-0 h-1 opacity-80" aria-hidden="true" />
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-3">
+            <span className="brand-monogram flex size-12 shrink-0 items-center justify-center rounded-2xl" aria-hidden="true">
+              <FileText className="size-5" />
+            </span>
+            <div>
+              <p className="mb-1.5 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                <span className="brand-gradient-bg size-1.5 rounded-full" aria-hidden="true" />
+                Informes
+              </p>
+              <h1 className="text-2xl font-bold tracking-tight text-foreground">Informes</h1>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {total} informe{total !== 1 ? 's' : ''} en {selectedMonth} {selectedYear}
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {canExportReports && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowExportModal(true)}
+                disabled={stats.total === 0}
+                className="gap-2"
+              >
+                <Download className="size-4" />
+                Exportar Excel
+              </Button>
+            )}
+            {hasPermission(PERMISSIONS.REPORTS.CREATE as PermissionKey) && (
+              <Button
+                size="sm"
+                onClick={() => navigate('/informes/nuevo')}
+                className="gap-2 bg-destructive hover:bg-destructive/90 text-white"
+              >
+                <FilePlus className="size-4" />
+                Nuevo Informe
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 
       {/* Categories Palette */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
         {/* Total de Informes */}
-        <Card className="relative overflow-hidden rounded-xl border bg-card shadow-sm">
+        <Card className="dashboard-soft-surface relative overflow-hidden rounded-[1.35rem] border">
           <span className="brand-gradient-bg absolute inset-x-0 top-0 h-0.5" aria-hidden="true" />
           <CardContent className="p-4">
             <div className="flex flex-col items-center gap-2 text-center">
@@ -613,7 +624,7 @@ export default function ReportsList() {
         {categories.map(cat => {
           const IconComponent = cat.icon
           return (
-            <Card key={cat.label} className="rounded-xl border bg-card shadow-sm">
+            <Card key={cat.label} className="dashboard-soft-surface rounded-[1.35rem] border">
               <CardContent className="p-4">
                 <div className="flex flex-col items-center gap-2 text-center">
                   <span className={`flex size-10 items-center justify-center rounded-xl ring-1 ${cat.chip}`}>
@@ -629,7 +640,7 @@ export default function ReportsList() {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-3">
+      <div className="glass-panel flex flex-wrap gap-3 rounded-[1.35rem] p-3">
         <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
           <Input
@@ -668,7 +679,7 @@ export default function ReportsList() {
       </div>
 
       {/* Table */}
-      <Card className="rounded-xl border overflow-hidden">
+      <Card className="glass-panel overflow-hidden rounded-[1.35rem] border">
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
             <span className="brand-gradient-bg size-1.5 rounded-full" aria-hidden="true" />

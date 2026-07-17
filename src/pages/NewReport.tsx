@@ -641,15 +641,18 @@ const [form, setForm] = React.useState<NewReportForm>({
   const lacksAccess = isEditMode ? !canEditReports : !canCreateReports
   if (lacksAccess) {
     return (
-      <div className="p-6 max-w-4xl mx-auto text-center">
-        <p className="text-lg font-semibold text-destructive">
-          {isEditMode ? 'No tienes permisos para editar informes.' : 'No tienes permisos para crear informes.'}
-        </p>
-        <p className="mt-2 text-sm text-muted-foreground">Solicita a un administrador el permiso correspondiente.</p>
-        <div className="mt-4 flex justify-center">
-          <Button variant="outline" onClick={() => navigate(-1)}>
-            Volver
-          </Button>
+      <div className="mx-auto max-w-4xl p-6 text-center">
+        <div className="glass-panel relative overflow-hidden rounded-[1.5rem] p-8">
+          <span className="brand-gradient-bg pointer-events-none absolute inset-x-0 top-0 h-1 opacity-80" aria-hidden="true" />
+          <p className="text-lg font-semibold text-destructive">
+            {isEditMode ? 'No tienes permisos para editar informes.' : 'No tienes permisos para crear informes.'}
+          </p>
+          <p className="mt-2 text-sm text-muted-foreground">Solicita a un administrador el permiso correspondiente.</p>
+          <div className="mt-4 flex justify-center">
+            <Button variant="outline" onClick={() => navigate(-1)}>
+              Volver
+            </Button>
+          </div>
         </div>
       </div>
     )
@@ -657,16 +660,16 @@ const [form, setForm] = React.useState<NewReportForm>({
 
   if (isEditMode && loadingReport) {
     return (
-      <div className="p-6 max-w-4xl mx-auto flex items-center justify-center min-h-[40vh]">
+      <div className="mx-auto flex min-h-[40vh] max-w-4xl items-center justify-center p-6">
         <Spinner className="size-6" />
       </div>
     )
   }
 
   return (
-    <div className="p-6 max-w-4xl mx-auto space-y-6">
-      <div className="glass-panel relative overflow-hidden rounded-xl p-5">
-        <span className="brand-gradient-bg absolute inset-x-0 top-0 h-1" aria-hidden="true" />
+    <div className="mx-auto max-w-6xl space-y-6 p-6">
+      <div className="glass-panel relative overflow-hidden rounded-[1.5rem] p-5 sm:p-6">
+        <span className="brand-gradient-bg pointer-events-none absolute inset-x-0 top-0 h-1 opacity-80" aria-hidden="true" />
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon-sm" onClick={handleNavigateBack}>
             <ArrowLeft className="size-4" />

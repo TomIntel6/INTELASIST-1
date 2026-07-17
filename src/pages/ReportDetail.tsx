@@ -343,23 +343,26 @@ export default function ReportDetail() {
 
   if (!canViewReports) {
     return (
-      <div className="p-6 max-w-4xl mx-auto text-center">
-        <p className="text-lg font-semibold text-destructive">No tienes permisos para ver este informe.</p>
-        <p className="mt-2 text-sm text-muted-foreground">Solicita acceso a un administrador para ver reportes.</p>
-        <div className="mt-4 flex justify-center">
-          <Button variant="outline" onClick={() => navigate(-1)}>
-            Volver
-          </Button>
+      <div className="mx-auto max-w-4xl p-6 text-center">
+        <div className="glass-panel relative overflow-hidden rounded-[1.5rem] p-8">
+          <span className="brand-gradient-bg pointer-events-none absolute inset-x-0 top-0 h-1 opacity-80" aria-hidden="true" />
+          <p className="text-lg font-semibold text-destructive">No tienes permisos para ver este informe.</p>
+          <p className="mt-2 text-sm text-muted-foreground">Solicita acceso a un administrador para ver reportes.</p>
+          <div className="mt-4 flex justify-center">
+            <Button variant="outline" onClick={() => navigate(-1)}>
+              Volver
+            </Button>
+          </div>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="p-6 max-w-5xl mx-auto space-y-5">
+    <div className="mx-auto max-w-6xl space-y-5 p-6">
       {/* Header */}
-      <div className="glass-panel relative overflow-hidden rounded-xl p-5">
-        <span className="brand-gradient-bg absolute inset-x-0 top-0 h-1" aria-hidden="true" />
+      <div className="glass-panel relative overflow-hidden rounded-[1.5rem] p-5 sm:p-6">
+        <span className="brand-gradient-bg pointer-events-none absolute inset-x-0 top-0 h-1 opacity-80" aria-hidden="true" />
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex items-start gap-3">
             <Button variant="ghost" size="icon-sm" onClick={() => navigate(-1)} className="mt-0.5 shrink-0">
