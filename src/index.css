@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 @import "tailwindcss";
 @import "tw-animate-css";
 
@@ -72,8 +73,10 @@
 */
 
 :root {
-  --radius: 0.625rem;
-  --background: oklch(1 0 0);
+  /* Radio principal de la interfaz: 22px */
+  --radius: 1.375rem;
+  /* Fondo muy claro (no puro blanco) + subtle base */
+  --background: #F6F8FC;
   --foreground: oklch(0.18 0.015 90);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.18 0.015 90);
@@ -108,9 +111,14 @@
 
   /* Identidad de marca "IA" (Inteligencia Asistida): cian → índigo → violeta */
   --brand-1: #22d3ee;
-  --brand-2: #6366f1;
-  --brand-3: #a855f7;
-  --brand-gradient: linear-gradient(120deg, var(--brand-1), var(--brand-2) 52%, var(--brand-3));
+  --brand-2: #4f46e5; /* Azul corporativo suave */
+  --brand-3: #8b5cf6; /* Violeta suave */
+  --brand-gradient: linear-gradient(120deg, color-mix(in srgb, var(--brand-1) 18%, transparent), var(--brand-2) 52%, var(--brand-3) 88%);
+
+  /* Botones */
+  --button-radius: 0.875rem; /* 14px */
+  --button-shadow: 0 6px 18px -10px rgba(15,23,42,0.08);
+  --card-bg: #ffffff;
 }
 
 .dark {
@@ -192,10 +200,7 @@
   .floating-surface {
     background: color-mix(in srgb, var(--card) 94%, white 6%);
     border-color: color-mix(in srgb, var(--border) 84%, transparent);
-    box-shadow:
-      0 24px 86px -34px color-mix(in srgb, var(--foreground) 12%, transparent),
-      0 14px 30px -22px color-mix(in srgb, var(--foreground) 10%, transparent),
-      0 0 0 1px color-mix(in srgb, var(--border) 74%, transparent);
+    box-shadow: 0 12px 36px -18px rgba(15,23,42,0.06), 0 2px 6px rgba(15,23,42,0.02), 0 0 0 1px color-mix(in srgb, var(--border) 74%, transparent);
   }
 
   .dark .floating-surface {
@@ -226,11 +231,9 @@
   }
 
   .dashboard-soft-surface {
-    background: color-mix(in srgb, var(--muted) 16%, var(--card) 84%);
+    background: color-mix(in srgb, var(--muted) 10%, var(--card) 90%);
     border-color: color-mix(in srgb, var(--border) 80%, transparent);
-    box-shadow:
-      0 18px 34px -26px color-mix(in srgb, var(--foreground) 16%, transparent),
-      0 0 0 1px color-mix(in srgb, var(--border) 72%, transparent);
+    box-shadow: 0 10px 26px -20px rgba(15,23,42,0.06), 0 0 0 1px color-mix(in srgb, var(--border) 72%, transparent);
   }
 
   .dark .dashboard-soft-surface {
@@ -244,6 +247,11 @@
   /* Selección de texto con tinte de marca */
   ::selection {
     background: color-mix(in srgb, var(--primary) 16%, transparent);
+  }
+
+  /* Tipografía global: Inter */
+  body, input, textarea, select, button {
+    font-family: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
   }
 
   /* Scrollbar refinada en toda la plataforma */
@@ -271,6 +279,158 @@
   *::-webkit-scrollbar-thumb:hover {
     background: color-mix(in srgb, var(--foreground) 30%, transparent);
     background-clip: padding-box;
+  }
+
+  /* OVERRIDES: Tarjetas, botones, sidebar y animaciones micro */
+  [data-slot="card"] {
+    border-radius: var(--radius);
+    background: var(--card-bg);
+    border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+    box-shadow: 0 18px 40px -28px rgba(15,23,42,0.06), 0 6px 18px -12px rgba(15,23,42,0.04);
+    padding: 1.25rem;
+  }
+
+  /* Botones: radio 14px, sombras sutiles y transiciones 200ms */
+  [data-slot="button"] {
+    border-radius: var(--button-radius) !important;
+    transition: transform 200ms ease-in-out, box-shadow 200ms ease-in-out, background-color 200ms ease-in-out;
+    box-shadow: var(--button-shadow);
+  }
+
+  [data-slot="button"]:hover {
+    transform: translateY(-2px) scale(1.01);
+  }
+
+  /* Sidebar: estilo premium y barra activa fina azul */
+  [data-slot="sidebar"] {
+    background: color-mix(in srgb, var(--sidebar) 96%, white 4%);
+    border-right: 0;
+    padding: 0.5rem 0.6rem;
+  }
+
+  [data-slot="sidebar-menu-button"] {
+    border-radius: calc(var(--radius) - 0.5rem);
+    padding-left: 0.875rem;
+    padding-right: 0.875rem;
+    transition: background-color 200ms ease-in-out, color 200ms ease-in-out, box-shadow 200ms ease-in-out;
+  }
+
+  [data-slot="sidebar-menu-button"][data-active="true"] {
+    box-shadow: inset 4px 0 0 var(--brand-2), 0 8px 20px -14px rgba(15,23,42,0.06);
+    background: color-mix(in srgb, var(--primary) 8%, transparent);
+    color: var(--foreground);
+    font-weight: 600;
+  }
+
+  /* Metrics: números grandes y respiración */
+  .metric-number {
+    font-size: 48px;
+    line-height: 1;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: var(--foreground);
+  }
+
+  .metric-subtitle {
+    font-size: 18px;
+    font-weight: 600;
+    color: color-mix(in srgb, var(--foreground) 72%, transparent);
+  }
+
+  /* Donut chart center number */
+  .donut-center-number {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--foreground);
+  }
+
+  /* Microanimaciones generales */
+  .micro-fade { transition: opacity 200ms ease-in-out; }
+  .micro-scale { transition: transform 200ms ease-in-out; }
+
+  /* Encabezado: saludo y metadatos */
+  .app-greeting-name {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--foreground);
+    margin: 0;
+  }
+
+  .app-greeting-subtitle {
+    font-size: 14px;
+    font-weight: 600;
+    color: color-mix(in srgb, var(--foreground) 64%, transparent);
+    margin: 0;
+  }
+
+  .app-greeting-date {
+    font-size: 12px;
+    font-weight: 500;
+    color: color-mix(in srgb, var(--foreground) 48%, transparent);
+  }
+
+  /* Spacing tokens */
+  :root {
+    --surface-padding: 1.5rem;
+  }
+
+  /* Card padding más amplio para respiración */
+  [data-slot="card"] {
+    padding: var(--surface-padding);
+  }
+
+  /* Sidebar: indicador activo con barra vertical fina y padding más amplio */
+  [data-slot="sidebar-menu-button"] {
+    position: relative;
+    padding-top: 0.75rem;
+    padding-bottom: 0.75rem;
+  }
+
+  [data-slot="sidebar-menu-button"][data-active="true"]::before {
+    content: '';
+    position: absolute;
+    left: 6px;
+    top: 8px;
+    bottom: 8px;
+    width: 4px;
+    border-radius: 9999px;
+    background: var(--brand-2);
+    box-shadow: 0 6px 18px -10px rgba(79,70,229,0.18);
+    transition: transform 200ms ease-in-out, opacity 200ms ease-in-out;
+    opacity: 1;
+  }
+
+  /* Evitar que el fondo del botón activo sea dominante */
+  [data-slot="sidebar-menu-button"][data-active="true"] {
+    background: transparent !important;
+    color: var(--sidebar-accent-foreground, var(--foreground));
+    font-weight: 600;
+  }
+
+  /* Charts: leyenda minimalista y espaciada */
+  [data-slot="chart"] .recharts-legend-wrapper {
+    display: flex !important;
+    gap: 10px !important;
+    justify-content: center !important;
+    align-items: center !important;
+    font-size: 13px !important;
+    color: color-mix(in srgb, var(--foreground) 64%, transparent) !important;
+  }
+
+  [data-slot="chart"] .recharts-legend-item .recharts-legend-item-text {
+    color: inherit !important;
+    font-weight: 600 !important;
+  }
+
+  /* Ajustes generales de botones y espacios */
+  [data-slot="button"] {
+    padding-left: 0.9rem !important;
+    padding-right: 0.9rem !important;
+  }
+
+  /* Badge más discreto por defecto */
+  [data-slot="badge"] {
+    background-color: color-mix(in srgb, var(--card) 86%, var(--brand-1) 6%);
   }
 }
 

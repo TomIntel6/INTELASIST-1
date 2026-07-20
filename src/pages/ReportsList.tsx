@@ -317,6 +317,22 @@ export default function ReportsList() {
     }
   }, [])
 
+  // Si la URL contiene ?export=1 abrimos el modal de export (si tiene permiso)
+  React.useEffect(() => {
+    try {
+      if (searchParams.get('export') === '1' && canExportReports) {
+        setShowExportModal(true)
+
+        // Eliminamos el parámetro para que no se reabra al navegar
+        const next = new URLSearchParams(searchParams)
+        next.delete('export')
+        setSearchParams(next)
+      }
+    } catch {
+      // noop
+    }
+  }, [searchParams, canExportReports, setSearchParams])
+
   const pageSize = REPORTS_PAGE_SIZE
   const totalPages = Math.max(1, Math.ceil(total / pageSize))
 
