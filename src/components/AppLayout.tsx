@@ -15,6 +15,7 @@ import { ProfileAvatarEditor } from '@/components/ProfileAvatarEditor'
 import { UserAvatar } from '@/components/UserAvatar'
 import { AppSidebar } from './AppSidebar'
 import { Separator } from '@/components/ui/separator'
+import UpdateNotice from '@/components/UpdateNotice'
 
 export default function AppLayout() {
   const { user, updateCurrentUserProfile, updateCurrentUserAvatar } = useAuth()
@@ -162,6 +163,7 @@ export default function AppLayout() {
             </div>
           </div>
         </header>
+        <UpdateNotice />
 
         <Sheet open={profileOpen} onOpenChange={setProfileOpen}>
           <SheetContent side="right" className="w-[440px] max-w-[92vw] overflow-y-auto px-0 py-0">

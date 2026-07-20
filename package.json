@@ -4,8 +4,11 @@
   "version": "0.0.1",
   "type": "module",
   "scripts": {
+    "predev": "node scripts/write-version.js",
     "dev": "nodemon server.js",
+    "prestart": "node scripts/write-version.js",
     "start": "node server.js",
+    "prebuild": "node scripts/write-version.js",
     "build": "tsc -b && vite build",
     "typecheck": "tsc --noEmit",
     "preview": "vite preview"
