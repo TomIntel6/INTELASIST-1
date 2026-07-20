@@ -7,6 +7,8 @@ import { hasValidReportMeta, isFinalizedStatus, type Report, loadReportsForMonth
 import { useRealtimeReports } from '@/hooks/useRealtime'
 import type { RealtimeEvent } from '@/lib/realtime-service'
 import { getNameColorClasses, getRoleColorClasses, getUserRoles, useAuth } from '@/lib/auth'
+import { usePermissions } from '@/lib/permissions-context'
+import { PERMISSIONS } from '@/lib/permissions'
 import {
   FilePlus,
   FileText,
