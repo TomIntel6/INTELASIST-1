@@ -390,7 +390,7 @@ export default function Dashboard() {
                   variant="outline"
                   className="rounded-xl border-border/70 px-4 py-2 text-sm font-medium shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md"
                   onClick={() => {
-                    const month = currentDay.toLocaleDateString('es-ES', { month: 'long' })
+                    const month = MONTHS[currentDay.getMonth()]
                     const year = currentDay.getFullYear()
                     navigate(`/informes?export=1&month=${encodeURIComponent(month)}&year=${year}`)
                   }}
