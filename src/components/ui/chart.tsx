@@ -66,6 +66,8 @@ function ChartContainer({
         data-chart={chartId}
         className={cn(
           "flex aspect-video justify-center text-xs [&_.recharts-cartesian-axis-tick_text]:fill-muted-foreground [&_.recharts-cartesian-grid_line[stroke='#ccc']]:stroke-border/50 [&_.recharts-curve.recharts-tooltip-cursor]:stroke-border [&_.recharts-dot[stroke='#fff']]:stroke-transparent [&_.recharts-layer]:outline-hidden [&_.recharts-polar-grid_[stroke='#ccc']]:stroke-border [&_.recharts-radial-bar-background-sector]:fill-muted [&_.recharts-rectangle.recharts-tooltip-cursor]:fill-muted [&_.recharts-reference-line_[stroke='#ccc']]:stroke-border [&_.recharts-sector]:outline-hidden [&_.recharts-sector[stroke='#fff']]:stroke-transparent [&_.recharts-surface]:outline-hidden",
+          // Thicker, rounded strokes and smoother area fills for a premium look
+          "[&_.recharts-line path]:stroke-width-3 [&_.recharts-line path]:stroke-linecap-round [&_.recharts-curve path]:stroke-width-3 [&_.recharts-curve path]:stroke-linecap-round [&_.recharts-area path]:stroke-width-3 [&_.recharts-area path]:stroke-linecap-round [&_.recharts-area].recharts-area [&_.recharts-area .recharts-area-curve]:stroke-width-3",
           className
         )}
         {...props}

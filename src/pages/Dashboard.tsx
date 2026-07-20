@@ -126,9 +126,9 @@ function StatCard({
       <span className={`absolute inset-x-0 top-0 h-0.5 ${a.bar}`} aria-hidden="true" />
       <CardContent className="p-5">
         <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
+            <div className="min-w-0">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
-            <p className="mt-3 text-4xl font-bold tracking-tight text-foreground">
+            <p className="mt-3 metric-number">
               <AnimatedNumber value={value} />
             </p>
             <div className="mt-2 flex items-center gap-2 text-xs font-semibold">
@@ -157,6 +157,7 @@ function StatCard({
 
 export default function Dashboard() {
   const { user } = useAuth()
+  const { hasPermission } = usePermissions()
   const navigate = useNavigate()
   const [currentDay, setCurrentDay] = React.useState(new Date())
   const currentYear = currentDay.getFullYear()
@@ -384,12 +385,19 @@ export default function Dashboard() {
             </div>
 
             <div className="flex items-center gap-3">
-              <Button variant="outline" className="rounded-xl border-border/70 px-4 py-2 text-sm font-medium shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md">
-                Exportar
-              </Button>
-              <Button variant="outline" className="rounded-xl border-border/70 px-4 py-2 text-sm font-medium shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md">
-                Filtros
-              </Button>
+              {hasPermission(PERMISSIONS.REPORTS.EXPORT as any) && (
+                <Button
+                  variant="outline"
+                  className="rounded-xl border-border/70 px-4 py-2 text-sm font-medium shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md"
+                  onClick={() => {
+                    const month = currentDay.toLocaleDateString('es-ES', { month: 'long' })
+                    const year = currentDay.getFullYear()
+                    navigate(`/informes?export=1&month=${encodeURIComponent(month)}&year=${year}`)
+                  }}
+                >
+                  Exportar
+                </Button>
+              )}
               <Button
                 onClick={() => navigate('/informes/nuevo')}
                 className="gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-4 py-2 text-sm font-semibold text-white shadow-[0_16px_42px_-20px_rgba(99,102,241,0.95)] transition-all hover:-translate-y-0.5 hover:shadow-[0_20px_48px_-20px_rgba(99,102,241,0.95)]"
@@ -466,7 +474,7 @@ export default function Dashboard() {
               </CardHeader>
               <CardContent className="px-5 pb-5">
                 <div className="grid grid-cols-[1fr_auto] items-center gap-3">
-                  <div className="h-[240px] w-full">
+                  <div className="h-[240px] w-full relative">
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
                         <Pie
@@ -492,6 +500,14 @@ export default function Dashboard() {
                         />
                       </PieChart>
                     </ResponsiveContainer>
+                    <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                      <div className="text-center">
+                        <div className="donut-center-number">
+                          <AnimatedNumber value={totalReports} />
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-1">Total Informes</div>
+                      </div>
+                    </div>
                   </div>
 
                   <div className="min-w-[126px] text-center">

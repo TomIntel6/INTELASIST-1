@@ -83,6 +83,21 @@ export default function AppLayout() {
     await updateCurrentUserAvatar(avatar)
   }
 
+  function formatHeaderDate() {
+    try {
+      const now = new Date()
+      const parts = new Intl.DateTimeFormat('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).formatToParts(now)
+      const weekday = parts.find(p => p.type === 'weekday')?.value ?? ''
+      const day = parts.find(p => p.type === 'day')?.value ?? ''
+      const month = parts.find(p => p.type === 'month')?.value ?? ''
+      const year = parts.find(p => p.type === 'year')?.value ?? ''
+      const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
+      return `${cap(weekday)} ${day} ${cap(month)} ${year}`
+    } catch {
+      return new Date().toLocaleDateString('es-ES')
+    }
+  }
+
   return (
     <SidebarProvider>
       <AppSidebar />
@@ -91,17 +106,14 @@ export default function AppLayout() {
           <SidebarTrigger className="-ml-1" />
           <Separator orientation="vertical" className="h-5" />
           <div className="flex flex-1 items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-4">
               <span className="brand-monogram flex size-9 shrink-0 items-center justify-center rounded-xl text-sm font-bold tracking-tight">
                 IA
               </span>
               <div className="leading-tight">
-                <p className="text-sm font-bold tracking-tight">
-                  <span className="brand-text">INTELASIST</span>
-                </p>
-                <p className="text-[11px] font-medium text-muted-foreground">
-                  Inteligencia Asistida · Informes
-                </p>
+                <p className="app-greeting-name">Buenos días, {displayName}</p>
+                <p className="app-greeting-subtitle">Centro de Inteligencia Operacional</p>
+                <p className="app-greeting-date">{formatHeaderDate()}</p>
               </div>
             </div>
 
