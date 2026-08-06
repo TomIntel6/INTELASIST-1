@@ -187,21 +187,21 @@ const ReportTableRow = React.memo(function ReportTableRow(props: RowActionProps)
   const { report, canView, onView } = props
   return (
     <TableRow
-      className={`border-border transition-colors hover:bg-accent ${canView ? 'cursor-pointer' : 'cursor-not-allowed'}`}
+      className={`border-border transition-colors hover:bg-accent/8 group ${canView ? 'cursor-pointer' : 'cursor-not-allowed'}`}
       onClick={() => canView && onView(report.id)}
     >
-      <TableCell className="px-2 py-1.5 font-medium text-foreground truncate" title={report.insured_name}>{report.insured_name}</TableCell>
-      <TableCell className="px-2 py-1.5 font-mono tabular-nums text-foreground truncate" title={report.plate}>{report.plate}</TableCell>
+      <TableCell className="px-2 py-1.5 font-medium text-foreground truncate group-hover:text-foreground" title={report.insured_name}>{report.insured_name}</TableCell>
+      <TableCell className="px-2 py-1.5 font-mono tabular-nums text-foreground truncate group-hover:text-foreground" title={report.plate}>{report.plate}</TableCell>
       <TableCell className="px-2 py-1.5">
         <Badge variant="outline" className="max-w-full truncate text-xs" title={report.service_type}>{report.service_type}</Badge>
       </TableCell>
-      <TableCell className="px-2 py-1.5 text-muted-foreground truncate" title={report.coverage && report.coverage.trim() ? report.coverage : 'No'}>{report.coverage && report.coverage.trim() ? report.coverage : 'No'}</TableCell>
-      <TableCell className="px-2 py-1.5 text-muted-foreground truncate" title={`${report.brand} ${report.model}`}>{report.brand} {report.model}</TableCell>
+      <TableCell className="px-2 py-1.5 text-muted-foreground group-hover:text-foreground truncate" title={report.coverage && report.coverage.trim() ? report.coverage : 'No'}>{report.coverage && report.coverage.trim() ? report.coverage : 'No'}</TableCell>
+      <TableCell className="px-2 py-1.5 text-muted-foreground group-hover:text-foreground truncate" title={`${report.brand} ${report.model}`}>{report.brand} {report.model}</TableCell>
       <TableCell className="px-2 py-1.5">
         <Badge className={`max-w-full truncate text-xs font-medium ${STATUS_BADGE[report.status] ?? 'bg-secondary text-secondary-foreground ring-1 ring-inset ring-border'}`} title={report.status}>{report.status}</Badge>
       </TableCell>
-      <TableCell className="px-2 py-1.5 text-muted-foreground truncate" title={report.created_by_name || report.created_by_email}>{report.created_by_name || report.created_by_email}</TableCell>
-      <TableCell className="px-2 py-1.5 text-xs text-muted-foreground tabular-nums truncate" title={formatDateTimeWithMeridiem(report.created_at)}>{formatDateTimeWithMeridiem(report.created_at)}</TableCell>
+      <TableCell className="px-2 py-1.5 text-muted-foreground group-hover:text-foreground truncate" title={report.created_by_name || report.created_by_email}>{report.created_by_name || report.created_by_email}</TableCell>
+      <TableCell className="px-2 py-1.5 text-xs text-muted-foreground group-hover:text-foreground tabular-nums truncate" title={formatDateTimeWithMeridiem(report.created_at)}>{formatDateTimeWithMeridiem(report.created_at)}</TableCell>
       <TableCell className="px-2 py-1.5 text-right">
         <div className="flex justify-end gap-0.5">
           <ReportRowActions {...props} />
