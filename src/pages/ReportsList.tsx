@@ -226,12 +226,12 @@ const ReportMobileCard = React.memo(function ReportMobileCard(props: RowActionPr
           <p className="font-semibold text-sm text-foreground truncate">{report.insured_name}</p>
           <p className="text-xs font-mono tabular-nums text-muted-foreground">{report.plate}</p>
         </div>
-        <Badge className={`shrink-0 text-xs font-medium ${STATUS_BADGE[report.status] ?? 'bg-secondary text-secondary-foreground ring-1 ring-inset ring-border'}`}>{report.status}</Badge>
+        <Badge className={`shrink-0 text-sm sm:text-xs font-medium max-w-[45%] min-w-0 truncate px-3 py-1 ${STATUS_BADGE[report.status] ?? 'bg-secondary text-secondary-foreground ring-1 ring-inset ring-border'}`}>{report.status}</Badge>
       </div>
       <dl className="grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
         <div className="min-w-0">
           <dt className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Servicio</dt>
-          <dd className="mt-0.5"><Badge variant="outline" className="max-w-full truncate text-xs">{report.service_type}</Badge></dd>
+          <dd className="mt-0.5"><Badge variant="outline" className="max-w-[60%] min-w-0 truncate text-sm sm:text-xs px-3 py-1">{report.service_type}</Badge></dd>
         </div>
         <div className="min-w-0">
           <dt className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Cobertura</dt>
