@@ -145,7 +145,7 @@ export default function PermissionsEditor({ userId, permissions, onChange, onTog
                       <Button
                         type="button"
                         variant="ghost"
-                        size="xs"
+                        size="sm"
                         disabled={allActive}
                         onClick={() => onToggleModule(moduleKey, true)}
                       >
@@ -154,7 +154,7 @@ export default function PermissionsEditor({ userId, permissions, onChange, onTog
                       <Button
                         type="button"
                         variant="ghost"
-                        size="xs"
+                        size="sm"
                         disabled={noneActive}
                         onClick={() => onToggleModule(moduleKey, false)}
                       >
@@ -173,14 +173,14 @@ export default function PermissionsEditor({ userId, permissions, onChange, onTog
                             key={perm}
                             htmlFor={inputId}
                             className={cn(
-                              'group/perm flex cursor-pointer items-center justify-between gap-3 rounded-lg border bg-card px-3 py-2.5 transition-colors',
-                              'hover:border-foreground/20 hover:bg-accent',
+                              'group/perm flex cursor-pointer items-center justify-between gap-3 rounded-lg border bg-card px-4 py-3 sm:px-3 sm:py-2.5 transition-colors',
+                              'hover:border-foreground/20 hover:bg-accent/50',
                               'focus-within:ring-2 focus-within:ring-ring/50',
                               sensitive && checked && 'border-amber-300/70 dark:border-amber-500/40'
                             )}
                           >
                             <span className="flex min-w-0 items-center gap-1.5">
-                              <span className="truncate text-sm font-medium text-foreground">
+                              <span className="truncate text-base sm:text-sm font-medium text-foreground">
                                 {PERMISSION_LABELS[perm]}
                               </span>
                               {sensitive && (
@@ -199,8 +199,8 @@ export default function PermissionsEditor({ userId, permissions, onChange, onTog
                               id={inputId}
                               checked={checked}
                               onCheckedChange={(v) => onChange(perm, Boolean(v))}
-                              // Estado OFF = neutro (no rojo). Rojo se reserva para acciones destructivas.
-                              className="shrink-0 data-[state=unchecked]:bg-muted-foreground/30 dark:data-[state=unchecked]:bg-muted-foreground/30"
+                              // Aumentar área táctil en móvil sin romper diseño en escritorio
+                              className="shrink-0 p-1.5 sm:p-0 data-[state=unchecked]:bg-muted-foreground/30 dark:data-[state=unchecked]:bg-muted-foreground/30"
                             />
                           </label>
                         )
