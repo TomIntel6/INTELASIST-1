@@ -10,6 +10,7 @@
     "start": "node server.js",
     "prebuild": "node scripts/write-version.js",
     "build": "tsc -b && vite build",
+    "check-render-deployments": "node scripts/check_render_deployments.mjs",
     "typecheck": "tsc --noEmit",
     "preview": "vite preview"
   },

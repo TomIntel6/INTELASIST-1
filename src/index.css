@@ -76,7 +76,7 @@
   /* Radio principal de la interfaz: 22px */
   --radius: 1.375rem;
   /* Fondo muy claro (no puro blanco) + subtle base */
-  --background: #F6F8FC;
+  --background: #F4F7FB;
   --foreground: oklch(0.18 0.015 90);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.18 0.015 90);
@@ -84,19 +84,19 @@
   --popover-foreground: oklch(0.22 0.01 90);
   --primary: oklch(0.205 0 0);
   --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(1 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.985 0 0);
+  --secondary: oklch(0.65 0.03 250);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.975 0 0);
   --muted-foreground: oklch(0.48 0.015 95);
-  --accent: oklch(1 0 0);
-  --accent-foreground: oklch(0.205 0 0);
+  --accent: oklch(0.56 0.06 240);
+  --accent-foreground: oklch(0.985 0 0);
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(0.985 0 0);
   --border: oklch(0.88 0.02 95);
   --input: oklch(0.99 0 0);
-  --ring: oklch(0.708 0 0);
+  --ring: oklch(0.58 0.02 220);
   --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
+  --chart-2: oklch(0.45 0.1 212.0);
   --chart-3: oklch(0.398 0.07 227.392);
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
@@ -104,15 +104,15 @@
   --sidebar-foreground: oklch(0.18 0.015 90);
   --sidebar-primary: oklch(0.205 0 0);
   --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(1 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-accent: oklch(0.65 0.03 250);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(0.88 0.02 95);
-  --sidebar-ring: oklch(0.708 0 0);
+  --sidebar-ring: oklch(0.58 0.02 220);
 
   /* Identidad de marca "IA" (Inteligencia Asistida): cian → índigo → violeta */
   --brand-1: #22d3ee;
   --brand-2: #4f46e5; /* Azul corporativo suave */
-  --brand-3: #8b5cf6; /* Violeta suave */
+  --brand-3: #7175e8; /* Violeta moderado */
   --brand-gradient: linear-gradient(120deg, color-mix(in srgb, var(--brand-1) 18%, transparent), var(--brand-2) 52%, var(--brand-3) 88%);
 
   /* Botones */
@@ -122,44 +122,42 @@
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.23 0 0);
-  --popover-foreground: oklch(0.97 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.371 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.439 0 0);
-
-  /* Marca "IA" en modo oscuro: tonos ligeramente más brillantes para que resalten */
-  --brand-1: #34dfff;
-  --brand-2: #818cf8;
-  --brand-3: #c084fc;
-  --brand-gradient: linear-gradient(120deg, var(--brand-1), var(--brand-2) 52%, var(--brand-3));
+  --background: #F4F7FB;
+  --foreground: #21282E;
+  --card: #FFFFFF;
+  --card-foreground: #21282E;
+  --popover: #FFFFFF;
+  --popover-foreground: #21282E;
+  --primary: #1F4ED8;
+  --primary-foreground: #FFFFFF;
+  --secondary: #7589B8;
+  --secondary-foreground: #FFFFFF;
+  --muted: #EEF3F9;
+  --muted-foreground: #6D7582;
+  --accent: #5D7EDB;
+  --accent-foreground: #FFFFFF;
+  --destructive: #B23E3E;
+  --destructive-foreground: #FFFFFF;
+  --border: #DDE4EE;
+  --input: #F7F9FD;
+  --ring: #8DA8E2;
+  --chart-1: #2F68C5;
+  --chart-2: #92A7D9;
+  --chart-3: #A1B8D7;
+  --chart-4: #6A8BC7;
+  --chart-5: #5E7AC0;
+  --sidebar: #F6F9FD;
+  --sidebar-foreground: #21282E;
+  --sidebar-primary: #1F4ED8;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #5D7EDB;
+  --sidebar-accent-foreground: #FFFFFF;
+  --sidebar-border: #D8E1EC;
+  --sidebar-ring: #9BB2E7;
+  --brand-1: #1F6AE5;
+  --brand-2: #1F4ED8;
+  --brand-3: #6B8ED6;
+  --brand-gradient: linear-gradient(120deg, color-mix(in srgb, var(--brand-1) 20%, transparent), var(--brand-2) 54%, var(--brand-3) 92%);
 }
 
 @layer base {
@@ -171,12 +169,12 @@
     @apply bg-background text-foreground;
     user-select: none;
     background-image:
-      radial-gradient(46rem 38rem at 4% -10%, color-mix(in srgb, var(--brand-1) 16%, transparent), transparent 60%),
-      radial-gradient(44rem 40rem at 106% 2%, color-mix(in srgb, var(--brand-3) 14%, transparent), transparent 58%),
-      radial-gradient(42rem 34rem at 50% 120%, color-mix(in srgb, var(--brand-2) 12%, transparent), transparent 60%),
-      linear-gradient(180deg, color-mix(in srgb, var(--background) 94%, white 6%), var(--background));
+      radial-gradient(circle at 10% 8%, rgba(31,78,216,0.08), transparent 18%),
+      radial-gradient(circle at 95% 12%, rgba(93,126,219,0.08), transparent 18%),
+      radial-gradient(circle at 80% 80%, rgba(31,78,216,0.06), transparent 24%),
+      linear-gradient(180deg, #F4F7FB 0%, #EAF1FA 100%);
     background-attachment: fixed;
-    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--foreground) 6%, transparent);
+    box-shadow: inset 0 0 0 1px rgba(33,40,46,0.05);
   }
 
   [data-slot="card"] {
