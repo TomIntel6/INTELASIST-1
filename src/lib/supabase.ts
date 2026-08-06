@@ -14,6 +14,7 @@ export type ServiceType =
   | 'Paso de Corriente'
   | 'Cambio de Neumatico'
   | 'Abasto de Combustible'
+  | 'Extraccion o Maniobra'
   | 'Informacion'
 
 export type ReportStatus =
@@ -32,6 +33,7 @@ export const SERVICE_TYPES: ServiceType[] = [
   'Paso de Corriente',
   'Cambio de Neumatico',
   'Abasto de Combustible',
+  'Extraccion o Maniobra',
   'Informacion',
 ]
 
