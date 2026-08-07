@@ -1,6 +1,6 @@
 import * as React from 'react'
-import { Outlet } from 'react-router-dom'
-import { Bell, Mail, Phone, ShieldCheck, Sparkles, UserCircle2 } from 'lucide-react'
+import { Outlet, useNavigate } from 'react-router-dom'
+import { AlertCircle, Bell, Mail, Phone, ShieldCheck, Sparkles, UserCircle2 } from 'lucide-react'
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -54,9 +54,37 @@ export default function AppLayout() {
     [hasPermission, userRoles]
   )
 
+  const canViewSecurityAlerts = React.useMemo(
+    () =>
+      hasPermission(PERMISSIONS.SYSTEM.VIEW_ALERTS) ||
+      hasPermission(PERMISSIONS.SYSTEM.MANAGE_ALERTS) ||
+      userRoles.includes('Admin') ||
+      userRoles.includes('Support') ||
+      userRoles.includes('Gerente'),
+    [hasPermission, userRoles]
+  )
+  const navigate = useNavigate()
+  const [securityAlertCount, setSecurityAlertCount] = React.useState(0)
+
   React.useEffect(() => {
     setProfileName(rawDisplayName)
   }, [rawDisplayName])
+
+  React.useEffect(() => {
+    const handleSecurityAlert = (event: Event) => {
+      const customEvent = event as CustomEvent<{ alert: Record<string, any> }>
+      const alert = customEvent.detail?.alert
+      if (!alert || !alert.id) {
+        return
+      }
+      setSecurityAlertCount((prev) => prev + 1)
+    }
+
+    window.addEventListener('security-alert', handleSecurityAlert as EventListener)
+    return () => {
+      window.removeEventListener('security-alert', handleSecurityAlert as EventListener)
+    }
+  }, [])
 
   const handleProfileSave = async () => {
     if (!user) return
@@ -150,6 +178,25 @@ export default function AppLayout() {
                   </div>
                 ) : null}
               </div>
+
+              {canViewSecurityAlerts ? (
+                <div className="relative">
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={() => navigate('/security/alerts')}
+                    className="rounded-xl border border-border/70 bg-background/70 text-muted-foreground shadow-sm transition-all hover:scale-[1.02] hover:bg-accent hover:text-foreground"
+                    aria-label="Alertas de seguridad"
+                  >
+                    <AlertCircle className="size-4" />
+                    {securityAlertCount > 0 ? (
+                      <span className="absolute -top-1 -right-1 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-rose-500 px-1.5 text-[10px] font-semibold text-white">
+                        {securityAlertCount > 9 ? '9+' : securityAlertCount}
+                      </span>
+                    ) : null}
+                  </Button>
+                </div>
+              ) : null}
 
               <Button
                 variant="ghost"
