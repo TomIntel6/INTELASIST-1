@@ -784,4 +784,4 @@ export default function AppSidebar() {
       </SidebarFooter>
     </Sidebar>
   )
-})
+}
