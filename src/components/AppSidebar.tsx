@@ -616,7 +616,7 @@ const navItems = [
                           <Badge
                             key={role}
                             title={`Rol: ${role.toUpperCase()}`}
-                            className={`text-[8px] font-semibold px-1 py-0 h-4 flex items-center whitespace-nowrap ${getRoleColorClasses(role, user.fullName)}`}
+                            className={`text-[13px] font-semibold px-1 py-0 h-4 flex items-center whitespace-nowrap ${getRoleColorClasses(role, user.fullName)}`}
                           >
                             {role.toUpperCase()}
                           </Badge>
