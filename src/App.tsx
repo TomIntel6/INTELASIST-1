@@ -11,6 +11,7 @@ const NewReport = React.lazy(() => import('@/pages/NewReport'))
 const ReportDetail = React.lazy(() => import('@/pages/ReportDetail'))
 const Usuarios = React.lazy(() => import('@/pages/Usuarios'))
 const AdminDashboard = React.lazy(() => import('@/pages/AdminDashboard'))
+const SecurityAlerts = React.lazy(() => import('@/pages/SecurityAlerts'))
 import { Spinner } from '@/components/ui/spinner'
 import ErrorBoundary from '@/components/ErrorBoundary'
 import { Button } from '@/components/ui/button'
@@ -39,6 +40,7 @@ function ProtectedContent() {
   // Ver usuarios: por acceso al módulo (como antes) o por el permiso granular view_users.
   const canAccessUsers = hasModuleAccess('users') || hasPermission(PERMISSIONS.USERS.VIEW)
   const canAccessAdmin = hasPermission(PERMISSIONS.SYSTEM.MANAGE_PERMISSIONS)
+  const canViewSecurityAlerts = hasPermission(PERMISSIONS.SYSTEM.VIEW_ALERTS) || hasPermission(PERMISSIONS.SYSTEM.MANAGE_ALERTS)
 
   return (
     <Routes>
@@ -65,6 +67,10 @@ function ProtectedContent() {
         <Route
           path="usuarios"
           element={canAccessUsers ? <Usuarios /> : <Navigate to="/dashboard" replace />}
+        />
+        <Route
+          path="security/alerts"
+          element={canViewSecurityAlerts ? <SecurityAlerts /> : <Navigate to="/dashboard" replace />}
         />
         <Route
           path="admin/*"

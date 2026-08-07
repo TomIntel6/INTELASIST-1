@@ -965,6 +965,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       })
 
+      // Listener para alertas de seguridad
+      evtSource.addEventListener('security-alert', (ev: MessageEvent) => {
+        try {
+          const payload = typeof ev.data === 'string' ? JSON.parse(ev.data) : ev.data
+          window.dispatchEvent(new CustomEvent('security-alert', { detail: payload }))
+        } catch (err) {
+          // Ignorar payloads inválidos
+        }
+      })
+
       // Fallback: mensajes genéricos
       evtSource.addEventListener('message', (ev: MessageEvent) => {
         try {

@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Spinner } from '@/components/ui/spinner'
 import { useAuth } from '@/lib/auth'
+import useLoginLocation from '@/hooks/useLoginLocation'
 import {
   AlertCircle,
   BellRing,
@@ -52,6 +53,9 @@ export default function Login() {
   const [error, setError] = React.useState('')
   const [showPassword, setShowPassword] = React.useState(false)
   const [showNewPassword, setShowNewPassword] = React.useState(false)
+  const [locationMessage, setLocationMessage] = React.useState<string | null>(null)
+
+  const { report } = useLoginLocation()
 
   const needsPasswordChange = requiresPasswordChange || user?.user_metadata?.must_change_password === true
 
@@ -59,9 +63,23 @@ export default function Login() {
     event.preventDefault()
     setLoading(true)
     setError('')
+    setLocationMessage(null)
 
     try {
       await signInWithEmailPassword(email.trim(), password)
+      // Reportar ubicación después del login (no bloquea la navegación)
+      try {
+        const r = await report(email.trim())
+        if (r?.status === 'Ubicación no disponible') {
+          setLocationMessage('No fue posible verificar tu ubicación (permiso denegado o no disponible).')
+        } else if (r?.status === 'Fuera del perímetro') {
+          setLocationMessage('Se detectó inicio de sesión fuera del perímetro autorizado. Se generó una alerta de seguridad.')
+        }
+      } catch (e) {
+        // ignore
+      }
+
+      navigate('/dashboard', { replace: true })
     } catch (error) {
       setError(
         error instanceof Error
@@ -311,6 +329,15 @@ export default function Login() {
                   >
                     <AlertCircle className="size-4 shrink-0" />
                     {error}
+                  </p>
+                ) : null}
+
+                {locationMessage ? (
+                  <p
+                    role="status"
+                    className="rounded-2xl bg-slate-800/80 px-4 py-3 text-sm text-slate-200 ring-1 ring-slate-700"
+                  >
+                    {locationMessage}
                   </p>
                 ) : null}
 

@@ -862,6 +862,33 @@ async function ensureAuditLogsTable() {
   `)
 }
 
+async function ensureSecurityAlertsTable() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS security_alerts (
+      id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+      user_id TEXT,
+      user_email TEXT,
+      user_name TEXT,
+      occurred_at TIMESTAMPTZ DEFAULT NOW(),
+      latitude DOUBLE PRECISION,
+      longitude DOUBLE PRECISION,
+      address TEXT,
+      ip_address TEXT,
+      user_agent TEXT,
+      platform TEXT,
+      device TEXT,
+      distance_meters REAL,
+      status TEXT,
+      payload JSONB,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `)
+
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_security_alerts_occurred_at ON security_alerts (occurred_at DESC)`)
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_security_alerts_user_email ON security_alerts (LOWER(user_email))`)
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_security_alerts_status ON security_alerts (status)`)
+}
+
 async function logAuditEvent(req, {
   action,
   module,
@@ -1299,6 +1326,149 @@ app.post('/usuarios', async (req, res) => {
   } catch (err) {
     console.error(err)
     res.status(500).json({ error: 'Error al crear usuario' })
+  }
+})
+
+// Registrar un evento de inicio de sesión con ubicación
+app.post('/security/login-event', async (req, res) => {
+  try {
+    const body = req.body || {}
+    const latitude = body.latitude == null ? null : Number(body.latitude)
+    const longitude = body.longitude == null ? null : Number(body.longitude)
+    const address = typeof body.address === 'string' ? body.address : null
+    const distanceMeters = body.distance_meters == null ? null : Number(body.distance_meters)
+    const status = typeof body.status === 'string' ? body.status : 'Ubicación no disponible'
+    const userEmail = typeof body.user_email === 'string' ? body.user_email.trim() : (req.user && req.user.email) || null
+    const userId = typeof body.user_id === 'string' ? body.user_id : (req.user && req.user.id) || null
+    const userName = typeof body.user_name === 'string' ? body.user_name : (req.user && req.user.user_metadata && req.user.user_metadata.full_name) || null
+    const userAgent = typeof body.user_agent === 'string' ? body.user_agent : (req.headers['user-agent'] ? String(req.headers['user-agent']) : null)
+    const platform = typeof body.platform === 'string' ? body.platform : null
+    const device = typeof body.device === 'string' ? body.device : null
+
+    const ipAddress = req.headers['x-forwarded-for'] ? String(req.headers['x-forwarded-for']).split(',')[0].trim() : req.ip || null
+
+    await ensureSecurityAlertsTable()
+
+    const insertResult = await pool.query(
+      `INSERT INTO security_alerts (user_id, user_email, user_name, latitude, longitude, address, ip_address, user_agent, platform, device, distance_meters, status, payload)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+       RETURNING id, user_id, user_email, user_name, latitude, longitude, address, ip_address, user_agent, platform, device, distance_meters, status, created_at`,
+      [
+        userId || null,
+        userEmail || null,
+        userName || null,
+        latitude,
+        longitude,
+        address,
+        ipAddress,
+        userAgent,
+        platform,
+        device,
+        distanceMeters,
+        status,
+        JSON.stringify(body || {}),
+      ]
+    )
+
+    const alertRow = insertResult.rows[0]
+
+    // Notificar via SSE a los clientes conectados
+    try {
+      const payload = JSON.stringify({ type: 'security-alert', alert: alertRow })
+      for (const client of sseClients) {
+        try {
+          client.write(`event: security-alert\n`)
+          client.write(`data: ${payload}\n\n`)
+        } catch (e) {
+          // Ignore clients that fail
+        }
+      }
+    } catch (e) {
+      console.warn('Error enviando evento SSE de security-alert:', e)
+    }
+
+    // Auditar el evento si está fuera del perímetro
+    if (status === 'Fuera del perímetro') {
+      try {
+        await logAuditEvent(req, {
+          action: 'login-out-of-perimeter',
+          module: 'security',
+          entityId: alertRow.id,
+          entityType: 'security_alert',
+          newValues: alertRow,
+        })
+      } catch (e) {
+        console.warn('No se pudo escribir audit log para security alert:', e)
+      }
+    }
+
+    res.json({ ok: true, alert: alertRow })
+  } catch (err) {
+    console.error('Error en /security/login-event:', err)
+    res.status(500).json({ error: 'Error registrando evento de inicio de sesión.' })
+  }
+})
+
+// Lista de alertas (solo roles Admin/Support/Gerente pueden consultar)
+app.get('/security/alerts', async (req, res) => {
+  try {
+    // Verificar rol del requester consultando la tabla usuarios
+    const requesterEmail = req.user && req.user.email ? String(req.user.email).trim().toLowerCase() : ''
+    let requesterRole = null
+    if (requesterEmail) {
+      const r = await pool.query('SELECT rol FROM usuarios WHERE LOWER(correo) = LOWER($1) LIMIT 1', [requesterEmail])
+      requesterRole = r.rows[0] && r.rows[0].rol ? r.rows[0].rol : null
+    }
+
+    if (!['Admin', 'Support', 'Gerente'].includes(requesterRole)) {
+      res.status(403).json({ error: 'No autorizado' })
+      return
+    }
+
+    const limit = Number(req.query.limit) || 50
+    const offset = Number(req.query.offset) || 0
+
+    await ensureSecurityAlertsTable()
+
+    const result = await pool.query(
+      `SELECT id, user_id, user_email, user_name, latitude, longitude, address, ip_address, user_agent, platform, device, distance_meters, status, created_at
+       FROM security_alerts ORDER BY created_at DESC LIMIT $1 OFFSET $2`,
+      [limit, offset]
+    )
+
+    res.json({ alerts: result.rows })
+  } catch (err) {
+    console.error('Error en GET /security/alerts:', err)
+    res.status(500).json({ error: 'Error consultando alertas' })
+  }
+})
+
+app.get('/security/alerts/:id', async (req, res) => {
+  try {
+    const requesterEmail = req.user && req.user.email ? String(req.user.email).trim().toLowerCase() : ''
+    let requesterRole = null
+    if (requesterEmail) {
+      const r = await pool.query('SELECT rol FROM usuarios WHERE LOWER(correo) = LOWER($1) LIMIT 1', [requesterEmail])
+      requesterRole = r.rows[0] && r.rows[0].rol ? r.rows[0].rol : null
+    }
+
+    if (!['Admin', 'Support', 'Gerente'].includes(requesterRole)) {
+      res.status(403).json({ error: 'No autorizado' })
+      return
+    }
+
+    await ensureSecurityAlertsTable()
+    const id = req.params.id
+    const r = await pool.query('SELECT * FROM security_alerts WHERE id = $1 LIMIT 1', [id])
+    if (r.rowCount === 0) {
+      res.status(404).json({ error: 'No encontrada' })
+      return
+    }
+
+    res.json({ alert: r.rows[0] })
+  } catch (err) {
+    console.error('Error en GET /security/alerts/:id', err)
+    res.status(500).json({ error: 'Error consultando alerta' })
   }
 })
 
@@ -4062,6 +4232,7 @@ async function start() {
     await ensureUserPermissionDetailsTable()
     await ensureUserActivityLogTable()
     await ensureAuditLogsTable()
+    await ensureSecurityAlertsTable()
     await ensureDeletedReportsTable()
     console.log('Base de datos inicializada correctamente')
   } catch (err) {

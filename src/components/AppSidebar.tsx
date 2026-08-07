@@ -67,10 +67,7 @@ const navItems = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/informes', label: 'Informes', icon: FileText },
   { to: '/usuarios', label: 'Usuarios', icon: Users },
-]
-
-export const AppSidebar = React.memo(function AppSidebar() {
-  const { user, signOut } = useAuth()
+    { to: '/security/alerts', label: 'Alertas', icon: AlertCircle },
   const { permissions, hasModuleAccess, hasPermission } = usePermissions()
   const navigate = useNavigate()
   const location = useLocation()
@@ -499,7 +496,9 @@ export const AppSidebar = React.memo(function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {navItems.map(({ to, label, icon: Icon }) => {
-                if ((to === '/informes' && !canViewReportsModule) || (to === '/usuarios' && !canViewUsersModule)) {
+                if ((to === '/informes' && !canViewReportsModule) ||
+                    (to === '/usuarios' && !canViewUsersModule) ||
+                    (to === '/security/alerts' && !canViewAlerts)) {
                   return null
                 }
 
