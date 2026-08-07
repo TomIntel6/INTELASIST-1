@@ -67,7 +67,10 @@ const navItems = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/informes', label: 'Informes', icon: FileText },
   { to: '/usuarios', label: 'Usuarios', icon: Users },
-    { to: '/security/alerts', label: 'Alertas', icon: AlertCircle },
+  { to: '/security/alerts', label: 'Alertas', icon: AlertCircle },
+]
+
+export default function AppSidebar() {
   const { permissions, hasModuleAccess, hasPermission } = usePermissions()
   const navigate = useNavigate()
   const location = useLocation()
