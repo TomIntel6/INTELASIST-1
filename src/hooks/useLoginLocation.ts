@@ -44,7 +44,7 @@ export function useLoginLocation() {
     const timeoutMs = opts.timeoutMs ?? 8000
 
     const result: GeoResult = { status: 'Ubicación no disponible' }
-    const browserNavigator = typeof window !== 'undefined' ? window.navigator : undefined
+    const browserNavigator: Navigator | undefined = typeof window !== 'undefined' ? window.navigator : undefined
 
     // If geolocation is not available, report no location
     if (!browserNavigator || !('geolocation' in browserNavigator)) {
