@@ -72,6 +72,7 @@ const navItems = [
 
 export default function AppSidebar() {
   const { permissions, hasModuleAccess, hasPermission } = usePermissions()
+  const { user, signOut } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -619,7 +620,7 @@ export default function AppSidebar() {
                           <Badge
                             key={role}
                             title={`Rol: ${role.toUpperCase()}`}
-                            className={`text-[10px] font-semibold px-1 py-0 h-4 flex items-center whitespace-nowrap ${getRoleColorClasses(role, user.fullName)}`}
+                            className={`text-[8px] font-semibold px-1 py-0.5 h-4 flex items-center whitespace-nowrap ${getRoleColorClasses(role, user.fullName)}`}
                           >
                             {role.toUpperCase()}
                           </Badge>
