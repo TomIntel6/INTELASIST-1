@@ -44,9 +44,10 @@ export function useLoginLocation() {
     const timeoutMs = opts.timeoutMs ?? 8000
 
     const result: GeoResult = { status: 'Ubicación no disponible' }
+    const browserNavigator = typeof window !== 'undefined' ? window.navigator : undefined
 
     // If geolocation is not available, report no location
-    if (typeof navigator === 'undefined' || !('geolocation' in navigator)) {
+    if (!browserNavigator || !('geolocation' in browserNavigator)) {
       // send report with no location
       await fetch(`${API_BASE_URL}/security/login-event`, {
         method: 'POST',
@@ -59,9 +60,9 @@ export function useLoginLocation() {
           user_id: userId,
           user_name: userName,
           status: 'Ubicación no disponible',
-          user_agent: navigator?.userAgent ?? null,
-          platform: navigator?.platform ?? null,
-          device: `${navigator?.platform ?? ''}`,
+          user_agent: browserNavigator?.userAgent ?? null,
+          platform: browserNavigator?.platform ?? null,
+          device: `${browserNavigator?.platform ?? ''}`,
         }),
       }).catch(() => {})
 
@@ -96,9 +97,9 @@ export function useLoginLocation() {
           distance_meters: Math.round(distance),
           address,
           status,
-          user_agent: navigator.userAgent,
-          platform: navigator.platform,
-          device: `${navigator.platform}`,
+          user_agent: browserNavigator.userAgent,
+          platform: browserNavigator.platform,
+          device: `${browserNavigator.platform}`,
         }),
       }).catch(() => {})
 
@@ -116,9 +117,9 @@ export function useLoginLocation() {
           user_id: userId,
           user_name: userName,
           status: 'Ubicación no disponible',
-          user_agent: navigator.userAgent,
-          platform: navigator.platform,
-          device: `${navigator.platform}`,
+          user_agent: browserNavigator?.userAgent ?? null,
+          platform: browserNavigator?.platform ?? null,
+          device: `${browserNavigator?.platform ?? ''}`,
         }),
       }).catch(() => {})
 
