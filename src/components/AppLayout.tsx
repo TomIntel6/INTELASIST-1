@@ -56,11 +56,8 @@ export default function AppLayout() {
 
   const canViewSecurityAlerts = React.useMemo(
     () =>
-      hasPermission(PERMISSIONS.SYSTEM.VIEW_ALERTS) ||
-      hasPermission(PERMISSIONS.SYSTEM.MANAGE_ALERTS) ||
-      userRoles.includes('Admin') ||
-      userRoles.includes('Support') ||
-      userRoles.includes('Gerente'),
+      (userRoles.includes('Admin') || userRoles.includes('Support') || userRoles.includes('Gerente')) &&
+      (hasPermission(PERMISSIONS.SYSTEM.VIEW_ALERTS) || hasPermission(PERMISSIONS.SYSTEM.MANAGE_ALERTS)),
     [hasPermission, userRoles]
   )
   const navigate = useNavigate()

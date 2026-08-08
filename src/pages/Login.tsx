@@ -53,7 +53,6 @@ export default function Login() {
   const [error, setError] = React.useState('')
   const [showPassword, setShowPassword] = React.useState(false)
   const [showNewPassword, setShowNewPassword] = React.useState(false)
-  const [locationMessage, setLocationMessage] = React.useState<string | null>(null)
 
   const { report } = useLoginLocation()
 
@@ -63,18 +62,12 @@ export default function Login() {
     event.preventDefault()
     setLoading(true)
     setError('')
-    setLocationMessage(null)
 
     try {
       await signInWithEmailPassword(email.trim(), password)
       // Reportar ubicación después del login (no bloquea la navegación)
       try {
-        const r = await report(email.trim())
-        if (r?.status === 'Ubicación no disponible') {
-          setLocationMessage('No fue posible verificar tu ubicación (permiso denegado o no disponible).')
-        } else if (r?.status === 'Fuera del perímetro') {
-          setLocationMessage('Se detectó inicio de sesión fuera del perímetro autorizado. Se generó una alerta de seguridad.')
-        }
+        await report(email.trim(), undefined, undefined, { allowGeolocation: false })
       } catch (e) {
         // ignore
       }
@@ -332,14 +325,6 @@ export default function Login() {
                   </p>
                 ) : null}
 
-                {locationMessage ? (
-                  <p
-                    role="status"
-                    className="rounded-2xl bg-slate-800/80 px-4 py-3 text-sm text-slate-200 ring-1 ring-slate-700"
-                  >
-                    {locationMessage}
-                  </p>
-                ) : null}
 
                 <Button
                   type="submit"
