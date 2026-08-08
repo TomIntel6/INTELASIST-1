@@ -658,7 +658,7 @@ export default function AppSidebar() {
             <span className="px-2 text-xs text-sidebar-foreground/85 truncate">{user?.email}</span>
             <div className="flex flex-wrap gap-1 px-2 mt-1">
               {userRoles.map(role => (
-                <Badge key={role} className={`text-[8px] font-semibold px-1.5 py-0.5 ${getRoleColorClasses(role, displayName)} transition-all duration-150`}>
+                <Badge key={role} className={`text-[12px] font-semibold px-1.5 py-0.5 ${getRoleColorClasses(role, displayName)} transition-all duration-150`}>
                   {role.toUpperCase()}
                 </Badge>
               ))}
