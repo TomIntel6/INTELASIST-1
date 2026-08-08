@@ -9,6 +9,12 @@ type GeoResult = {
   address?: string | null
 }
 
+type BrowserNavigator = {
+  readonly userAgent: string
+  readonly platform: string
+  readonly geolocation?: Geolocation
+}
+
 const COMPANY_LAT = 8.993388089954268
 const COMPANY_LON = -79.52128668973099
 const ALLOWED_RADIUS_METERS = 100
@@ -44,10 +50,10 @@ export function useLoginLocation() {
     const timeoutMs = opts.timeoutMs ?? 8000
 
     const result: GeoResult = { status: 'Ubicación no disponible' }
-    const browserNavigator: Navigator | undefined = typeof window !== 'undefined' ? window.navigator : undefined
+    const browserNavigator = typeof window !== 'undefined' ? window.navigator as unknown as BrowserNavigator : undefined
 
     // If geolocation is not available, report no location
-    if (!browserNavigator || !('geolocation' in browserNavigator)) {
+    if (!browserNavigator || typeof browserNavigator.userAgent !== 'string' || typeof browserNavigator.platform !== 'string' || !('geolocation' in browserNavigator)) {
       // send report with no location
       await fetch(`${API_BASE_URL}/security/login-event`, {
         method: 'POST',
