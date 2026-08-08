@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-import { AuthProvider, useAuth } from '@/lib/auth'
+import { AuthProvider, useAuth, getUserRoles } from '@/lib/auth'
 import { PermissionProvider, usePermissions } from '@/lib/permissions-context'
 import { PERMISSIONS } from '@/lib/permissions'
 const Login = React.lazy(() => import('@/pages/Login'))
@@ -36,11 +36,14 @@ function ProtectedContent() {
   }
 
   const { hasModuleAccess, hasPermission } = usePermissions()
+  const userRoles = React.useMemo(() => getUserRoles(user), [user])
   const canAccessReports = hasModuleAccess('reports')
   // Ver usuarios: por acceso al módulo (como antes) o por el permiso granular view_users.
   const canAccessUsers = hasModuleAccess('users') || hasPermission(PERMISSIONS.USERS.VIEW)
   const canAccessAdmin = hasPermission(PERMISSIONS.SYSTEM.MANAGE_PERMISSIONS)
-  const canViewSecurityAlerts = hasPermission(PERMISSIONS.SYSTEM.VIEW_ALERTS) || hasPermission(PERMISSIONS.SYSTEM.MANAGE_ALERTS)
+  const canViewSecurityAlerts =
+    (userRoles.includes('Admin') || userRoles.includes('Support') || userRoles.includes('Gerente')) &&
+    (hasPermission(PERMISSIONS.SYSTEM.VIEW_ALERTS) || hasPermission(PERMISSIONS.SYSTEM.MANAGE_ALERTS))
 
   return (
     <Routes>

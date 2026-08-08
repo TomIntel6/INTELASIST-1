@@ -2,7 +2,7 @@ import { useCallback } from 'react'
 import { API_BASE_URL, getAuthHeaders } from '@/lib/auth'
 
 type GeoResult = {
-  status: 'Normal' | 'Fuera del perímetro' | 'Ubicación no disponible'
+  status: 'Normal' | 'Fuera del perímetro' | 'Ubicación no disponible' | 'Inicio de sesión móvil'
   latitude?: number
   longitude?: number
   distanceMeters?: number
@@ -46,14 +46,20 @@ async function reverseGeocode(lat: number, lon: number): Promise<string | null> 
 }
 
 export function useLoginLocation() {
-  const report = useCallback(async (userEmail?: string, userId?: string, userName?: string, opts: { timeoutMs?: number } = {}) => {
+  const report = useCallback(async (userEmail?: string, userId?: string, userName?: string, opts: { timeoutMs?: number; allowGeolocation?: boolean } = {}) => {
     const timeoutMs = opts.timeoutMs ?? 8000
+    const allowGeolocation = opts.allowGeolocation ?? true
 
     const result: GeoResult = { status: 'Ubicación no disponible' }
-    const browserNavigator = typeof window !== 'undefined' ? window.navigator as unknown as BrowserNavigator : undefined
+    const browserNavigator: BrowserNavigator | undefined = typeof window !== 'undefined' ? window.navigator as unknown as BrowserNavigator : undefined
 
-    // If geolocation is not available, report no location
-    if (!browserNavigator || typeof browserNavigator.userAgent !== 'string' || typeof browserNavigator.platform !== 'string' || !('geolocation' in browserNavigator)) {
+    const isMobileDevice = Boolean(browserNavigator?.userAgent && /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(browserNavigator.userAgent))
+    const mobileStatus = isMobileDevice ? 'Inicio de sesión móvil' : 'Ubicación no disponible'
+
+    const canUseGeolocation = allowGeolocation && !!browserNavigator?.geolocation
+
+    // If geolocation is not allowed for this report, or unavailable, send only browser/device info.
+    if (!browserNavigator || typeof browserNavigator.userAgent !== 'string' || typeof browserNavigator.platform !== 'string' || !canUseGeolocation) {
       // send report with no location
       await fetch(`${API_BASE_URL}/security/login-event`, {
         method: 'POST',
@@ -65,7 +71,8 @@ export function useLoginLocation() {
           user_email: userEmail,
           user_id: userId,
           user_name: userName,
-          status: 'Ubicación no disponible',
+          status: mobileStatus,
+          is_mobile: isMobileDevice,
           user_agent: browserNavigator?.userAgent ?? null,
           platform: browserNavigator?.platform ?? null,
           device: `${browserNavigator?.platform ?? ''}`,
@@ -76,7 +83,7 @@ export function useLoginLocation() {
     }
 
     const positionPromise = new Promise<GeolocationPosition>((resolve, reject) => {
-      navigator.geolocation.getCurrentPosition(resolve, reject, { maximumAge: 0, timeout: timeoutMs })
+      browserNavigator!.geolocation!.getCurrentPosition(resolve, reject, { maximumAge: 0, timeout: timeoutMs })
     })
 
     try {
@@ -102,7 +109,8 @@ export function useLoginLocation() {
           longitude: lon,
           distance_meters: Math.round(distance),
           address,
-          status,
+          status: isMobileDevice ? 'Inicio de sesión móvil' : status,
+          is_mobile: isMobileDevice,
           user_agent: browserNavigator.userAgent,
           platform: browserNavigator.platform,
           device: `${browserNavigator.platform}`,
@@ -122,7 +130,8 @@ export function useLoginLocation() {
           user_email: userEmail,
           user_id: userId,
           user_name: userName,
-          status: 'Ubicación no disponible',
+          status: mobileStatus,
+          is_mobile: isMobileDevice,
           user_agent: browserNavigator?.userAgent ?? null,
           platform: browserNavigator?.platform ?? null,
           device: `${browserNavigator?.platform ?? ''}`,
