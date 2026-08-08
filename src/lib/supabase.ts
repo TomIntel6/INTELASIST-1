@@ -514,7 +514,7 @@ export interface ReportsPage {
   pageSize: number
 }
 
-export const REPORTS_PAGE_SIZE = 50
+export const REPORTS_PAGE_SIZE = 20
 
 export async function loadReportsPage(params: {
   month: string
