@@ -13,7 +13,7 @@ import { normalizeAvatar } from '@/lib/avatar'
 import { PERMISSIONS } from '@/lib/permissions'
 import { ProfileAvatarEditor } from '@/components/ProfileAvatarEditor'
 import { UserAvatar } from '@/components/UserAvatar'
-import { AppSidebar } from './AppSidebar'
+import AppSidebar from './AppSidebar'
 import { Separator } from '@/components/ui/separator'
 import UpdateNotice from '@/components/UpdateNotice'
 
