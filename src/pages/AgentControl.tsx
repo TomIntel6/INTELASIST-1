@@ -396,7 +396,7 @@ export default function AgentControl() {
                       <p className="text-sm text-muted-foreground">{agent.email}</p>
                       <div className="mt-2 flex flex-wrap gap-2">
                         {selectedRoles.map(role => (
-                          <Badge key={`${agent.email}-${role}`} variant="outline" className="text-[8px] font-semibold px-1.5 py-0.5">{role.toUpperCase()}</Badge>
+                          <Badge key={`${agent.email}-${role}`} variant="outline" className="text-[12px] font-semibold px-1.5 py-0.5">{role.toUpperCase()}</Badge>
                         ))}
                       </div>
                     </div>
