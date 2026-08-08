@@ -670,7 +670,7 @@ export function getRoleColorClasses(role: UserRole, fullName?: string | null) {
 
   switch (role) {
     case 'Support':
-      return 'support-animated text-[9px] uppercase tracking-[0.12em] font-semibold bg-transparent border-0'
+      return 'support-animated uppercase tracking-[0.12em] font-semibold bg-transparent border-0'
     case 'Gerente':
       return 'gerente-animated font-bold bg-transparent border-0'
     case 'Admin':
