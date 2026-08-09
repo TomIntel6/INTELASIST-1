@@ -181,9 +181,18 @@ app.use((req, res, next) => {
     const token = authHeader.slice('Bearer '.length).trim()
     const decoded = verifyJwtToken(token)
     if (decoded && typeof decoded === 'object') {
+      const decodedRoles = Array.isArray(decoded.roles)
+        ? decoded.roles.filter((role) => typeof role === 'string' && role.trim())
+        : []
+      const decodedRole = typeof decoded.role === 'string' && decoded.role.trim()
+        ? decoded.role.trim()
+        : (decodedRoles[0] ? decodedRoles[0] : null)
+
       req.user = {
         id: decoded.userId,
         email: decoded.email,
+        role: decodedRole,
+        roles: decodedRoles.length > 0 ? decodedRoles : (decodedRole ? [decodedRole] : []),
         user_metadata: {
           full_name: decoded.fullName || '',
         },
@@ -392,6 +401,36 @@ function extractRolesFromRow(row) {
 
   const primaryRole = normalizeRole(row?.rol)
   return [primaryRole]
+}
+
+async function resolveRequesterRoles(req) {
+  const explicitRoles = Array.isArray(req.user?.roles)
+    ? req.user.roles.filter((role) => typeof role === 'string' && role.trim())
+    : []
+
+  if (explicitRoles.length > 0) {
+    return Array.from(new Set(explicitRoles.map((role) => normalizeRole(role))))
+  }
+
+  const explicitRole = typeof req.user?.role === 'string' && req.user.role.trim()
+    ? req.user.role.trim()
+    : ''
+
+  if (explicitRole) {
+    return [normalizeRole(explicitRole)]
+  }
+
+  const requesterEmail = req.user?.email ? String(req.user.email).trim().toLowerCase() : ''
+  if (!requesterEmail) {
+    return []
+  }
+
+  const result = await pool.query('SELECT rol, roles FROM usuarios WHERE LOWER(correo) = LOWER($1) LIMIT 1', [requesterEmail])
+  if (result.rowCount === 0) {
+    return []
+  }
+
+  return extractRolesFromRow(result.rows[0])
 }
 
 async function hashPassword(password) {
@@ -1412,15 +1451,10 @@ app.post('/security/login-event', async (req, res) => {
 // Lista de alertas (solo roles Admin/Support/Gerente pueden consultar)
 app.get('/security/alerts', async (req, res) => {
   try {
-    // Verificar rol del requester consultando la tabla usuarios
-    const requesterEmail = req.user && req.user.email ? String(req.user.email).trim().toLowerCase() : ''
-    let requesterRole = null
-    if (requesterEmail) {
-      const r = await pool.query('SELECT rol FROM usuarios WHERE LOWER(correo) = LOWER($1) LIMIT 1', [requesterEmail])
-      requesterRole = r.rows[0] && r.rows[0].rol ? r.rows[0].rol : null
-    }
+    const requesterRoles = await resolveRequesterRoles(req)
+    const isAllowed = requesterRoles.some((role) => ['Admin', 'Support', 'Gerente'].includes(role))
 
-    if (!['Admin', 'Support', 'Gerente'].includes(requesterRole)) {
+    if (!isAllowed) {
       res.status(403).json({ error: 'No autorizado' })
       return
     }
@@ -1445,14 +1479,10 @@ app.get('/security/alerts', async (req, res) => {
 
 app.get('/security/alerts/:id', async (req, res) => {
   try {
-    const requesterEmail = req.user && req.user.email ? String(req.user.email).trim().toLowerCase() : ''
-    let requesterRole = null
-    if (requesterEmail) {
-      const r = await pool.query('SELECT rol FROM usuarios WHERE LOWER(correo) = LOWER($1) LIMIT 1', [requesterEmail])
-      requesterRole = r.rows[0] && r.rows[0].rol ? r.rows[0].rol : null
-    }
+    const requesterRoles = await resolveRequesterRoles(req)
+    const isAllowed = requesterRoles.some((role) => ['Admin', 'Support', 'Gerente'].includes(role))
 
-    if (!['Admin', 'Support', 'Gerente'].includes(requesterRole)) {
+    if (!isAllowed) {
       res.status(403).json({ error: 'No autorizado' })
       return
     }

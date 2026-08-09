@@ -193,12 +193,12 @@ const ReportTableRow = React.memo(function ReportTableRow(props: RowActionProps)
       <TableCell className="px-2 py-1.5 font-medium text-foreground truncate group-hover:text-foreground" title={report.insured_name}>{report.insured_name}</TableCell>
       <TableCell className="px-2 py-1.5 font-mono tabular-nums text-foreground truncate group-hover:text-foreground" title={report.plate}>{report.plate}</TableCell>
       <TableCell className="px-2 py-1.5">
-        <Badge variant="outline" className="max-w-full truncate text-xs" title={report.service_type}>{report.service_type}</Badge>
+        <Badge variant="outline" className="max-w-full break-words whitespace-normal text-xs" title={report.service_type}>{report.service_type}</Badge>
       </TableCell>
       <TableCell className="px-2 py-1.5 text-muted-foreground group-hover:text-foreground truncate" title={report.coverage && report.coverage.trim() ? report.coverage : 'No'}>{report.coverage && report.coverage.trim() ? report.coverage : 'No'}</TableCell>
       <TableCell className="px-2 py-1.5 text-muted-foreground group-hover:text-foreground truncate" title={`${report.brand} ${report.model}`}>{report.brand} {report.model}</TableCell>
       <TableCell className="px-2 py-1.5">
-        <Badge className={`max-w-full truncate text-xs font-medium ${STATUS_BADGE[report.status] ?? 'bg-secondary text-secondary-foreground ring-1 ring-inset ring-border'}`} title={report.status}>{report.status}</Badge>
+        <Badge className={`max-w-full break-words whitespace-normal text-xs font-medium ${STATUS_BADGE[report.status] ?? 'bg-secondary text-secondary-foreground ring-1 ring-inset ring-border'}`} title={report.status}>{report.status}</Badge>
       </TableCell>
       <TableCell className="px-2 py-1.5 text-muted-foreground group-hover:text-foreground truncate" title={report.created_by_name || report.created_by_email}>{report.created_by_name || report.created_by_email}</TableCell>
       <TableCell className="px-2 py-1.5 text-xs text-muted-foreground group-hover:text-foreground tabular-nums truncate" title={formatDateTimeWithMeridiem(report.created_at)}>{formatDateTimeWithMeridiem(report.created_at)}</TableCell>
@@ -226,12 +226,12 @@ const ReportMobileCard = React.memo(function ReportMobileCard(props: RowActionPr
           <p className="font-semibold text-sm text-foreground truncate">{report.insured_name}</p>
           <p className="text-xs font-mono tabular-nums text-muted-foreground">{report.plate}</p>
         </div>
-        <Badge className={`shrink-0 text-sm sm:text-xs font-medium max-w-[45%] min-w-0 truncate px-3 py-1 ${STATUS_BADGE[report.status] ?? 'bg-secondary text-secondary-foreground ring-1 ring-inset ring-border'}`}>{report.status}</Badge>
+        <Badge className={`shrink-0 text-sm sm:text-xs font-medium max-w-[45%] min-w-0 break-words whitespace-normal px-3 py-1 ${STATUS_BADGE[report.status] ?? 'bg-secondary text-secondary-foreground ring-1 ring-inset ring-border'}`}>{report.status}</Badge>
       </div>
       <dl className="grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
         <div className="min-w-0">
           <dt className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Servicio</dt>
-          <dd className="mt-0.5"><Badge variant="outline" className="max-w-[60%] min-w-0 truncate text-sm sm:text-xs px-3 py-1">{report.service_type}</Badge></dd>
+          <dd className="mt-0.5"><Badge variant="outline" className="max-w-[60%] min-w-0 break-words whitespace-normal text-sm sm:text-xs px-3 py-1">{report.service_type}</Badge></dd>
         </div>
         <div className="min-w-0">
           <dt className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Cobertura</dt>
