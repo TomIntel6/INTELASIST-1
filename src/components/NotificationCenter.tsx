@@ -108,7 +108,11 @@ export function NotificationCenter({ notifications, onDismiss }: NotificationCen
                     <p className="font-medium">{notification.title}</p>
                     <p className="text-muted-foreground text-xs mt-1">{notification.message}</p>
                     <p className="text-muted-foreground text-xs mt-1">
-                      {new Date(notification.timestamp).toLocaleTimeString('es-ES')}
+                      {new Date(notification.timestamp).toLocaleTimeString('es-ES', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: true,
+                      })}
                     </p>
                   </div>
                   <Button

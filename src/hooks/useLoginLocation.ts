@@ -46,6 +46,41 @@ async function reverseGeocode(lat: number, lon: number): Promise<string | null> 
 }
 
 export function useLoginLocation() {
+  const requestMandatoryLocation = useCallback(async () => {
+    if (typeof window === 'undefined') return false
+
+    const browserNavigator = window.navigator as BrowserNavigator
+    const geolocation = browserNavigator?.geolocation
+
+    if (!geolocation) {
+      window.alert('Para continuar necesitamos acceso a tu ubicación exacta. Acepta el permiso para ingresar.')
+      return false
+    }
+
+    return await new Promise<boolean>((resolve) => {
+      geolocation.getCurrentPosition(
+        () => resolve(true),
+        (error) => {
+          const permissionDenied = typeof error === 'object' && error !== null && 'code' in error && error.code === 1
+
+          if (permissionDenied) {
+            sessionStorage.setItem('loginLocationPrompt', '1')
+            window.alert('Necesitamos tu ubicación exacta para continuar. Acepta el permiso y la página se volverá a cargar.')
+            window.location.reload()
+            resolve(false)
+            return
+          }
+
+          window.alert('No pudimos obtener tu ubicación exacta. Acepta el permiso para continuar.')
+          sessionStorage.setItem('loginLocationPrompt', '1')
+          window.location.reload()
+          resolve(false)
+        },
+        { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
+      )
+    })
+  }, [])
+
   const report = useCallback(async (userEmail?: string, userId?: string, userName?: string, opts: { timeoutMs?: number; allowGeolocation?: boolean } = {}) => {
     const timeoutMs = opts.timeoutMs ?? 8000
     const allowGeolocation = opts.allowGeolocation ?? true
@@ -142,7 +177,7 @@ export function useLoginLocation() {
     }
   }, [])
 
-  return { report }
+  return { report, requestMandatoryLocation }
 }
 
 export default useLoginLocation
