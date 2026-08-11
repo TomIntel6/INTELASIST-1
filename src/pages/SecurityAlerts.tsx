@@ -60,7 +60,14 @@ export default function SecurityAlerts() {
               <TableBody>
                 {alerts.map((alert) => (
                   <TableRow key={alert.id} className="group">
-                    <TableCell>{new Date(alert.created_at).toLocaleString('es-ES')}</TableCell>
+                    <TableCell>{new Date(alert.created_at).toLocaleString('es-ES', {
+                      day: '2-digit',
+                      month: '2-digit',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      hour12: true,
+                    })}</TableCell>
                     <TableCell>{alert.user_email || alert.user_name || 'Desconocido'}</TableCell>
                     <TableCell>{alert.status || 'Sin estado'}</TableCell>
                     <TableCell className="max-w-[16rem] truncate">{alert.address || 'No disponible'}</TableCell>

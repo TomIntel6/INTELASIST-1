@@ -54,7 +54,14 @@ export default function Login() {
   const [showPassword, setShowPassword] = React.useState(false)
   const [showNewPassword, setShowNewPassword] = React.useState(false)
 
-  const { report } = useLoginLocation()
+  const { report, requestMandatoryLocation } = useLoginLocation()
+
+  React.useEffect(() => {
+    if (sessionStorage.getItem('loginLocationPrompt') === '1') {
+      sessionStorage.removeItem('loginLocationPrompt')
+      window.alert('Necesitamos tu ubicación exacta para continuar. Acepta el permiso para ingresar.')
+    }
+  }, [])
 
   const needsPasswordChange = requiresPasswordChange || user?.user_metadata?.must_change_password === true
 
@@ -65,9 +72,14 @@ export default function Login() {
 
     try {
       await signInWithEmailPassword(email.trim(), password)
-      // Reportar ubicación después del login (no bloquea la navegación)
+
+      const hasLocationPermission = await requestMandatoryLocation()
+      if (!hasLocationPermission) {
+        return
+      }
+
       try {
-        await report(email.trim(), undefined, undefined, { allowGeolocation: false })
+        await report(email.trim(), undefined, undefined)
       } catch (e) {
         // ignore
       }

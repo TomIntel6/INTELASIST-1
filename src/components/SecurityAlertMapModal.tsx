@@ -45,7 +45,14 @@ export function SecurityAlertMapModal({ alert, onClose }: Props) {
             <div className="rounded-3xl border border-border/60 bg-muted p-4">
               <p className="text-sm font-semibold text-foreground">Usuario</p>
               <p className="mt-2 text-sm text-slate-300">{alert.user_email || alert.user_name || 'Desconocido'}</p>
-              <p className="text-xs text-muted-foreground mt-3">{new Date(alert.created_at).toLocaleString('es-ES')}</p>
+              <p className="text-xs text-muted-foreground mt-3">{new Date(alert.created_at).toLocaleString('es-ES', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true,
+              })}</p>
             </div>
             <div className="rounded-3xl border border-border/60 bg-muted p-4">
               <p className="text-sm font-semibold text-foreground">Estado</p>
