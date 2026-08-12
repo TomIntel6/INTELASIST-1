@@ -619,7 +619,7 @@ export default function AppSidebar() {
                           <Badge
                             key={role}
                             title={`Rol: ${role.toUpperCase()}`}
-                            className={`text-[12px] font-semibold px-1 py-0.5 h-[14px] flex items-center whitespace-nowrap ${getRoleColorClasses(role, user.fullName)}`}
+                            className={`connected-role-badge px-1 py-0 h-[13px] flex items-center whitespace-nowrap ${getRoleColorClasses(role, user.fullName)}`}
                           >
                             {role.toUpperCase()}
                           </Badge>
