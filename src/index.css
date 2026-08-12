@@ -457,9 +457,18 @@
   border: none !important;
   box-shadow: none !important;
   padding: 0;
-  font-weight: 800;
-  letter-spacing: 0.3px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
   filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.35));
+}
+
+.connected-role-badge {
+  font-size: 10px !important;
+  line-height: 1 !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.08em !important;
+  filter: none !important;
+  transform: none !important;
 }
 
 .admin-animated {
