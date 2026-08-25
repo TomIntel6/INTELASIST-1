@@ -35,10 +35,7 @@ import {
   loadReportsForMonth,
   loadReportsPage,
   fetchReportCategoryStats,
-  computeCategoryStatsFromReports,
-  getCachedReportsForMonth,
   normalizeReportRecord,
-  cacheReports,
   REPORTS_PAGE_SIZE,
 } from '@/lib/supabase'
 import { useRealtimeReports } from '@/hooks/useRealtime'
@@ -277,23 +274,13 @@ export default function ReportsList() {
   const selectedMonth = searchParams.get('month') ?? MONTHS[currentMonthIdx]
   const selectedYear = parseInt(searchParams.get('year') ?? String(currentYear))
 
-  // Semilla cache-first: pinta la primera página y las tarjetas desde la caché
-  // local (si existe) mientras llega la respuesta del servidor.
-  const seedCached = React.useMemo(
-    () => getCachedReportsForMonth(selectedMonth, selectedYear),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [],
-  )
-
-  const [reports, setReports] = React.useState<Report[]>(() => seedCached.slice(0, REPORTS_PAGE_SIZE))
-  const [total, setTotal] = React.useState(seedCached.length)
-  const [stats, setStats] = React.useState<ReportCategoryStats>(() =>
-    seedCached.length > 0 ? computeCategoryStatsFromReports(seedCached) : EMPTY_STATS,
-  )
+  const [reports, setReports] = React.useState<Report[]>([])
+  const [total, setTotal] = React.useState(0)
+  const [stats, setStats] = React.useState<ReportCategoryStats>(EMPTY_STATS)
   const [page, setPage] = React.useState(1)
   const [search, setSearch] = React.useState('')
   const [debouncedSearch, setDebouncedSearch] = React.useState('')
-  const [loading, setLoading] = React.useState(seedCached.length === 0)
+  const [loading, setLoading] = React.useState(true)
   const [reloadKey, setReloadKey] = React.useState(0)
 
   const [deletingReportId, setDeletingReportId] = React.useState<string | null>(null)
@@ -410,7 +397,6 @@ export default function ReportsList() {
   const handleRealtimeReport = React.useCallback((event: RealtimeEvent<any>) => {
     if (event.type === 'INSERT' || event.type === 'UPDATE') {
       const incoming = normalizeReportRecord(event.record as Record<string, unknown>)
-      cacheReports([incoming])
       if (incoming.month === selectedMonth && incoming.year === selectedYear) {
         scheduleRefresh()
       }

@@ -1789,14 +1789,11 @@ app.get('/reports', async (req, res) => {
     }
 
     // ---- Modo COMPLETO (legacy / Exportar Excel) ----
-    // Límite de la lista: tope de 5000 informes.
-    //  - Se usa para la exportación (debe incluir el 100% del mes) y para usos
-    //    legacy (Dashboard) que no envían ?page.
-    //  - Si el cliente envía ?limit explícito, se respeta pero nunca supera 5000.
-    const MAX_REPORTS = 5000
+    // El límite es cinco veces mayor que el anterior de 5000 informes.
+    const MAX_REPORTS = 25000
     const limitRaw = typeof req.query.limit === 'string' ? Number(req.query.limit) : NaN
     const limit = Number.isFinite(limitRaw) && limitRaw > 0
-      ? Math.min(limitRaw, MAX_REPORTS)
+      ? Math.min(Math.floor(limitRaw), MAX_REPORTS)
       : MAX_REPORTS
 
     const reports = await loadReportsListProjection(whereClause, values, limit)

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { hasValidReportMeta, isFinalizedStatus, type Report, loadReportsForMonth, getCachedReportsForMonth, MONTHS, normalizeReportRecord, cacheReports } from '@/lib/supabase'
+import { hasValidReportMeta, isFinalizedStatus, type Report, type DashboardStats, fetchDashboardStats, loadReportsForMonth, MONTHS, normalizeReportRecord } from '@/lib/supabase'
 import { useRealtimeReports } from '@/hooks/useRealtime'
 import type { RealtimeEvent } from '@/lib/realtime-service'
 import { getNameColorClasses, getRoleColorClasses, getUserRoles, useAuth } from '@/lib/auth'
@@ -44,6 +44,12 @@ function isCreatedOnDay(createdAt: string, date: Date): boolean {
     createdDate.getMonth() === date.getMonth() &&
     createdDate.getDate() === date.getDate()
   )
+}
+
+function formatApiDate(date: Date): string {
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${date.getFullYear()}-${month}-${day}`
 }
 
 type AccentKey = 'slate' | 'emerald' | 'amber' | 'violet' | 'sky'
@@ -164,11 +170,12 @@ export default function Dashboard() {
   const [currentDay, setCurrentDay] = React.useState(new Date())
   const currentYear = currentDay.getFullYear()
   const currentMonth = MONTHS[currentDay.getMonth()]
-  const initialReports = getCachedReportsForMonth(currentMonth, currentYear)
-  const [_loading, setLoading] = React.useState(initialReports.length === 0)
-  const [reports, setReports] = React.useState<Report[]>(initialReports)
-  const reportsRef = React.useRef<Report[]>(initialReports)
+  const [_loading, setLoading] = React.useState(true)
+  const [reports, setReports] = React.useState<Report[]>([])
+  const reportsRef = React.useRef<Report[]>([])
   const lastSyncRef = React.useRef<number>(0)
+  const [dashboardStats, setDashboardStats] = React.useState<DashboardStats | null>(null)
+  const [statsReloadKey, setStatsReloadKey] = React.useState(0)
 
   React.useEffect(() => {
     let isMounted = true
@@ -197,9 +204,8 @@ export default function Dashboard() {
       } catch (err) {
         console.error('Error sincronizando reportes:', err)
         if (isMounted) {
-          const cachedReports = getCachedReportsForMonth(currentMonth, currentYear).filter((report): report is Report => hasValidReportMeta(report))
-          setReports(cachedReports)
-          reportsRef.current = cachedReports
+          setReports([])
+          reportsRef.current = []
           lastSyncRef.current = Date.now()
         }
       } finally {
@@ -217,6 +223,27 @@ export default function Dashboard() {
   }, [currentYear, currentMonth])
 
   React.useEffect(() => {
+    let isMounted = true
+
+    void fetchDashboardStats(formatApiDate(currentDay))
+      .then(nextStats => {
+        if (isMounted) {
+          setDashboardStats(nextStats)
+        }
+      })
+      .catch(error => {
+        console.error('Error sincronizando estadísticas del dashboard:', error)
+        if (isMounted) {
+          setDashboardStats(null)
+        }
+      })
+
+    return () => {
+      isMounted = false
+    }
+  }, [currentDay, statsReloadKey])
+
+  React.useEffect(() => {
     const ticker = window.setInterval(() => {
       const now = new Date()
       if (now.getDate() !== currentDay.getDate() || now.getMonth() !== currentDay.getMonth() || now.getFullYear() !== currentDay.getFullYear()) {
@@ -232,13 +259,14 @@ export default function Dashboard() {
   const handleRealtimeReport = React.useCallback((event: RealtimeEvent<any>) => {
     if (event.type === 'INSERT' || event.type === 'UPDATE') {
       const incoming = normalizeReportRecord(event.record as Record<string, unknown>)
-      cacheReports([incoming])
       if (incoming.month !== currentMonth || incoming.year !== currentYear) {
+        setStatsReloadKey(key => key + 1)
         return
       }
       const next = [incoming, ...reportsRef.current.filter(r => r.id !== incoming.id)]
       reportsRef.current = next
       setReports(next)
+      setStatsReloadKey(key => key + 1)
     } else if (event.type === 'DELETE') {
       const removedId = String((event.oldRecord ?? event.record)?.id ?? '')
       if (!removedId) {
@@ -247,6 +275,7 @@ export default function Dashboard() {
       const next = reportsRef.current.filter(r => r.id !== removedId)
       reportsRef.current = next
       setReports(next)
+      setStatsReloadKey(key => key + 1)
     }
   }, [currentMonth, currentYear])
 
@@ -260,14 +289,16 @@ export default function Dashboard() {
     [reports, currentDay]
   )
 
-  const totalReports = todayReports.length
+  const totalReports = dashboardStats?.total ?? todayReports.length
 
   const { totalFinalized, totalPending, totalValidacion, totalInformativo } = React.useMemo(() => ({
-    totalFinalized: todayReports.filter(r => isFinalizedStatus(r.status)).length,
-    totalPending: todayReports.filter(r => r.status === 'Seguimiento de caso').length,
-    totalValidacion: todayReports.filter(r => r.status === 'Validacion').length,
-    totalInformativo: todayReports.filter(r => r.status === 'Informativo').length,
-  }), [todayReports])
+    totalFinalized: dashboardStats
+      ? ['Caso Finalizado', 'Informativo', 'Validacion'].reduce((sum, status) => sum + (dashboardStats.byStatus[status] ?? 0), 0)
+      : todayReports.filter(r => isFinalizedStatus(r.status)).length,
+    totalPending: dashboardStats?.byStatus['Seguimiento de caso'] ?? todayReports.filter(r => r.status === 'Seguimiento de caso').length,
+    totalValidacion: dashboardStats?.byStatus.Validacion ?? todayReports.filter(r => r.status === 'Validacion').length,
+    totalInformativo: dashboardStats?.byStatus.Informativo ?? todayReports.filter(r => r.status === 'Informativo').length,
+  }), [dashboardStats, todayReports])
 
   const previousDay = React.useMemo(() => {
     const date = new Date(currentDay)

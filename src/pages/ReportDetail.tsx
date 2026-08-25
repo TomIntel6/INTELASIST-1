@@ -16,7 +16,7 @@ import {
 } from '@/components/ui/select'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
-import { REPORT_STATUSES, type Report, type ReportStatus, type ReportUpdate, loadReportWithUpdates, addReportUpdate, getCachedReportById } from '@/lib/supabase'
+import { REPORT_STATUSES, type Report, type ReportStatus, type ReportUpdate, loadReportWithUpdates, addReportUpdate } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth'
 import { usePermissions } from '@/lib/permissions-context'
 import type { PermissionKey } from '@/lib/permissions'
@@ -123,10 +123,9 @@ export default function ReportDetail() {
   // La edición de informes ya creados requiere el permiso de gestión de permisos.
   const canEditReports = hasPermission(PERMISSIONS.SYSTEM.MANAGE_PERMISSIONS as PermissionKey)
 
-  const cachedReport = id ? getCachedReportById(id) : null
-  const [report, setReport] = React.useState<Report | null>(cachedReport)
-  const [updates, setUpdates] = React.useState<ReportUpdate[]>(cachedReport?.report_updates ?? [])
-  const [loading, setLoading] = React.useState(cachedReport === null)
+  const [report, setReport] = React.useState<Report | null>(null)
+  const [updates, setUpdates] = React.useState<ReportUpdate[]>([])
+  const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
   const [auditEvents, setAuditEvents] = React.useState<any[]>([])
   const [showAuditPanel, setShowAuditPanel] = React.useState(false)
