@@ -119,8 +119,32 @@ export const getDefaultApiBase = () => {
   return 'https://intelasist.onrender.com'
 }
 const API_BASE_URL = getDefaultApiBase()
-const REPORTS_CACHE_KEY = 'intelasist-shared-reports-cache-v1'
-const REPORTS_CACHE_PREFIX = 'intelasist-shared-reports-cache-v2'
+const LEGACY_REPORTS_CACHE_KEY = 'intelasist-shared-reports-cache-v1'
+const LEGACY_REPORTS_CACHE_PREFIX = 'intelasist-shared-reports-cache-v2:'
+
+function removeLegacyReportsCache() {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  try {
+    const keysToRemove: string[] = [LEGACY_REPORTS_CACHE_KEY]
+    for (let index = 0; index < window.localStorage.length; index += 1) {
+      const key = window.localStorage.key(index)
+      if (key?.startsWith(LEGACY_REPORTS_CACHE_PREFIX)) {
+        keysToRemove.push(key)
+      }
+    }
+
+    for (const key of keysToRemove) {
+      window.localStorage.removeItem(key)
+    }
+  } catch {
+    // El almacenamiento local puede estar bloqueado por el navegador.
+  }
+}
+
+removeLegacyReportsCache()
 
 function createId() {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
@@ -128,138 +152,6 @@ function createId() {
   }
 
   return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
-}
-
-function normalizeCacheSegment(value: string) {
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, '-')
-    .replace(/[^a-z0-9-]/g, '')
-}
-
-function monthCacheKey(month: string, year: number) {
-  return `${REPORTS_CACHE_PREFIX}:${year}:${normalizeCacheSegment(month)}`
-}
-
-function getAllMonthCacheKeys() {
-  if (typeof window === 'undefined') {
-    return []
-  }
-
-  const keys: string[] = []
-  for (let i = 0; i < window.localStorage.length; i += 1) {
-    const key = window.localStorage.key(i)
-    if (key?.startsWith(`${REPORTS_CACHE_PREFIX}:`)) {
-      keys.push(key)
-    }
-  }
-
-  return keys
-}
-
-function readCacheKey<T>(key: string, fallback: T): T {
-  if (typeof window === 'undefined') {
-    return fallback
-  }
-
-  try {
-    const raw = window.localStorage.getItem(key)
-    if (!raw) {
-      return fallback
-    }
-
-    return JSON.parse(raw) as T
-  } catch {
-    return fallback
-  }
-}
-
-function writeCacheKey<T>(key: string, value: T) {
-  if (typeof window === 'undefined') {
-    return
-  }
-
-  window.localStorage.setItem(key, JSON.stringify(value))
-}
-
-function mergeReports(existing: Report[], next: Report[]) {
-  const map = new Map(existing.map(report => [report.id, report]))
-  for (const report of next) {
-    map.set(report.id, report)
-  }
-  return Array.from(map.values())
-}
-
-function replaceCacheReports(key: string, reports: Report[]) {
-  writeCacheKey(key, sortReports(reports))
-}
-
-function mergeCacheReports(key: string, reports: Report[]) {
-  const existing = readCacheKey<unknown[]>(key, [])
-  const normalizedExisting = Array.isArray(existing)
-    ? existing.map(item => normalizeReport(item as Record<string, unknown>))
-    : []
-  const merged = mergeReports(normalizedExisting, reports)
-  writeCacheKey(key, sortReports(merged))
-}
-
-function writeCache(reports: Report[], options?: { replaceMonth?: boolean }) {
-  if (typeof window === 'undefined') {
-    return
-  }
-
-  const groups = reports.reduce<Record<string, Report[]>>((acc, report) => {
-    const key = monthCacheKey(report.month, report.year)
-    if (!acc[key]) {
-      acc[key] = []
-    }
-    acc[key].push(report)
-    return acc
-  }, {})
-
-  for (const [key, items] of Object.entries(groups)) {
-    if (options?.replaceMonth) {
-      replaceCacheReports(key, items)
-    } else {
-      mergeCacheReports(key, items)
-    }
-  }
-}
-
-function getAllCachedReportsFromMonthKeys(): Report[] {
-  const monthKeys = getAllMonthCacheKeys()
-  const reports: Report[] = []
-
-  for (const key of monthKeys) {
-    const raw = readCacheKey<unknown[]>(key, [])
-    if (!Array.isArray(raw)) {
-      continue
-    }
-
-    reports.push(...raw.map(item => normalizeReport(item as Record<string, unknown>)))
-  }
-
-  return sortReports(reports)
-}
-
-function readLegacyCache(): Report[] {
-  const raw = readCacheKey<unknown>(REPORTS_CACHE_KEY, null as unknown)
-  if (!raw || !Array.isArray(raw)) {
-    return []
-  }
-
-  return raw.map(item => normalizeReport(item as Record<string, unknown>))
-}
-
-function migrateLegacyCache() {
-  const legacyReports = readLegacyCache()
-  if (legacyReports.length === 0) {
-    return
-  }
-
-  writeCache(legacyReports, { replaceMonth: true })
-  window.localStorage.removeItem(REPORTS_CACHE_KEY)
 }
 
 function sortReports(reports: Report[]) {
@@ -326,12 +218,6 @@ export function normalizeReportRecord(raw: Record<string, unknown>): Report {
   return normalizeReport(raw)
 }
 
-// Mezcla uno o varios informes en la caché local por id (sin reemplazar el mes
-// completo). Se usa para persistir un informe recibido en tiempo real.
-export function cacheReports(reports: Report[]) {
-  writeCache(reports, { replaceMonth: false })
-}
-
 async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
   try {
     console.info('[requestJson] fetch', { url: `${API_BASE_URL}${path}`, method: init?.method || 'GET' })
@@ -390,78 +276,6 @@ function normalizeReportPayload(report: Omit<Report, 'id' | 'created_at' | 'upda
   }
 }
 
-export function getCachedReports(): Report[] {
-  const monthKeys = getAllMonthCacheKeys()
-  if (monthKeys.length > 0) {
-    return getAllCachedReportsFromMonthKeys()
-  }
-
-  migrateLegacyCache()
-  return getAllCachedReportsFromMonthKeys()
-}
-
-export function getCachedReportsForMonth(month: string, year: number): Report[] {
-  if (getAllMonthCacheKeys().length === 0) {
-    migrateLegacyCache()
-  }
-
-  const key = monthCacheKey(month, year)
-  const raw = readCacheKey<unknown[]>(key, [])
-  if (!Array.isArray(raw)) {
-    return []
-  }
-
-  return sortReports(raw.map(item => normalizeReport(item as Record<string, unknown>)))
-}
-
-export function getCachedReportsForYear(year: number): Report[] {
-  if (getAllMonthCacheKeys().length === 0) {
-    migrateLegacyCache()
-  }
-
-  const yearPrefix = `${REPORTS_CACHE_PREFIX}:${year}:`
-  const monthKeys = getAllMonthCacheKeys().filter(key => key.startsWith(yearPrefix))
-  const reports: Report[] = []
-
-  for (const key of monthKeys) {
-    const raw = readCacheKey<unknown[]>(key, [])
-    if (!Array.isArray(raw)) {
-      continue
-    }
-    reports.push(...raw.map(item => normalizeReport(item as Record<string, unknown>)))
-  }
-
-  return sortReports(reports)
-}
-
-export function getCachedReportById(id: string): Report | null {
-  let monthKeys = getAllMonthCacheKeys()
-  if (monthKeys.length === 0) {
-    migrateLegacyCache()
-    monthKeys = getAllMonthCacheKeys()
-  }
-
-  for (const key of monthKeys) {
-    const raw = readCacheKey<unknown[]>(key, [])
-    if (!Array.isArray(raw)) {
-      continue
-    }
-
-    for (const item of raw) {
-      const report = normalizeReport(item as Record<string, unknown>)
-      if (report.id === id) {
-        return report
-      }
-    }
-  }
-
-  return null
-}
-
-function getFallbackReports(): Report[] {
-  return getCachedReports()
-}
-
 export interface DashboardStats {
   date: string
   total: number
@@ -482,11 +296,10 @@ export async function loadAllReports(): Promise<Report[]> {
   try {
     const payload = await requestJson<{ reports: unknown[] }>('/reports')
     const reports = payload.reports.map(item => normalizeReport(item as Record<string, unknown>))
-    writeCache(reports, { replaceMonth: true })
     return sortReports(reports)
   } catch (error) {
-    console.warn('No se pudo sincronizar los informes desde el servidor. Usando caché local.', error)
-    return getFallbackReports()
+    console.warn('No se pudo sincronizar los informes desde el servidor.', error)
+    return []
   }
 }
 
@@ -496,11 +309,10 @@ export async function loadReportsForMonth(month: string, year: number): Promise<
     const payload = await requestJson<{ reports: unknown[] }>(`/reports?month=${encodeURIComponent(month)}&year=${encodeURIComponent(String(year))}`)
     const reports = payload.reports.map(item => normalizeReport(item as Record<string, unknown>))
     console.info('[supabase] loadReportsForMonth result', { count: reports.length, month, year })
-    writeCache(reports, { replaceMonth: true })
     return sortReports(reports)
   } catch (error) {
-    console.warn('No se pudo sincronizar el mes seleccionado desde el servidor. Usando caché local.', error)
-    return sortReports(getCachedReportsForMonth(month, year))
+    console.warn('No se pudo sincronizar el mes seleccionado desde el servidor.', error)
+    return []
   }
 }
 
@@ -542,8 +354,6 @@ export async function loadReportsPage(params: {
       `/reports?${qs.toString()}`
     )
     const reports = payload.reports.map(item => normalizeReport(item as Record<string, unknown>))
-    // Mezclar (sin reemplazar el mes) para mantener caliente el detalle/offline.
-    cacheReports(reports)
     return {
       reports: sortReports(reports),
       total: Number(payload.total ?? reports.length),
@@ -551,23 +361,10 @@ export async function loadReportsPage(params: {
       pageSize: Number(payload.pageSize ?? pageSize),
     }
   } catch (error) {
-    console.warn('No se pudo cargar la página de informes desde el servidor. Usando caché local.', error)
-    // Fallback offline: paginar/buscar sobre lo que haya en caché del mes.
-    const all = sortReports(getCachedReportsForMonth(month, year))
-    const q = search.toLowerCase()
-    const matched = q
-      ? all.filter(r =>
-          r.insured_name.toLowerCase().includes(q) ||
-          r.plate.toLowerCase().includes(q) ||
-          r.policy.toLowerCase().includes(q) ||
-          r.service_type.toLowerCase().includes(q) ||
-          r.brand.toLowerCase().includes(q)
-        )
-      : all
-    const start = (page - 1) * pageSize
+    console.warn('No se pudo cargar la página de informes desde el servidor.', error)
     return {
-      reports: matched.slice(start, start + pageSize),
-      total: matched.length,
+      reports: [],
+      total: 0,
       page,
       pageSize,
     }
@@ -618,8 +415,8 @@ export async function fetchReportCategoryStats(month: string, year: number): Pro
       categories: (payload?.categories ?? {}) as Record<string, number>,
     }
   } catch (error) {
-    console.warn('No se pudieron obtener las estadísticas de categorías. Calculando desde caché local.', error)
-    return computeCategoryStatsFromReports(getCachedReportsForMonth(month, year))
+    console.warn('No se pudieron obtener las estadísticas de categorías desde el servidor.', error)
+    return { total: 0, categories: {} }
   }
 }
 
@@ -677,11 +474,10 @@ export async function loadReportWithUpdates(id: string): Promise<Report | null> 
   try {
     const payload = await requestJson<{ report: unknown }>('/reports/' + encodeURIComponent(id))
     const report = normalizeReport(payload.report as Record<string, unknown>)
-    writeCache([report], { replaceMonth: false })
     return report
   } catch (error) {
-    console.warn('No se pudo cargar el informe desde el servidor. Usando caché local.', error)
-    return getCachedReportById(id)
+    console.warn('No se pudo cargar el informe desde el servidor.', error)
+    return null
   }
 }
 
@@ -692,7 +488,6 @@ export async function createReport(report: Omit<Report, 'id' | 'created_at' | 'u
   })
 
   const created = normalizeReport(payload.report as Record<string, unknown>)
-  writeCache([created], { replaceMonth: false })
   return created
 }
 
@@ -709,7 +504,6 @@ export async function createReports(reports: Array<Omit<Report, 'id' | 'created_
   })
 
   const created = payload.reports.map(item => normalizeReport(item as Record<string, unknown>))
-  writeCache(created, { replaceMonth: false })
   return created
 }
 
@@ -717,17 +511,6 @@ export async function deleteReport(id: string): Promise<void> {
   await requestJson<{ ok: boolean }>('/reports/' + encodeURIComponent(id), {
     method: 'DELETE',
   })
-
-  const existing = getCachedReportById(id)
-  if (existing) {
-    const key = monthCacheKey(existing.month, existing.year)
-    const remaining = getCachedReportsForMonth(existing.month, existing.year).filter(report => report.id !== id)
-    if (remaining.length > 0) {
-      replaceCacheReports(key, remaining)
-    } else if (typeof window !== 'undefined') {
-      window.localStorage.removeItem(key)
-    }
-  }
 }
 
 export async function updateReport(id: string, changes: Partial<Report>): Promise<Report> {
@@ -737,7 +520,6 @@ export async function updateReport(id: string, changes: Partial<Report>): Promis
   })
 
   const updated = normalizeReport(payload.report as Record<string, unknown>)
-  writeCache([updated], { replaceMonth: false })
   return updated
 }
 
@@ -749,16 +531,6 @@ export async function addReportUpdate(reportId: string, payload: Omit<ReportUpda
 
   const update = normalizeUpdate(response.update as Record<string, unknown>)
 
-  const current = getCachedReportById(reportId)
-  if (current) {
-    if (payload.status !== 'Informativo') {
-      current.status = payload.status
-    }
-    current.updated_at = update.created_at
-    current.report_updates = [...(current.report_updates ?? []), update]
-    writeCache([current], { replaceMonth: false })
-  }
-
   return update
 }
 
@@ -767,8 +539,7 @@ export async function countReportsByEmail(email: string): Promise<number> {
     const payload = await requestJson<{ count: number }>(`/reports/count?email=${encodeURIComponent(email)}`)
     return payload.count
   } catch (error) {
-    console.warn('No se pudo contar informes desde el servidor. Usando caché local.', error)
-    const normalized = email.trim().toLowerCase()
-    return getFallbackReports().filter(report => report.created_by_email.toLowerCase() === normalized).length
+    console.warn('No se pudo contar informes desde el servidor.', error)
+    return 0
   }
 }
