@@ -183,7 +183,7 @@ export default function Dashboard() {
   const [currentDay, setCurrentDay] = React.useState(new Date())
   const { year: currentYear, month: currentMonthNumber } = getPanamaDateParts(currentDay)
   const currentMonth = MONTHS[currentMonthNumber - 1]
-  const [_loading, setLoading] = React.useState(true)
+  const [reportsLoading, setReportsLoading] = React.useState(true)
   const [reports, setReports] = React.useState<Report[]>([])
   const reportsRef = React.useRef<Report[]>([])
   const lastSyncRef = React.useRef<number>(0)
@@ -202,7 +202,7 @@ export default function Dashboard() {
 
       try {
         if (force || reportsRef.current.length === 0) {
-          setLoading(true)
+          setReportsLoading(true)
         }
 
         const normalizedReports = (await loadReportsForMonth(currentMonth, currentYear)).filter((report): report is Report => hasValidReportMeta(report))
@@ -223,7 +223,7 @@ export default function Dashboard() {
         }
       } finally {
         if (isMounted) {
-          setLoading(false)
+          setReportsLoading(false)
         }
       }
     }
@@ -302,6 +302,8 @@ export default function Dashboard() {
     [reports, currentDay]
   )
 
+  const dashboardReady = !reportsLoading && dashboardStats !== null
+
   const totalReports = dashboardStats?.total ?? todayReports.length
 
   const { totalFinalized, totalPending, totalValidacion, totalInformativo } = React.useMemo(() => ({
@@ -353,6 +355,8 @@ export default function Dashboard() {
       reports: value,
     }))
   }, [reports])
+
+  const chartSeries = dailySeries.length > 0 ? dailySeries : [{ date: formatApiDate(currentDay), reports: 0 }]
 
   const recentSevenDays = React.useMemo(() => {
     const len = 7
@@ -463,14 +467,14 @@ export default function Dashboard() {
                   </div>
                   <span className="inline-flex items-center gap-1 rounded-full bg-indigo-500/10 px-2.5 py-1 text-[11px] font-semibold text-indigo-600 dark:text-indigo-300">
                     <ArrowUpRight className="size-3.5" />
-                    {dailySeries.length > 0 ? dailySeries[dailySeries.length - 1].reports : 0} hoy
+                    {dashboardReady && dailySeries.length > 0 ? dailySeries[dailySeries.length - 1].reports : 0} hoy
                   </span>
                 </div>
               </CardHeader>
               <CardContent className="px-5 pb-5 pt-1">
                 <div className="h-80 w-full">
                   <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={dailySeries} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                    <AreaChart data={chartSeries} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                       <defs>
                         <linearGradient id="reportsAreaGradient" x1="0" y1="0" x2="0" y2="1">
                           <stop offset="0%" stopColor="#6366f1" stopOpacity="0.42" />
