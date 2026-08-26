@@ -1815,7 +1815,8 @@ app.get('/reports/dashboard-stats', async (req, res) => {
       `
         SELECT status, COUNT(*)::int AS count
         FROM reports
-        WHERE created_at >= $1::date AND created_at < ($1::date + INTERVAL '1 day')
+        WHERE created_at >= (($1::date AT TIME ZONE 'America/Panama'))
+          AND created_at < (($1::date + INTERVAL '1 day') AT TIME ZONE 'America/Panama')
         GROUP BY status
       `,
       [date]

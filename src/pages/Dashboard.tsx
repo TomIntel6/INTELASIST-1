@@ -22,34 +22,47 @@ import {
 } from 'lucide-react'
 import { Area, AreaChart, CartesianGrid, Pie, PieChart, ResponsiveContainer, Tooltip, Cell } from 'recharts'
 
+const PANAMA_TIME_ZONE = 'America/Panama'
+
+function getPanamaDateKey(date: Date): string {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: PANAMA_TIME_ZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date)
+  const values = Object.fromEntries(parts.map(part => [part.type, part.value]))
+  return `${values.year}-${values.month}-${values.day}`
+}
+
+function getPanamaDateParts(date: Date): { year: number; month: number } {
+  const [year, month] = getPanamaDateKey(date).split('-').map(Number)
+  return { year, month }
+}
+
+function shiftDateKey(dateKey: string, days: number): string {
+  const date = new Date(`${dateKey}T12:00:00Z`)
+  date.setUTCDate(date.getUTCDate() + days)
+  return date.toISOString().slice(0, 10)
+}
+
 function isCreatedToday(createdAt: string, referenceDate = new Date()): boolean {
   if (!createdAt) return false
 
   const createdDate = new Date(createdAt)
-
-  return (
-    createdDate.getFullYear() === referenceDate.getFullYear() &&
-    createdDate.getMonth() === referenceDate.getMonth() &&
-    createdDate.getDate() === referenceDate.getDate()
-  )
+  return !Number.isNaN(createdDate.getTime()) && getPanamaDateKey(createdDate) === getPanamaDateKey(referenceDate)
 }
 
-function isCreatedOnDay(createdAt: string, date: Date): boolean {
+function isCreatedOnDay(createdAt: string, date: Date | string): boolean {
   if (!createdAt) return false
 
   const createdDate = new Date(createdAt)
-
-  return (
-    createdDate.getFullYear() === date.getFullYear() &&
-    createdDate.getMonth() === date.getMonth() &&
-    createdDate.getDate() === date.getDate()
-  )
+  const dateKey = typeof date === 'string' ? date : getPanamaDateKey(date)
+  return !Number.isNaN(createdDate.getTime()) && getPanamaDateKey(createdDate) === dateKey
 }
 
 function formatApiDate(date: Date): string {
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${date.getFullYear()}-${month}-${day}`
+  return getPanamaDateKey(date)
 }
 
 type AccentKey = 'slate' | 'emerald' | 'amber' | 'violet' | 'sky'
@@ -168,8 +181,8 @@ export default function Dashboard() {
   const { hasPermission } = usePermissions()
   const navigate = useNavigate()
   const [currentDay, setCurrentDay] = React.useState(new Date())
-  const currentYear = currentDay.getFullYear()
-  const currentMonth = MONTHS[currentDay.getMonth()]
+  const { year: currentYear, month: currentMonthNumber } = getPanamaDateParts(currentDay)
+  const currentMonth = MONTHS[currentMonthNumber - 1]
   const [_loading, setLoading] = React.useState(true)
   const [reports, setReports] = React.useState<Report[]>([])
   const reportsRef = React.useRef<Report[]>([])
@@ -246,7 +259,7 @@ export default function Dashboard() {
   React.useEffect(() => {
     const ticker = window.setInterval(() => {
       const now = new Date()
-      if (now.getDate() !== currentDay.getDate() || now.getMonth() !== currentDay.getMonth() || now.getFullYear() !== currentDay.getFullYear()) {
+      if (getPanamaDateKey(now) !== getPanamaDateKey(currentDay)) {
         setCurrentDay(now)
       }
     }, 60000)
@@ -300,11 +313,7 @@ export default function Dashboard() {
     totalInformativo: dashboardStats?.byStatus.Informativo ?? todayReports.filter(r => r.status === 'Informativo').length,
   }), [dashboardStats, todayReports])
 
-  const previousDay = React.useMemo(() => {
-    const date = new Date(currentDay)
-    date.setDate(date.getDate() - 1)
-    return date
-  }, [currentDay])
+  const previousDay = React.useMemo(() => shiftDateKey(getPanamaDateKey(currentDay), -1), [currentDay])
 
   const previousDayReports = React.useMemo(
     () => reports.filter(r => hasValidReportMeta(r) && isCreatedOnDay(r.created_at, previousDay)),
@@ -332,7 +341,7 @@ export default function Dashboard() {
         return
       }
 
-      const key = `${created.getFullYear()}-${String(created.getMonth() + 1).padStart(2, '0')}-${String(created.getDate()).padStart(2, '0')}`
+      const key = getPanamaDateKey(created)
       seriesMap.set(key, (seriesMap.get(key) ?? 0) + 1)
     })
 
@@ -349,8 +358,7 @@ export default function Dashboard() {
     const len = 7
     const output: number[] = []
     for (let index = len - 1; index >= 0; index -= 1) {
-      const day = new Date(currentDay)
-      day.setDate(day.getDate() - index)
+      const day = shiftDateKey(getPanamaDateKey(currentDay), -index)
       const count = reports.filter(r => hasValidReportMeta(r) && isCreatedOnDay(r.created_at, day)).length
       output.push(count)
     }
@@ -360,23 +368,19 @@ export default function Dashboard() {
   const sparklineByStatus = React.useMemo(() => ({
     total: recentSevenDays,
     finalized: recentSevenDays.map((_, index) => {
-      const day = new Date(currentDay)
-      day.setDate(day.getDate() - (recentSevenDays.length - 1 - index))
+      const day = shiftDateKey(getPanamaDateKey(currentDay), -(recentSevenDays.length - 1 - index))
       return reports.filter(r => hasValidReportMeta(r) && isCreatedOnDay(r.created_at, day) && isFinalizedStatus(r.status)).length
     }),
     pending: recentSevenDays.map((_, index) => {
-      const day = new Date(currentDay)
-      day.setDate(day.getDate() - (recentSevenDays.length - 1 - index))
+      const day = shiftDateKey(getPanamaDateKey(currentDay), -(recentSevenDays.length - 1 - index))
       return reports.filter(r => hasValidReportMeta(r) && isCreatedOnDay(r.created_at, day) && r.status === 'Seguimiento de caso').length
     }),
     validacion: recentSevenDays.map((_, index) => {
-      const day = new Date(currentDay)
-      day.setDate(day.getDate() - (recentSevenDays.length - 1 - index))
+      const day = shiftDateKey(getPanamaDateKey(currentDay), -(recentSevenDays.length - 1 - index))
       return reports.filter(r => hasValidReportMeta(r) && isCreatedOnDay(r.created_at, day) && r.status === 'Validacion').length
     }),
     informativo: recentSevenDays.map((_, index) => {
-      const day = new Date(currentDay)
-      day.setDate(day.getDate() - (recentSevenDays.length - 1 - index))
+      const day = shiftDateKey(getPanamaDateKey(currentDay), -(recentSevenDays.length - 1 - index))
       return reports.filter(r => hasValidReportMeta(r) && isCreatedOnDay(r.created_at, day) && r.status === 'Informativo').length
     }),
   }), [reports, currentDay])
