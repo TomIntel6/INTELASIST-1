@@ -323,12 +323,22 @@ export default function Dashboard() {
   )
 
   const previousDayCount = previousDayReports.length
+  const previousDayStatusCounts = React.useMemo(() => {
+    const counts = { finalized: 0, pending: 0, validacion: 0, informativo: 0 }
+    previousDayReports.forEach(report => {
+      if (isFinalizedStatus(report.status)) counts.finalized += 1
+      if (report.status === 'Seguimiento de caso') counts.pending += 1
+      if (report.status === 'Validacion') counts.validacion += 1
+      if (report.status === 'Informativo') counts.informativo += 1
+    })
+    return counts
+  }, [previousDayReports])
 
   const deltaTotal = previousDayCount === 0 ? 100 : Math.round(((totalReports - previousDayCount) / Math.max(previousDayCount, 1)) * 100)
-  const deltaFinalized = previousDayCount === 0 ? 100 : Math.round(((totalFinalized - previousDayReports.filter(r => isFinalizedStatus(r.status)).length) / Math.max(previousDayReports.filter(r => isFinalizedStatus(r.status)).length || 1, 1)) * 100)
-  const deltaPending = previousDayCount === 0 ? 100 : Math.round(((totalPending - previousDayReports.filter(r => r.status === 'Seguimiento de caso').length) / Math.max(previousDayReports.filter(r => r.status === 'Seguimiento de caso').length || 1, 1)) * 100)
-  const deltaValidacion = previousDayCount === 0 ? 100 : Math.round(((totalValidacion - previousDayReports.filter(r => r.status === 'Validacion').length) / Math.max(previousDayReports.filter(r => r.status === 'Validacion').length || 1, 1)) * 100)
-  const deltaInformativo = previousDayCount === 0 ? 100 : Math.round(((totalInformativo - previousDayReports.filter(r => r.status === 'Informativo').length) / Math.max(previousDayReports.filter(r => r.status === 'Informativo').length || 1, 1)) * 100)
+  const deltaFinalized = previousDayCount === 0 ? 100 : Math.round(((totalFinalized - previousDayStatusCounts.finalized) / Math.max(previousDayStatusCounts.finalized, 1)) * 100)
+  const deltaPending = previousDayCount === 0 ? 100 : Math.round(((totalPending - previousDayStatusCounts.pending) / Math.max(previousDayStatusCounts.pending, 1)) * 100)
+  const deltaValidacion = previousDayCount === 0 ? 100 : Math.round(((totalValidacion - previousDayStatusCounts.validacion) / Math.max(previousDayStatusCounts.validacion, 1)) * 100)
+  const deltaInformativo = previousDayCount === 0 ? 100 : Math.round(((totalInformativo - previousDayStatusCounts.informativo) / Math.max(previousDayStatusCounts.informativo, 1)) * 100)
 
   const dailySeries = React.useMemo(() => {
     const seriesMap = new Map<string, number>()
@@ -359,35 +369,42 @@ export default function Dashboard() {
   const chartSeries = dailySeries.length > 0 ? dailySeries : [{ date: formatApiDate(currentDay), reports: 0 }]
 
   const recentSevenDays = React.useMemo(() => {
-    const len = 7
-    const output: number[] = []
-    for (let index = len - 1; index >= 0; index -= 1) {
-      const day = shiftDateKey(getPanamaDateKey(currentDay), -index)
-      const count = reports.filter(r => hasValidReportMeta(r) && isCreatedOnDay(r.created_at, day)).length
-      output.push(count)
+    const todayKey = getPanamaDateKey(currentDay)
+    const dayKeys = Array.from({ length: 7 }, (_, index) => shiftDateKey(todayKey, -(6 - index)))
+    const counts = new Map(dayKeys.map(day => [day, { total: 0, finalized: 0, pending: 0, validacion: 0, informativo: 0 }]))
+
+    reports.forEach(report => {
+      if (!hasValidReportMeta(report)) return
+      const dayCounts = counts.get(getPanamaDateKey(new Date(report.created_at)))
+      if (!dayCounts) return
+      dayCounts.total += 1
+      if (isFinalizedStatus(report.status)) dayCounts.finalized += 1
+      if (report.status === 'Seguimiento de caso') dayCounts.pending += 1
+      if (report.status === 'Validacion') dayCounts.validacion += 1
+      if (report.status === 'Informativo') dayCounts.informativo += 1
+    })
+
+    return {
+      total: dayKeys.map(day => counts.get(day)?.total ?? 0),
+      finalized: dayKeys.map(day => counts.get(day)?.finalized ?? 0),
+      pending: dayKeys.map(day => counts.get(day)?.pending ?? 0),
+      validacion: dayKeys.map(day => counts.get(day)?.validacion ?? 0),
+      informativo: dayKeys.map(day => counts.get(day)?.informativo ?? 0),
     }
-    return output
   }, [reports, currentDay])
 
-  const sparklineByStatus = React.useMemo(() => ({
-    total: recentSevenDays,
-    finalized: recentSevenDays.map((_, index) => {
-      const day = shiftDateKey(getPanamaDateKey(currentDay), -(recentSevenDays.length - 1 - index))
-      return reports.filter(r => hasValidReportMeta(r) && isCreatedOnDay(r.created_at, day) && isFinalizedStatus(r.status)).length
-    }),
-    pending: recentSevenDays.map((_, index) => {
-      const day = shiftDateKey(getPanamaDateKey(currentDay), -(recentSevenDays.length - 1 - index))
-      return reports.filter(r => hasValidReportMeta(r) && isCreatedOnDay(r.created_at, day) && r.status === 'Seguimiento de caso').length
-    }),
-    validacion: recentSevenDays.map((_, index) => {
-      const day = shiftDateKey(getPanamaDateKey(currentDay), -(recentSevenDays.length - 1 - index))
-      return reports.filter(r => hasValidReportMeta(r) && isCreatedOnDay(r.created_at, day) && r.status === 'Validacion').length
-    }),
-    informativo: recentSevenDays.map((_, index) => {
-      const day = shiftDateKey(getPanamaDateKey(currentDay), -(recentSevenDays.length - 1 - index))
-      return reports.filter(r => hasValidReportMeta(r) && isCreatedOnDay(r.created_at, day) && r.status === 'Informativo').length
-    }),
-  }), [reports, currentDay])
+  const sparklineByStatus = recentSevenDays
+
+  const todayCategoryCounts = React.useMemo(() => {
+    const counts = new Map<string, number>()
+    const keywords = ['SOAT', 'SALDO MOROSO', 'RENOVACION NO PAGADA', 'SERVICIO UTILIZADO', 'BENEFICIO EN 24H', 'POLIZA CANCELADA', 'NO CUBIERTO POR LA POLIZA']
+    todayReports.forEach(report => {
+      const bucketText = `${report.observation_comment} ${report.service_type}`.toUpperCase()
+      const keyword = keywords.find(item => bucketText.includes(item)) ?? 'OTROS'
+      counts.set(keyword, (counts.get(keyword) ?? 0) + 1)
+    })
+    return counts
+  }, [todayReports])
 
   const donutData = [
     { name: 'Finalizados', value: totalFinalized, color: '#10b981' },
@@ -590,15 +607,7 @@ export default function Dashboard() {
                 { label: 'No cubierto por la póliza', keyword: 'NO CUBIERTO POR LA POLIZA', color: 'text-slate-600' },
                 { label: 'Otros', keyword: null, color: 'text-neutral-600' },
               ].map(({ label, keyword, color }) => {
-                const count = keyword
-                  ? todayReports.filter(r =>
-                      r.observation_comment.toLowerCase().includes(keyword.toLowerCase()) ||
-                      r.service_type.toLowerCase().includes(keyword.toLowerCase())
-                    ).length
-                  : todayReports.filter(r => {
-                      const bucketText = `${r.observation_comment} ${r.service_type}`.toUpperCase()
-                      return !['SOAT', 'SALDO MOROSO', 'RENOVACION NO PAGADA', 'SERVICIO UTILIZADO', 'BENEFICIO EN 24H', 'POLIZA CANCELADA', 'NO CUBIERTO POR LA POLIZA'].some(keyword => bucketText.includes(keyword))
-                    }).length
+                const count = todayCategoryCounts.get(keyword ?? 'OTROS') ?? 0
 
                 return (
                   <div key={label} className="group rounded-2xl border border-border/60 bg-background/55 p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-border hover:bg-accent/70 hover:shadow-sm">
