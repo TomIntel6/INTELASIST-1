@@ -165,6 +165,9 @@ function StatCard({
 }
 
 export default function Dashboard() {
+  const renderCountRef = React.useRef(0)
+  renderCountRef.current += 1
+  console.info('[dashboard] render', { count: renderCountRef.current })
   const { user } = useAuth()
   const { hasPermission } = usePermissions()
   const navigate = useNavigate()
@@ -193,7 +196,9 @@ export default function Dashboard() {
           setReportsLoading(true)
         }
 
+        const processingStartedAt = performance.now()
         const normalizedReports = (await loadReportsForMonth(currentMonth, currentYear)).filter((report): report is Report => hasValidReportMeta(report))
+        console.info('[dashboard] reports processing', { durationMs: Math.round(performance.now() - processingStartedAt), count: normalizedReports.length })
 
         if (!isMounted) {
           return

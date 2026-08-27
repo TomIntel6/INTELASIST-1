@@ -218,9 +218,15 @@ export function normalizeReportRecord(raw: Record<string, unknown>): Report {
   return normalizeReport(raw)
 }
 
-async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
+async function requestJson<T>(path: string, init?: RequestInit, source = 'supabase'): Promise<T> {
   try {
-    console.info('[requestJson] fetch', { url: `${API_BASE_URL}${path}`, method: init?.method || 'GET' })
+    const startedAt = performance.now()
+    console.info('[requestJson] fetch', {
+      url: `${API_BASE_URL}${path}`,
+      method: init?.method || 'GET',
+      source,
+      startedAt: Math.round(startedAt),
+    })
     const response = await fetch(`${API_BASE_URL}${path}`, {
       headers: {
         'Content-Type': 'application/json',
@@ -259,6 +265,14 @@ async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
       console.warn('Respuesta no JSON recibida desde el servidor:', text.substring(0, 200))
     }
 
+    console.info('[requestJson] complete', {
+      url: `${API_BASE_URL}${path}`,
+      method: init?.method || 'GET',
+      source,
+      durationMs: Math.round(performance.now() - startedAt),
+      status: response.status,
+    })
+
     return payload as T
   } catch (error) {
     if (error instanceof Error) {
@@ -284,7 +298,9 @@ export interface DashboardStats {
 
 export async function fetchDashboardStats(date?: string): Promise<DashboardStats> {
   const qs = date ? `?date=${encodeURIComponent(date)}` : ''
-  const payload = await requestJson<DashboardStats>(`/reports/dashboard-stats${qs}`)
+  const startedAt = performance.now()
+  const payload = await requestJson<DashboardStats>(`/reports/dashboard-stats${qs}`, undefined, 'Dashboard.fetchDashboardStats')
+  console.info('[dashboard] KPI processing', { durationMs: Math.round(performance.now() - startedAt) })
   return {
     date: String(payload?.date ?? ''),
     total: Number(payload?.total ?? 0),
@@ -303,17 +319,57 @@ export async function loadAllReports(): Promise<Report[]> {
   }
 }
 
-export async function loadReportsForMonth(month: string, year: number): Promise<Report[]> {
-  try {
-    console.info('[supabase] loadReportsForMonth', { month, year })
-    const payload = await requestJson<{ reports: unknown[] }>(`/reports?month=${encodeURIComponent(month)}&year=${encodeURIComponent(String(year))}`)
-    const reports = payload.reports.map(item => normalizeReport(item as Record<string, unknown>))
-    console.info('[supabase] loadReportsForMonth result', { count: reports.length, month, year })
-    return sortReports(reports)
-  } catch (error) {
-    console.warn('No se pudo sincronizar el mes seleccionado desde el servidor.', error)
-    return []
+const REPORTS_CACHE_TTL_MS = 5 * 60 * 1000
+const reportsForMonthCache = new Map<string, { reports: Report[]; expiresAt: number }>()
+const reportsForMonthInFlight = new Map<string, Promise<Report[]>>()
+
+export async function loadReportsForMonth(month: string, year: number, options?: { force?: boolean; source?: string }): Promise<Report[]> {
+  const cacheKey = `${month}:${year}`
+  const force = options?.force ?? false
+  const source = options?.source ?? 'Dashboard.loadReportsForMonth'
+  const cached = reportsForMonthCache.get(cacheKey)
+  if (!force && cached && cached.expiresAt > Date.now()) {
+    console.info('[supabase] loadReportsForMonth cache hit', { month, year, count: cached.reports.length })
+    return cached.reports
   }
+
+  const existingRequest = reportsForMonthInFlight.get(cacheKey)
+  if (existingRequest) {
+    console.info('[supabase] loadReportsForMonth joined in-flight request', { month, year })
+    return existingRequest
+  }
+
+  const request = (async () => {
+    const startedAt = performance.now()
+    try {
+      console.info('[supabase] loadReportsForMonth', { month, year })
+      const payload = await requestJson<{ reports: unknown[] }>(
+        `/reports?month=${encodeURIComponent(month)}&year=${encodeURIComponent(String(year))}`,
+        undefined,
+        source,
+      )
+      const normalizedAt = performance.now()
+      const reports = payload.reports.map(item => normalizeReport(item as Record<string, unknown>))
+      const sortedReports = sortReports(reports)
+      reportsForMonthCache.set(cacheKey, { reports: sortedReports, expiresAt: Date.now() + REPORTS_CACHE_TTL_MS })
+      console.info('[supabase] loadReportsForMonth result', {
+        count: sortedReports.length,
+        month,
+        year,
+        durationMs: Math.round(performance.now() - startedAt),
+        processingMs: Math.round(performance.now() - normalizedAt),
+      })
+      return sortedReports
+    } catch (error) {
+      console.warn('No se pudo sincronizar el mes seleccionado desde el servidor.', error)
+      return []
+    } finally {
+      reportsForMonthInFlight.delete(cacheKey)
+    }
+  })()
+
+  reportsForMonthInFlight.set(cacheKey, request)
+  return request
 }
 
 // ---- Paginación server-side de la lista de informes ----
@@ -449,7 +505,7 @@ export async function uploadEvidenceFile(file: File): Promise<{ filename: string
     const text = await response.text().catch(() => '')
     console.info('[uploadEvidenceFile] respuesta del servidor:', {
       status: response.status,
-      body: text,
+      contentType: response.headers.get('content-type'),
     })
 
     const payload = text && text.trim().startsWith('{') ? JSON.parse(text) : null
@@ -488,6 +544,7 @@ export async function createReport(report: Omit<Report, 'id' | 'created_at' | 'u
   })
 
   const created = normalizeReport(payload.report as Record<string, unknown>)
+  reportsForMonthCache.delete(`${created.month}:${created.year}`)
   return created
 }
 
@@ -504,6 +561,7 @@ export async function createReports(reports: Array<Omit<Report, 'id' | 'created_
   })
 
   const created = payload.reports.map(item => normalizeReport(item as Record<string, unknown>))
+  created.forEach(report => reportsForMonthCache.delete(`${report.month}:${report.year}`))
   return created
 }
 
@@ -511,6 +569,7 @@ export async function deleteReport(id: string): Promise<void> {
   await requestJson<{ ok: boolean }>('/reports/' + encodeURIComponent(id), {
     method: 'DELETE',
   })
+  reportsForMonthCache.clear()
 }
 
 export async function updateReport(id: string, changes: Partial<Report>): Promise<Report> {
@@ -520,6 +579,7 @@ export async function updateReport(id: string, changes: Partial<Report>): Promis
   })
 
   const updated = normalizeReport(payload.report as Record<string, unknown>)
+  reportsForMonthCache.clear()
   return updated
 }
 
