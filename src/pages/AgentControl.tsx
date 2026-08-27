@@ -8,7 +8,8 @@ import { Spinner } from '@/components/ui/spinner'
 import { Input } from '@/components/ui/input'
 import { canManageAgents, fetchOnlineUsersFromServer, getOnlineUsers, getUserRoles, mergeOnlineUsers, updateStoredUserRoles, useAuth, type UserRole } from '@/lib/auth'
 import { getDefaultApiBase } from '@/lib/supabase'
-import { ArrowLeft, Eye, EyeOff, KeyRound, ShieldAlert, Users } from 'lucide-react'
+import { ArrowLeft, Eye, EyeOff, KeyRound, ShieldAlert, Users, ChevronDown, Search } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 const API_BASE_URL = getDefaultApiBase()
 
@@ -29,6 +30,13 @@ interface BackendUserRecord {
 }
 
 const ROLE_OPTIONS: UserRole[] = ['Agente', 'Admin', 'Support', 'Gerente']
+
+function getInitials(name: string, email: string): string {
+  const source = (name || email || '?').trim()
+  const parts = source.split(/\s+/).filter(Boolean)
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase()
+  return source.slice(0, 2).toUpperCase()
+}
 
 function dedupeAgentsByEmail(agents: AgentRow[]) {
   const deduped = new Map<string, AgentRow>()
@@ -119,10 +127,17 @@ export default function AgentControl() {
   const [newPassword, setNewPassword] = React.useState('')
   const [showNewPassword, setShowNewPassword] = React.useState(false)
   const [savingPassword, setSavingPassword] = React.useState(false)
+  const [expandedAgent, setExpandedAgent] = React.useState<string | null>(null)
+  const [searchTerm, setSearchTerm] = React.useState('')
 
   const canManageAgentAccess = canManageAgents(user)
   const canViewAllCreatedUsers = canManageAgentAccess
   const roleOptions = ROLE_OPTIONS
+
+  const filteredAgents = agents.filter(agent =>
+    agent.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    agent.fullName.toLowerCase().includes(searchTerm.toLowerCase())
+  )
 
   const ensureCurrentUserInAgents = React.useCallback((currentAgents: AgentRow[]) => {
     if (!user?.email) {
@@ -360,8 +375,18 @@ export default function AgentControl() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="secondary">ADMINISTRADORES</Badge>
+          <div className="space-y-2">
+            <label htmlFor="agent-search" className="text-sm font-medium">Buscar usuario</label>
+            <div className="relative">
+              <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+              <Input
+                id="agent-search"
+                placeholder="Email o nombre..."
+                value={searchTerm}
+                onChange={event => setSearchTerm(event.target.value)}
+                className="pl-9"
+              />
+            </div>
           </div>
 
           {loading ? (
@@ -382,33 +407,46 @@ export default function AgentControl() {
           ) : null}
 
           <div className="space-y-3">
-            {agents.map(agent => {
+            {filteredAgents.map(agent => {
               const selectedRoles = draftRoles[agent.email] ?? agent.roles
+              const expanded = expandedAgent === agent.email
+              const panelId = `agent-panel-${agent.email.replace(/[^a-zA-Z0-9_-]/g, '-')}`
 
               return (
                 <div
                   key={agent.email}
-                  className="rounded-lg border border-border p-3"
+                  className={cn(
+                    'overflow-hidden rounded-xl border bg-card shadow-sm transition-shadow',
+                    expanded && 'shadow-md'
+                  )}
                 >
-                  <div className="grid gap-3 md:grid-cols-[1fr_auto] md:items-start">
-                    <div>
-                      <p className="font-medium text-foreground">{agent.fullName}</p>
-                      <p className="text-sm text-muted-foreground">{agent.email}</p>
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        {selectedRoles.map(role => (
-                          <Badge key={`${agent.email}-${role}`} variant="outline" className="text-[12px] font-semibold px-1.5 py-0.5">{role.toUpperCase()}</Badge>
-                        ))}
-                      </div>
+                  <button
+                    type="button"
+                    aria-expanded={expanded}
+                    aria-controls={panelId}
+                    onClick={() => setExpandedAgent(expanded ? null : agent.email)}
+                    className="flex w-full items-center gap-3 px-4 py-3 text-left outline-none transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-inset"
+                  >
+                    <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground" aria-hidden="true">
+                      {getInitials(agent.fullName, agent.email)}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-medium text-foreground">{agent.fullName}</span>
+                      <span className="block truncate text-xs text-muted-foreground">{agent.email}</span>
+                    </span>
+                    <Badge variant={agent.source === 'admin' ? 'default' : 'outline'} className="hidden shrink-0 sm:inline-flex">
+                      {agent.source === 'admin' ? 'Admin' : 'INTELASIST'}
+                    </Badge>
+                    <ChevronDown className={cn('size-4 shrink-0 text-muted-foreground transition-transform duration-200', expanded && 'rotate-180')} aria-hidden="true" />
+                  </button>
+
+                  {expanded && <div id={panelId} className="space-y-5 border-t bg-muted/40 px-4 py-5">
+                    <div className="flex flex-wrap gap-2">
+                      {selectedRoles.map(role => (
+                        <Badge key={`${agent.email}-${role}`} variant="outline" className="text-[12px] font-semibold">{role.toUpperCase()}</Badge>
+                      ))}
                     </div>
 
-                    <div className="flex items-center justify-end">
-                      <Badge variant={agent.source === 'admin' ? 'default' : 'outline'}>
-                        {agent.source === 'admin' ? 'Admin' : 'INTELASIST'}
-                      </Badge>
-                    </div>
-                  </div>
-
-                  <div className="mt-3 rounded-md border border-dashed border-border bg-muted/30 p-3 space-y-3">
                     <div>
                       <p className="text-xs uppercase tracking-wide text-muted-foreground mb-2">Roles</p>
                       <div className="grid gap-2 sm:grid-cols-2">
@@ -487,7 +525,7 @@ export default function AgentControl() {
                         </div>
                       </div>
                     ) : null}
-                  </div>
+                  </div>}
                 </div>
               )
             })}

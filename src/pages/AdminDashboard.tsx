@@ -88,7 +88,7 @@ export default function AdminDashboard() {
 
         {/* Tabs */}
         <Tabs defaultValue="overview" orientation="vertical" className="w-full flex-col lg:flex-row lg:items-start">
-          <TabsList className="order-2 grid w-full min-w-0 grid-cols-2 gap-2 overflow-hidden rounded-xl bg-card p-2 lg:sticky lg:top-6 lg:order-2 lg:w-56 lg:shrink-0 lg:grid-cols-1">
+          <TabsList className="order-2 grid w-full min-w-0 grid-cols-2 gap-2 overflow-hidden rounded-xl bg-card p-2 lg:sticky lg:top-6 lg:order-2 lg:max-h-[calc(100vh-3rem)] lg:w-56 lg:shrink-0 lg:grid-cols-1 lg:overflow-y-auto">
             <TabsTrigger value="overview" className={adminTabTriggerClass}>
               <Zap className="size-4" />
               <span className="hidden sm:inline">Resumen</span>
