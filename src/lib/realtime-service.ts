@@ -93,6 +93,7 @@ export class RealtimeService {
    */
   private static subscribeToTable(tableName: string, callback: (event: RealtimeEvent<any>) => void) {
     const channelName = `${tableName}:all`
+    const startedAt = performance.now()
 
     // Reuse existing channel if already subscribed
     if (this.channels.has(channelName)) {
@@ -126,7 +127,7 @@ export class RealtimeService {
       )
       .subscribe((status) => {
         if (status === 'SUBSCRIBED') {
-          console.log(`✓ Subscribed to ${tableName}`)
+          console.log(`✓ Subscribed to ${tableName}`, { durationMs: Math.round(performance.now() - startedAt) })
         } else if (status === 'CLOSED') {
           console.log(`✗ Unsubscribed from ${tableName}`)
         }

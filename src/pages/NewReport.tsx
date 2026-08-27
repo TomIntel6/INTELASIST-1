@@ -36,6 +36,7 @@ function splitObservationComment(comment: string): { reason: string | null; text
 }
 
 export default function NewReport() {
+  const mountedAtRef = React.useRef(performance.now())
   const navigate = useNavigate()
   const { id: editId } = useParams<{ id?: string }>()
   const isEditMode = Boolean(editId)
@@ -217,6 +218,7 @@ const [form, setForm] = React.useState<NewReportForm>({
 
   // Función para registrar intento fallido (reutilizable)
   const registerFailedAttempt = React.useCallback(async () => {
+    const startedAt = performance.now()
     // En modo edición no se registran "intentos fallidos": el informe ya existe.
     if (isEditMode) {
       return
@@ -242,7 +244,7 @@ const [form, setForm] = React.useState<NewReportForm>({
       const displayName = user?.user_metadata?.full_name ?? user?.email ?? ''
       const data = buildFailedAttemptPayload(currentForm, displayName)
 
-      console.log(`📤 Registrando intento fallido al abandonar (via ${window.location.pathname}):`, data)
+      console.log(`📤 Registrando intento fallido al abandonar (via ${window.location.pathname})`)
 
       const API_BASE_URL = getDefaultApiBase()
 
@@ -262,7 +264,7 @@ const [form, setForm] = React.useState<NewReportForm>({
         clearTimeout(timeoutId)
 
         if (response.ok) {
-          console.log(`✅ Intento fallido registrado (abandono de ruta)`)
+          console.log(`✅ Intento fallido registrado (abandono de ruta)`, { durationMs: Math.round(performance.now() - startedAt) })
           window.dispatchEvent(new CustomEvent('failedAttemptRegistered', { detail: { email: data.user_email } }))
           localStorage.setItem('failedAttemptSignal', JSON.stringify({ ts: Date.now(), email: data.user_email }))
         }
@@ -290,6 +292,7 @@ const [form, setForm] = React.useState<NewReportForm>({
       // Este efecto de cleanup se ejecuta cuando el componente se desmonta
       // Por lo tanto se ejecuta cuando el usuario navega fuera de NewReport
       console.log('🚪 Componente NewReport desmontado, verificando intento fallido...')
+      console.info('[new-report] unmounted', { mountedDurationMs: Math.round(performance.now() - mountedAtRef.current) })
       registerFailedAttempt()
     }
   }, [registerFailedAttempt])

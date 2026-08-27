@@ -63,8 +63,12 @@ export function useRealtimeReports(callback: (event: RealtimeEvent<any>) => void
   callbackRef.current = callback
 
   React.useEffect(() => {
+    const startedAt = performance.now()
     const listener = (event: RealtimeEvent<any>) => callbackRef.current(event)
     const channelName = RealtimeService.subscribeToReports(listener)
+    console.info('[realtime] Dashboard reports subscription initialized', {
+      durationMs: Math.round(performance.now() - startedAt),
+    })
 
     return () => {
       RealtimeService.unsubscribe(channelName, listener)

@@ -487,7 +487,7 @@ export default function ReportsList() {
     setExporting(true)
     setExportError(null)
     try {
-      const all = await loadReportsForMonth(selectedMonth, selectedYear)
+      const all = await loadReportsForMonth(selectedMonth, selectedYear, { force: true, source: 'ReportsList.handleExportFull' })
       performExport(all, `Informes_${selectedMonth}_${selectedYear}.xlsx`)
     } catch (error) {
       setExportError(error instanceof Error ? error.message : 'No se pudo exportar. Intenta de nuevo.')
@@ -508,7 +508,7 @@ export default function ReportsList() {
     setExporting(true)
     setExportError(null)
     try {
-      const all = await loadReportsForMonth(selectedMonth, selectedYear)
+      const all = await loadReportsForMonth(selectedMonth, selectedYear, { force: true, source: 'ReportsList.handleExportRange' })
       const filteredRange = filterReportsByDateRange(all, fromDay, toDay, selectedMonth, selectedYear)
       performExport(filteredRange, `Informes_${selectedMonth}_${selectedYear}_${fromDay}-${toDay}.xlsx`)
     } catch (error) {

@@ -242,6 +242,20 @@ function normalizeUserRecord(record: Record<string, unknown>): LocalUser | null 
 
 async function requestJson<T>(url: string, options: RequestInit = {}): Promise<T> {
   try {
+    const startedAt = performance.now()
+    const safeEndpoint = (() => {
+      try {
+        return new URL(url).pathname
+      } catch {
+        return '[invalid-endpoint]'
+      }
+    })()
+    console.info('[auth.requestJson] fetch', {
+      endpoint: safeEndpoint,
+      method: options.method || 'GET',
+      source: 'auth',
+      startedAt: Math.round(startedAt),
+    })
     const response = await fetch(url, {
       ...options,
       // `headers` después de `...options` para que las cabeceras combinadas
@@ -259,6 +273,14 @@ async function requestJson<T>(url: string, options: RequestInit = {}): Promise<T
     if (!response.ok) {
       throw new Error((payload as { error?: string }).error || 'Error al comunicarse con el servidor.')
     }
+
+    console.info('[auth.requestJson] complete', {
+      endpoint: safeEndpoint,
+      method: options.method || 'GET',
+      source: 'auth',
+      durationMs: Math.round(performance.now() - startedAt),
+      status: response.status,
+    })
 
     return payload as T
   } catch (error) {
