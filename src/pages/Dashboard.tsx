@@ -78,21 +78,9 @@ function AnimatedNumber({ value }: { value: number }) {
   const [displayValue, setDisplayValue] = React.useState(0)
 
   React.useEffect(() => {
-    let animationFrame = 0
-    const startTimestamp = performance.now()
+    const timeoutId = window.setTimeout(() => setDisplayValue(value), 450)
 
-    const animate = (timestamp: number) => {
-      const progress = Math.min((timestamp - startTimestamp) / 450, 1)
-      setDisplayValue(Math.round(progress * value))
-
-      if (progress < 1) {
-        animationFrame = window.requestAnimationFrame(animate)
-      }
-    }
-
-    animationFrame = window.requestAnimationFrame(animate)
-
-    return () => window.cancelAnimationFrame(animationFrame)
+    return () => window.clearTimeout(timeoutId)
   }, [value])
 
   return <span className="tabular-nums">{displayValue}</span>

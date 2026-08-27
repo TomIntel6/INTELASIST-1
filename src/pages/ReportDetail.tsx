@@ -358,7 +358,7 @@ export default function ReportDetail() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl space-y-5 p-6">
+    <div className="w-full space-y-5 p-4 sm:p-6 xl:p-8">
       {/* Header */}
       <div className="glass-panel relative overflow-hidden rounded-[1.5rem] p-5 sm:p-6">
         <span className="brand-gradient-bg pointer-events-none absolute inset-x-0 top-0 h-1 opacity-80" aria-hidden="true" />
@@ -412,40 +412,30 @@ export default function ReportDetail() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(300px,360px)]">
         {/* Report info */}
-        <div className="lg:col-span-2 space-y-4">
-          {/* Asegurado + Servicio */}
-          <Card>
-            <CardHeader className="pb-2">
+        <div className="min-w-0 space-y-5">
+          {/* Asegurado + vehículo */}
+          <Card className="overflow-hidden">
+            <CardHeader className="border-b border-border/60 px-5 py-4">
               <CardTitle className="flex items-center gap-2.5 text-sm font-semibold">
                 <span className="flex size-8 items-center justify-center rounded-lg bg-sky-500/10 text-sky-600 ring-1 ring-sky-500/20 dark:text-sky-400">
                   <User className="size-4" />
                 </span>
-                Información del Asegurado
+                Información del caso
               </CardTitle>
             </CardHeader>
-            <CardContent className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
+            <CardContent className="grid grid-cols-2 gap-x-5 gap-y-4 p-5 text-sm sm:grid-cols-4">
               <InfoRow label="Nombre" value={report.insured_name} />
-              <InfoRow label="Placa" value={<span className="font-mono">{report.plate}</span>} />
               <InfoRow label="Póliza" value={report.policy} />
+              <InfoRow label="Placa" value={<span className="font-mono">{report.plate}</span>} />
               <InfoRow label="Servicio" value={
                 <Badge variant="outline" className="text-xs">{report.service_type}</Badge>
               } />
-            </CardContent>
-          </Card>
-
-          {/* Vehículo */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="flex items-center gap-2.5 text-sm font-semibold">
-                <span className="flex size-8 items-center justify-center rounded-lg bg-violet-500/10 text-violet-600 ring-1 ring-violet-500/20 dark:text-violet-400">
-                  <Car className="size-4" />
-                </span>
-                Datos del Vehículo
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
+              <div className="col-span-full flex items-center gap-2 border-t border-border/60 pt-4 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground sm:col-span-4">
+                <Car className="size-4 text-violet-500" />
+                Datos del vehículo
+              </div>
               <InfoRow label="Marca" value={report.brand} />
               <InfoRow label="Modelo" value={report.model} />
               <InfoRow label="Color" value={report.color} />
@@ -455,7 +445,7 @@ export default function ReportDetail() {
 
           {/* Observación inicial */}
           {(report.observation_comment || report.observation_comment === '') && (
-            <Card>
+            <Card className="overflow-hidden">
               <CardHeader className="pb-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <CardTitle className="flex items-center gap-2.5 text-sm font-semibold">
                   <span className="flex size-8 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600 ring-1 ring-amber-500/20 dark:text-amber-400">
@@ -479,7 +469,7 @@ export default function ReportDetail() {
                   </div>
                 ) : null}
               </CardHeader>
-              <CardContent className="space-y-3">
+              <CardContent className="space-y-4 p-5">
                 {(() => {
                   const observation = parseObservationComment(report.observation_comment || '')
                   return (
@@ -506,7 +496,7 @@ export default function ReportDetail() {
 
           {/* Evidencia */}
           {evidenceImages.length > 0 && (
-            <Card>
+            <Card className="overflow-hidden">
               <CardHeader className="pb-2">
                 <CardTitle className="flex items-center gap-2.5 text-sm font-semibold">
                   <span className="flex size-8 items-center justify-center rounded-lg bg-blue-500/10 text-blue-600 ring-1 ring-blue-500/20 dark:text-blue-400">
@@ -515,19 +505,28 @@ export default function ReportDetail() {
                   Evidencia
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <CardContent className="space-y-4 p-5">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   {evidenceImages.map((image, index) => (
-                    <img
+                    <button
                       key={`${image.url}-${index}`}
-                      src={image.url}
-                      alt={`Evidencia ${index + 1}`}
-                      className="w-full rounded-lg border border-border object-cover max-h-80 cursor-pointer hover:opacity-90 transition-opacity"
+                      type="button"
+                      className="group relative flex min-h-[220px] items-center justify-center overflow-hidden rounded-xl border border-border/70 bg-muted/30 p-2 text-left transition-colors hover:border-primary/50"
                       onClick={() => {
                         setModalImageUrl(image.url)
                         setShowImageModal(true)
                       }}
-                    />
+                      aria-label={`Ampliar evidencia ${index + 1}`}
+                    >
+                      <img
+                        src={image.url}
+                        alt={`Evidencia ${index + 1}`}
+                        className="max-h-[min(34rem,60vh)] w-full object-contain transition-transform duration-300 group-hover:scale-[1.02]"
+                      />
+                      <span className="pointer-events-none absolute bottom-3 right-3 inline-flex items-center gap-1 rounded-full bg-background/90 px-2.5 py-1 text-xs font-medium text-foreground opacity-0 shadow-sm transition-opacity group-hover:opacity-100">
+                        <ZoomIn className="size-3.5" /> Ampliar
+                      </span>
+                    </button>
                   ))}
                 </div>
                 <Button
@@ -559,9 +558,11 @@ export default function ReportDetail() {
                 )}
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="relative space-y-5 pl-8 sm:pl-10">
               {/* Creation entry */}
-              <div className="flex gap-3">
+              <span className="absolute bottom-6 left-[1.15rem] top-6 w-px bg-border" aria-hidden="true" />
+              <div className="relative flex gap-3">
+                <span className="absolute -left-[1.7rem] top-1.5 size-3 rounded-full border-2 border-background bg-indigo-500 ring-4 ring-indigo-500/10" aria-hidden="true" />
                 <Avatar size="sm" className="shrink-0 mt-0.5">
                   <AvatarFallback className="text-xs">{getInitials(report.created_by_name || report.created_by_email)}</AvatarFallback>
                 </Avatar>
@@ -582,8 +583,9 @@ export default function ReportDetail() {
 
               {updates.map((u) => (
                 <React.Fragment key={u.id}>
-                  <Separator />
-                  <div className="flex gap-3">
+                  <div className="relative border-t border-border/60 pt-5">
+                    <span className="absolute -left-[1.7rem] top-[1.85rem] size-3 rounded-full border-2 border-background bg-indigo-500 ring-4 ring-indigo-500/10" aria-hidden="true" />
+                    <div className="flex gap-3">
                     <Avatar size="sm" className="shrink-0 mt-0.5">
                       <AvatarFallback className="text-xs">{getInitials(u.added_by_name || u.added_by_email)}</AvatarFallback>
                     </Avatar>
@@ -605,6 +607,7 @@ export default function ReportDetail() {
                         <TimeAgo date={u.created_at} />
                       </p>
                     </div>
+                    </div>
                   </div>
                 </React.Fragment>
               ))}
@@ -613,7 +616,7 @@ export default function ReportDetail() {
         </div>
 
         {/* Right: add update */}
-        <div className="lg:col-span-1 space-y-4">
+        <div className="min-w-0 space-y-4 xl:sticky xl:top-6 xl:self-start">
           {/* Meta */}
           <Card>
             <CardHeader className="pb-2">
@@ -641,6 +644,13 @@ export default function ReportDetail() {
               <div>
                 <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">Fecha</p>
                 <p className="text-sm text-foreground"><TimeAgo date={report.created_at} /></p>
+              </div>
+              <Separator />
+              <div>
+                <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">Estado actual</p>
+                <Badge className={cn('border text-xs', STATUS_BADGE[report.status] ?? 'bg-secondary')}>
+                  {report.status}
+                </Badge>
               </div>
             </CardContent>
           </Card>
