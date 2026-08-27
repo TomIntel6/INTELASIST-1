@@ -472,8 +472,8 @@ export default function Dashboard() {
                 </div>
               </CardHeader>
               <CardContent className="px-5 pb-5 pt-1">
-                <div className="h-80 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
+                <div className="h-80 min-h-80 min-w-0 w-full">
+                  <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 640, height: 320 }}>
                     <AreaChart data={chartSeries} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                       <defs>
                         <linearGradient id="reportsAreaGradient" x1="0" y1="0" x2="0" y2="1">
@@ -515,8 +515,8 @@ export default function Dashboard() {
               </CardHeader>
               <CardContent className="px-5 pb-5">
                 <div className="grid grid-cols-[1fr_auto] items-center gap-3">
-                  <div className="h-[240px] w-full relative">
-                    <ResponsiveContainer width="100%" height="100%">
+                  <div className="relative h-[240px] min-h-[240px] min-w-0 w-full">
+                    <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 240, height: 240 }}>
                       <PieChart>
                         <Pie
                           data={donutData}

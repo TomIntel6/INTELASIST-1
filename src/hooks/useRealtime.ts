@@ -59,13 +59,17 @@ export function useRealtimeUserActivity(callback: (event: RealtimeEvent<any>) =>
  * appearing live in the list). Cleans up the subscription on unmount.
  */
 export function useRealtimeReports(callback: (event: RealtimeEvent<any>) => void) {
+  const callbackRef = React.useRef(callback)
+  callbackRef.current = callback
+
   React.useEffect(() => {
-    const channelName = RealtimeService.subscribeToReports(callback)
+    const listener = (event: RealtimeEvent<any>) => callbackRef.current(event)
+    const channelName = RealtimeService.subscribeToReports(listener)
 
     return () => {
-      RealtimeService.unsubscribe(channelName, callback)
+      RealtimeService.unsubscribe(channelName, listener)
     }
-  }, [callback])
+  }, [])
 }
 
 /**
