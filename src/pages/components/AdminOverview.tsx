@@ -160,8 +160,8 @@ export default function AdminOverview() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
+      <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
           <p className="mb-1.5 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
             <span className="brand-gradient-bg size-1.5 rounded-full" aria-hidden="true" />
             Administración
@@ -171,6 +171,7 @@ export default function AdminOverview() {
         </div>
         <Button
           variant="outline"
+          className="w-full shrink-0 sm:w-auto"
           onClick={() => {
             loadStats()
           }}
