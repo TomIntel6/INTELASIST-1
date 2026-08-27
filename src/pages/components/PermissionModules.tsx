@@ -8,8 +8,9 @@ import { Spinner } from '@/components/ui/spinner'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
-import { ChevronDown, ChevronUp, Save } from 'lucide-react'
+import { ChevronDown, Save, Search } from 'lucide-react'
 import { toast } from 'sonner'
+import { cn } from '@/lib/utils'
 
 
 interface UserModuleAccess {
@@ -18,6 +19,13 @@ interface UserModuleAccess {
   userName: string
   role: string
   modules: Record<string, boolean>
+}
+
+function getInitials(name: string, email: string): string {
+  const source = (name || email || '?').trim()
+  const parts = source.split(/\s+/).filter(Boolean)
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase()
+  return source.slice(0, 2).toUpperCase()
 }
 
 export default function PermissionModules() {
@@ -111,59 +119,80 @@ export default function PermissionModules() {
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle>Gestión de Módulos de Permisos</CardTitle>
+          <CardTitle className="text-lg">Gestión de Módulos de Permisos</CardTitle>
           <CardDescription>Controla qué módulos pueden acceder los usuarios</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-2">
+          <Label htmlFor="module-user-search" className="text-sm font-medium">
+            Buscar usuario
+          </Label>
+          <div className="relative">
+            <Search
+              className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
+              aria-hidden="true"
+            />
           <Input
+            id="module-user-search"
             placeholder="Buscar por email o nombre..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="mb-4"
+            className="pl-9"
           />
+          </div>
         </CardContent>
       </Card>
 
       <div className="space-y-3">
         {filteredUsers.map((user) => (
-          <Card key={user.userId}>
-            <div
-              className="flex items-center justify-between p-4 cursor-pointer hover:bg-slate-50"
+          <div
+            key={user.userId}
+            className={cn(
+              'overflow-hidden rounded-xl border bg-card shadow-sm transition-shadow',
+              expandedUser === user.userId && 'shadow-md'
+            )}
+          >
+            <button
+              type="button"
+              aria-expanded={expandedUser === user.userId}
+              aria-controls={`module-panel-${user.userId}`}
+              className="flex w-full items-center gap-3 px-4 py-3 text-left outline-none transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-inset"
               onClick={() =>
                 setExpandedUser(expandedUser === user.userId ? null : user.userId)
               }
             >
-              <div className="flex-1">
-                <div className="flex items-center gap-3">
-                  <div>
-                    <p className="font-medium text-slate-900">{user.userName || user.email}</p>
-                    <p className="text-sm text-slate-600">{user.email}</p>
-                  </div>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <Badge variant="outline">{user.role}</Badge>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    handleToggleAllModulesForUser(user.userId)
-                  }}
-                  type="button"
-                  className="text-sm text-slate-500 hover:text-slate-700 mr-2"
-                >
-                  Seleccionar todos
-                </button>
-                {expandedUser === user.userId ? (
-                  <ChevronUp className="size-5 text-slate-400" />
-                ) : (
-                  <ChevronDown className="size-5 text-slate-400" />
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground" aria-hidden="true">
+                {getInitials(user.userName, user.email)}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-medium text-foreground">
+                  {user.userName || user.email}
+                </span>
+                <span className="block truncate text-xs text-muted-foreground">{user.email}</span>
+              </span>
+              <Badge variant="outline" className="shrink-0">{user.role}</Badge>
+              <ChevronDown
+                className={cn(
+                  'size-4 shrink-0 text-muted-foreground transition-transform duration-200',
+                  expandedUser === user.userId && 'rotate-180'
                 )}
-              </div>
-            </div>
+                aria-hidden="true"
+              />
+            </button>
 
             {expandedUser === user.userId && (
-              <CardContent className="pt-0 border-t">
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-4">
+              <div id={`module-panel-${user.userId}`} className="space-y-5 border-t bg-muted/40 px-4 py-5">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-xs text-muted-foreground">Módulos habilitados para este usuario</p>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleToggleAllModulesForUser(user.userId)}
+                  >
+                    Seleccionar todos
+                  </Button>
+                </div>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   {Object.entries(PERMISSION_MODULES).map(([moduleKey, moduleData]) => {
                     const colorMap: Record<string, string> = {
                       blue: 'bg-blue-100 text-blue-700 border-blue-200',
@@ -176,8 +205,8 @@ export default function PermissionModules() {
                     }
 
                     return (
-                    <div key={moduleKey} className="flex items-center justify-between gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 shadow-sm transition-colors hover:border-slate-300">
-                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs ${colorMap[(moduleData as any).color as string] || 'bg-slate-100 text-slate-700'}`}>
+                    <div key={moduleKey} className="flex items-center justify-between gap-2 rounded-lg border bg-background px-3 py-2 shadow-sm transition-colors hover:border-primary/40">
+                      <span className={`inline-flex min-w-0 items-center gap-1 rounded px-2 py-0.5 text-xs ${colorMap[(moduleData as any).color as string] || 'bg-slate-100 text-slate-700'}`}>
                         {moduleData.label}
                       </span>
                       <Switch
@@ -185,12 +214,12 @@ export default function PermissionModules() {
                         checked={user.modules[moduleKey] || false}
                         onCheckedChange={() => handleModuleToggle(user.userId, moduleKey)}
                       />
-                      </div>
+                    </div>
                     )
                   })}
                 </div>
 
-                <div className="mt-4 flex justify-end">
+                <div className="flex justify-end border-t pt-4">
                   <Button
                     onClick={() => handleSave(user.userId)}
                     disabled={saving[user.userId]}
@@ -200,9 +229,9 @@ export default function PermissionModules() {
                     {saving[user.userId] ? 'Guardando...' : 'Guardar'}
                   </Button>
                 </div>
-              </CardContent>
+              </div>
             )}
-          </Card>
+          </div>
         ))}
       </div>
     </div>
