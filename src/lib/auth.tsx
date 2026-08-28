@@ -258,6 +258,7 @@ async function requestJson<T>(url: string, options: RequestInit = {}): Promise<T
     })
     const response = await fetch(url, {
       ...options,
+      credentials: 'include',
       // `headers` después de `...options` para que las cabeceras combinadas
       // (incluida la identidad de getAuthHeaders) no se pierdan si options
       // trae su propia propiedad `headers`.

@@ -120,8 +120,9 @@ console.log('[Supabase] ENV vars:', {
 console.log('[Supabase] cliente administrativo inicializado:', supabase ? 'sí' : 'no')
 const allowedOrigins = [
   FRONTEND_ORIGIN,
+  'https://intelasist-ai.vercel.app',
   'https://intelasist-yps2-64ysydqqy-jose-rodriguez-s-projects1.vercel.app',
-]
+].filter(Boolean)
 
 const corsOptions = {
   origin(origin, callback) {
