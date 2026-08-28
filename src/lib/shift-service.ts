@@ -27,12 +27,18 @@ export interface ShiftReport {
 const API_BASE = getDefaultApiBase()
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const authHeaders = getAuthHeaders()
   const response = await fetch(`${API_BASE}${path}`, {
     ...init,
-    headers: { 'Content-Type': 'application/json', ...getAuthHeaders(), ...(init?.headers ?? {}) },
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json', ...authHeaders, ...(init?.headers ?? {}) },
   })
   const payload = await response.json().catch(() => null)
-  if (!response.ok) throw new Error(String(payload?.error || 'No se pudo completar la operación.'))
+  if (!response.ok) {
+    throw new Error(String(payload?.error || (response.status === 401
+      ? 'Sesión no válida o caducada. Inicia sesión nuevamente.'
+      : 'No se pudo completar la operación.')))
+  }
   return payload as T
 }
 
