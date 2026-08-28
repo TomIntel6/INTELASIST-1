@@ -1930,9 +1930,9 @@ function shiftCategoryCountsSql(alias = 'r') {
     const keywords = key === 'RENOVACION NO PAGADA' ? [keyword, 'POLIZA VENCIDA'] : [keyword]
     return { key, sql: keywords.map(item => `position('${item.toLowerCase()}' in ${text}) > 0`).join(' OR ') }
   })
-  const entries = conditions.map(({ key, sql }) => `'${key}', COUNT(*) FILTER (WHERE ${sql})::int`)
+  const entries = conditions.map(({ key, sql }) => `'${key}', COUNT(${alias}.id) FILTER (WHERE ${sql})::int`)
   const otherCondition = conditions.map(({ sql }) => `NOT (${sql})`).join(' AND ')
-  entries.push(`'OTROS', COUNT(*) FILTER (WHERE ${otherCondition})::int`)
+  entries.push(`'OTROS', COUNT(${alias}.id) FILTER (WHERE ${otherCondition})::int`)
   return `jsonb_build_object(${entries.join(', ')}) AS category_counts`
 }
 
