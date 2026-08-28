@@ -32,7 +32,11 @@ async function request<T>(path: string, init?: RequestInit, identity?: { id?: st
   if (identity?.id) authHeaders['x-user-id'] = identity.id
   if (identity?.email) authHeaders['x-user-email'] = identity.email
   if (identity?.name) authHeaders['x-user-name'] = encodeURIComponent(identity.name)
-  const response = await fetch(`${API_BASE}${path}`, {
+  const separator = path.includes('?') ? '&' : '?'
+  const identityQuery = identity?.email
+    ? `${separator}email=${encodeURIComponent(identity.email)}${identity.id ? `&userId=${encodeURIComponent(identity.id)}` : ''}`
+    : ''
+  const response = await fetch(`${API_BASE}${path}${identityQuery}`, {
     ...init,
     credentials: 'include',
     headers: { 'Content-Type': 'application/json', ...authHeaders, ...(init?.headers ?? {}) },
