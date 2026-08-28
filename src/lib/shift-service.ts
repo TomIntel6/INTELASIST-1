@@ -1,4 +1,4 @@
-import { getAuthHeaders } from '@/lib/auth'
+import { AUTH_STORAGE_KEY, getAuthHeaders } from '@/lib/auth'
 import { getDefaultApiBase } from '@/lib/supabase'
 
 export type ShiftStatus = 'open' | 'closed'
@@ -47,7 +47,22 @@ async function request<T>(path: string, init?: RequestInit, identity?: { id?: st
 }
 
 function getIdentity(user?: { id?: string; email?: string; user_metadata?: { full_name?: string } } | null) {
-  return user ? { id: user.id, email: user.email, name: user.user_metadata?.full_name } : undefined
+  if (user?.id && user.email) {
+    return { id: user.id, email: user.email, name: user.user_metadata?.full_name }
+  }
+
+  if (typeof window === 'undefined') return undefined
+  try {
+    const raw = window.sessionStorage.getItem(AUTH_STORAGE_KEY)
+    const stored = raw ? JSON.parse(raw) as { user?: { id?: string; email?: string; user_metadata?: { full_name?: string } } } : null
+    if (stored?.user?.id && stored.user.email) {
+      return { id: stored.user.id, email: stored.user.email, name: stored.user.user_metadata?.full_name }
+    }
+  } catch {
+    // La sesión puede estar temporalmente incompleta mientras termina de hidratarse.
+  }
+
+  return undefined
 }
 
 export async function listShifts(user?: { id?: string; email?: string; user_metadata?: { full_name?: string } } | null): Promise<Shift[]> {
