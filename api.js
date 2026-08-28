@@ -436,6 +436,27 @@ async function resolveRequesterRoles(req) {
   return extractRolesFromRow(result.rows[0])
 }
 
+async function requesterHasPermission(req, permissionKey) {
+  const userId = String(req.user?.id || '').trim()
+  if (!userId) return false
+
+  const permissionResult = await pool.query(`
+    SELECT upd.granted
+    FROM user_permissions up
+    LEFT JOIN user_permission_details upd
+      ON upd.permission_id = up.id AND upd.permission_key = $2
+    WHERE up.user_id = $1
+    LIMIT 1
+  `, [userId, permissionKey])
+
+  if (permissionResult.rowCount > 0) {
+    return permissionResult.rows[0].granted === true
+  }
+
+  const roles = await resolveRequesterRoles(req)
+  return roles.some(role => ['Admin', 'Support'].includes(role))
+}
+
 async function hashPassword(password) {
   return bcrypt.hash(password, SALT_ROUNDS)
 }
@@ -1997,6 +2018,45 @@ app.patch('/shifts/:id/close', async (req, res) => {
   }
 })
 
+app.delete('/shifts/:id', async (req, res) => {
+  try {
+    if (!(await requireShiftRole(req, res))) return
+    if (!(await requesterHasPermission(req, 'delete_closed_shifts'))) {
+      return res.status(403).json({ error: 'No tienes permiso para eliminar turnos cerrados.' })
+    }
+
+    const existing = await pool.query(
+      "SELECT * FROM work_shifts WHERE id = $1 AND status = 'closed'",
+      [req.params.id]
+    )
+    if (existing.rowCount === 0) {
+      return res.status(404).json({ error: 'Solo se pueden eliminar turnos cerrados.' })
+    }
+
+    const result = await pool.query(
+      "DELETE FROM work_shifts WHERE id = $1 AND status = 'closed' RETURNING id",
+      [req.params.id]
+    )
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'El turno cerrado ya no existe.' })
+    }
+
+    await logAuditEvent(req, {
+      action: 'delete_closed_shift',
+      module: 'shifts',
+      entityId: req.params.id,
+      entityType: 'work_shift',
+      oldValues: existing.rows[0],
+      ...getAuditUserInfo(req),
+    })
+
+    res.json({ ok: true, id: result.rows[0].id })
+  } catch (error) {
+    console.error('Error al eliminar turno cerrado:', error)
+    res.status(500).json({ error: 'No se pudo eliminar el turno cerrado.' })
+  }
+})
+
 app.get('/shifts/:id', async (req, res) => {
   try {
     if (!(await requireShiftRole(req, res))) return
@@ -3108,6 +3168,8 @@ app.get('/api/users/with-permissions', async (req, res) => {
     const allPermissionsResult = await pool.query(`
       SELECT DISTINCT permission_key FROM user_permission_details
       WHERE permission_key IS NOT NULL
+      UNION
+      SELECT 'delete_closed_shifts' AS permission_key
       ORDER BY permission_key
     `)
     

@@ -83,6 +83,10 @@ export async function closeShift(id: string, user?: { id?: string; email?: strin
   return payload.shift
 }
 
+export async function deleteClosedShift(id: string, user?: { id?: string; email?: string; user_metadata?: { full_name?: string } } | null): Promise<void> {
+  await request<{ ok: boolean }>(`/shifts/${encodeURIComponent(id)}`, { method: 'DELETE' }, getIdentity(user))
+}
+
 export async function getShiftDetail(id: string, user?: { id?: string; email?: string; user_metadata?: { full_name?: string } } | null): Promise<{ shift: Shift; reports: ShiftReport[] }> {
   return request<{ shift: Shift; reports: ShiftReport[] }>(`/shifts/${encodeURIComponent(id)}`, undefined, getIdentity(user))
 }
