@@ -43,10 +43,10 @@ const MemoizedTabContent = React.memo(function MemoizedTabContent({ children }: 
 
 // Estilo compartido de pestañas: estado activo con acento de marca
 const adminTabTriggerClass = cn(
-  'flex items-center gap-2 rounded-lg px-2 py-2 text-xs font-medium text-muted-foreground transition-colors sm:text-sm',
-  'hover:bg-accent hover:text-foreground',
-  'data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm',
-  'data-[state=active]:[&>svg]:text-[var(--brand-2)]'
+  'flex min-h-11 items-center gap-2 rounded-md border border-transparent px-3 py-2 text-xs font-medium text-muted-foreground transition-all duration-300 ease-out sm:text-sm',
+  'hover:bg-accent/70 hover:text-foreground',
+  'data-[state=active]:min-h-16 data-[state=active]:scale-[1.02] data-[state=active]:border-border/70 data-[state=active]:border-r-2 data-[state=active]:border-r-primary data-[state=active]:bg-accent/80 data-[state=active]:font-semibold data-[state=active]:text-foreground data-[state=active]:shadow-sm',
+  'data-[state=active]:[&>svg]:size-[1.1rem] data-[state=active]:[&>svg]:text-[var(--brand-2)]'
 )
 
 export default function AdminDashboard() {
@@ -88,7 +88,7 @@ export default function AdminDashboard() {
 
         {/* Tabs */}
         <Tabs defaultValue="overview" orientation="vertical" className="w-full flex-col lg:flex-row lg:items-start">
-          <TabsList className="order-2 grid w-full min-w-0 grid-cols-2 gap-2 overflow-hidden rounded-xl bg-card p-2 lg:sticky lg:top-6 lg:order-2 lg:max-h-[calc(100vh-3rem)] lg:w-56 lg:shrink-0 lg:grid-cols-1 lg:overflow-y-auto">
+          <TabsList aria-label="Navegación de Gestión de Permisos" className="order-2 grid w-full min-w-0 grid-cols-2 gap-1 border-t border-border/70 bg-transparent p-2 lg:sticky lg:top-6 lg:order-2 lg:max-h-[calc(100vh-3rem)] lg:w-60 lg:shrink-0 lg:grid-cols-1 lg:gap-1 lg:border-l lg:border-t-0 lg:p-3">
             <TabsTrigger value="overview" className={adminTabTriggerClass}>
               <Zap className="size-4" />
               <span className="hidden sm:inline">Resumen</span>
@@ -132,35 +132,35 @@ export default function AdminDashboard() {
           </TabsList>
 
           {/* Overview Tab */}
-          <TabsContent value="overview" className="order-1 min-w-0 w-full lg:order-1">
+          <TabsContent value="overview" className="order-1 min-w-0 w-full transition-[opacity,transform] duration-300 data-[state=active]:translate-y-0 data-[state=active]:opacity-100 data-[state=inactive]:translate-y-1 data-[state=inactive]:opacity-0 lg:order-1">
             <React.Suspense fallback={<LoadingFallback />}>
               <AdminOverview />
             </React.Suspense>
           </TabsContent>
 
           {/* Permissions Tab */}
-          <TabsContent value="permissions" className="order-1 min-w-0 w-full lg:order-1">
+          <TabsContent value="permissions" className="order-1 min-w-0 w-full transition-[opacity,transform] duration-300 data-[state=active]:translate-y-0 data-[state=active]:opacity-100 data-[state=inactive]:translate-y-1 data-[state=inactive]:opacity-0 lg:order-1">
             <React.Suspense fallback={<LoadingFallback />}>
               <PermissionsManagement />
             </React.Suspense>
           </TabsContent>
 
           {/* Modules Tab */}
-          <TabsContent value="modules" className="order-1 min-w-0 w-full lg:order-1">
+          <TabsContent value="modules" className="order-1 min-w-0 w-full transition-[opacity,transform] duration-300 data-[state=active]:translate-y-0 data-[state=active]:opacity-100 data-[state=inactive]:translate-y-1 data-[state=inactive]:opacity-0 lg:order-1">
             <React.Suspense fallback={<LoadingFallback />}>
               <PermissionModules />
             </React.Suspense>
           </TabsContent>
 
           {/* Agents Tab */}
-          <TabsContent value="agents" className="order-1 min-w-0 w-full lg:order-1">
+          <TabsContent value="agents" className="order-1 min-w-0 w-full transition-[opacity,transform] duration-300 data-[state=active]:translate-y-0 data-[state=active]:opacity-100 data-[state=inactive]:translate-y-1 data-[state=inactive]:opacity-0 lg:order-1">
             <React.Suspense fallback={<LoadingFallback />}>
               <AgentControl />
             </React.Suspense>
           </TabsContent>
 
           {/* Audit Tab */}
-          <TabsContent value="audit" className="order-1 min-w-0 w-full lg:order-1">
+          <TabsContent value="audit" className="order-1 min-w-0 w-full transition-[opacity,transform] duration-300 data-[state=active]:translate-y-0 data-[state=active]:opacity-100 data-[state=inactive]:translate-y-1 data-[state=inactive]:opacity-0 lg:order-1">
             <React.Suspense fallback={<LoadingFallback />}>
               <ErrorBoundary>
                 <AuditLog />
@@ -169,7 +169,7 @@ export default function AdminDashboard() {
           </TabsContent>
 
           {/* Reports Tab */}
-          <TabsContent value="reports" className="order-1 min-w-0 w-full lg:order-1">
+          <TabsContent value="reports" className="order-1 min-w-0 w-full transition-[opacity,transform] duration-300 data-[state=active]:translate-y-0 data-[state=active]:opacity-100 data-[state=inactive]:translate-y-1 data-[state=inactive]:opacity-0 lg:order-1">
             <React.Suspense fallback={<LoadingFallback />}>
               <ErrorBoundary>
                 <AuditReports />
@@ -178,28 +178,28 @@ export default function AdminDashboard() {
           </TabsContent>
 
           {/* Activity Tab */}
-          <TabsContent value="activity" className="order-1 min-w-0 w-full lg:order-1">
+          <TabsContent value="activity" className="order-1 min-w-0 w-full transition-[opacity,transform] duration-300 data-[state=active]:translate-y-0 data-[state=active]:opacity-100 data-[state=inactive]:translate-y-1 data-[state=inactive]:opacity-0 lg:order-1">
             <React.Suspense fallback={<LoadingFallback />}>
               <ActivityTimeline />
             </React.Suspense>
           </TabsContent>
 
           {/* Trash Tab */}
-          <TabsContent value="trash" className="order-1 min-w-0 w-full lg:order-1">
+          <TabsContent value="trash" className="order-1 min-w-0 w-full transition-[opacity,transform] duration-300 data-[state=active]:translate-y-0 data-[state=active]:opacity-100 data-[state=inactive]:translate-y-1 data-[state=inactive]:opacity-0 lg:order-1">
             <React.Suspense fallback={<LoadingFallback />}>
               <TrashBin />
             </React.Suspense>
           </TabsContent>
 
           {/* Users Tab */}
-          <TabsContent value="users" className="order-1 min-w-0 w-full lg:order-1">
+          <TabsContent value="users" className="order-1 min-w-0 w-full transition-[opacity,transform] duration-300 data-[state=active]:translate-y-0 data-[state=active]:opacity-100 data-[state=inactive]:translate-y-1 data-[state=inactive]:opacity-0 lg:order-1">
             <React.Suspense fallback={<LoadingFallback />}>
               <AdvancedUserManagement />
             </React.Suspense>
           </TabsContent>
 
           {/* Health Tab */}
-          <TabsContent value="health" className="order-1 min-w-0 w-full lg:order-1">
+          <TabsContent value="health" className="order-1 min-w-0 w-full transition-[opacity,transform] duration-300 data-[state=active]:translate-y-0 data-[state=active]:opacity-100 data-[state=inactive]:translate-y-1 data-[state=inactive]:opacity-0 lg:order-1">
             <React.Suspense fallback={<LoadingFallback />}>
               <SystemHealth />
             </React.Suspense>
