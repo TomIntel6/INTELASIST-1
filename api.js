@@ -159,7 +159,7 @@ function generateJwtToken(user) {
 
   const payload = {
     userId: user.id,
-    email: user.email,
+    email: user.email || user.correo,
     fullName: user.nombre || user.correo || '',
     role: user.rol || null,
     roles: user.roles || null,
