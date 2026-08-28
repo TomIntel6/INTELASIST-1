@@ -32,7 +32,7 @@ import { UserAvatar } from '@/components/UserAvatar'
 import { normalizeAvatar } from '@/lib/avatar'
 import type { AvatarData } from '@/lib/avatar'
 import { toast } from 'sonner'
-import { LayoutDashboard, FileText, LogOut, FilePlus, Users, AlertCircle, Settings } from 'lucide-react'
+import { LayoutDashboard, FileText, LogOut, FilePlus, Users, AlertCircle, Settings, Clock3 } from 'lucide-react'
 
 const ONLINE_USER_FETCH_INTERVAL_MS = 10 * 60 * 1000
 const FAILED_ATTEMPTS_REFRESH_INTERVAL_MS = 10 * 60 * 1000
@@ -67,6 +67,7 @@ const navItems = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/informes', label: 'Informes', icon: FileText },
   { to: '/usuarios', label: 'Usuarios', icon: Users },
+  { to: '/turnos', label: 'Turnos', icon: Clock3 },
 ]
 
 export default function AppSidebar() {
@@ -89,6 +90,7 @@ export default function AppSidebar() {
     () => hasPermission(PERMISSIONS.SYSTEM.MANAGE_PERMISSIONS),
     [hasPermission]
   )
+  const canViewShifts = userRoles.some(role => ['Admin', 'Support', 'Gerente'].includes(role))
   const rawSystemPermissions = React.useMemo<Record<string, boolean>>(
     () => permissions?.permissions ?? {},
     [permissions]
@@ -501,6 +503,7 @@ export default function AppSidebar() {
               {navItems.map(({ to, label, icon: Icon }) => {
                 if ((to === '/informes' && !canViewReportsModule) ||
                     (to === '/usuarios' && !canViewUsersModule) ||
+                  (to === '/turnos' && !canViewShifts) ||
                     (to === '/security/alerts' && !canViewAlerts)) {
                   return null
                 }

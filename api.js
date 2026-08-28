@@ -1836,6 +1836,139 @@ app.get('/reports/dashboard-stats', async (req, res) => {
   }
 })
 
+const SHIFT_ROLES = ['Admin', 'Support', 'Gerente']
+
+async function requireShiftRole(req, res) {
+  const roles = await resolveRequesterRoles(req)
+  if (!roles.some(role => SHIFT_ROLES.includes(role))) {
+    res.status(403).json({ error: 'Solo Admin, Support y Gerente pueden gestionar turnos.' })
+    return false
+  }
+  return true
+}
+
+function serializeShiftRow(row) {
+  return {
+    id: String(row.id),
+    supervisorId: String(row.supervisor_id),
+    supervisorName: row.supervisor_name || row.supervisor_email || 'Supervisor',
+    supervisorEmail: row.supervisor_email || '',
+    status: row.status,
+    startedAt: row.started_at,
+    endedAt: row.ended_at,
+    reportCount: Number(row.report_count || 0),
+  }
+}
+
+app.get('/shifts', async (req, res) => {
+  try {
+    if (!(await requireShiftRole(req, res))) return
+
+    const result = await pool.query(`
+      SELECT ws.*, COUNT(r.id)::int AS report_count
+      FROM work_shifts ws
+      LEFT JOIN reports r ON r.created_at >= ws.started_at
+        AND (ws.ended_at IS NULL OR r.created_at <= ws.ended_at)
+      GROUP BY ws.id
+      ORDER BY ws.started_at DESC
+      LIMIT 100
+    `)
+    res.json({ shifts: result.rows.map(serializeShiftRow) })
+  } catch (error) {
+    console.error('Error al listar turnos:', error)
+    res.status(500).json({ error: 'No se pudieron cargar los turnos.' })
+  }
+})
+
+app.post('/shifts', async (req, res) => {
+  try {
+    if (!(await requireShiftRole(req, res))) return
+
+    const supervisorId = String(req.user?.id || '').trim()
+    const supervisorEmail = String(req.user?.email || '').trim()
+    const supervisorName = String(req.user?.user_metadata?.full_name || supervisorEmail || 'Supervisor').trim()
+    if (!supervisorId || !supervisorEmail) {
+      res.status(401).json({ error: 'No se pudo identificar al supervisor.' })
+      return
+    }
+
+    const existing = await pool.query(
+      "SELECT * FROM work_shifts WHERE supervisor_id = $1 AND status = 'open' LIMIT 1",
+      [supervisorId]
+    )
+    if (existing.rowCount > 0) {
+      const detail = await pool.query(`
+        SELECT ws.*, COUNT(r.id)::int AS report_count
+        FROM work_shifts ws LEFT JOIN reports r ON r.created_at >= ws.started_at
+        WHERE ws.id = $1 GROUP BY ws.id
+      `, [existing.rows[0].id])
+      res.status(200).json({ shift: serializeShiftRow(detail.rows[0]) })
+      return
+    }
+
+    const result = await pool.query(`
+      INSERT INTO work_shifts (supervisor_id, supervisor_name, supervisor_email)
+      VALUES ($1, $2, $3) RETURNING *
+    `, [supervisorId, supervisorName, supervisorEmail])
+    res.status(201).json({ shift: serializeShiftRow({ ...result.rows[0], report_count: 0 }) })
+  } catch (error) {
+    console.error('Error al iniciar turno:', error)
+    res.status(500).json({ error: 'No se pudo iniciar el turno.' })
+  }
+})
+
+app.patch('/shifts/:id/close', async (req, res) => {
+  try {
+    if (!(await requireShiftRole(req, res))) return
+
+    const result = await pool.query(`
+      UPDATE work_shifts SET status = 'closed', ended_at = COALESCE(ended_at, NOW())
+      WHERE id = $1 AND status = 'open' RETURNING *
+    `, [req.params.id])
+    if (result.rowCount === 0) {
+      res.status(404).json({ error: 'Turno abierto no encontrado.' })
+      return
+    }
+
+    const detail = await pool.query(`
+      SELECT ws.*, COUNT(r.id)::int AS report_count
+      FROM work_shifts ws LEFT JOIN reports r ON r.created_at >= ws.started_at AND r.created_at <= ws.ended_at
+      WHERE ws.id = $1 GROUP BY ws.id
+    `, [req.params.id])
+    res.json({ shift: serializeShiftRow(detail.rows[0]) })
+  } catch (error) {
+    console.error('Error al cerrar turno:', error)
+    res.status(500).json({ error: 'No se pudo cerrar el turno.' })
+  }
+})
+
+app.get('/shifts/:id', async (req, res) => {
+  try {
+    if (!(await requireShiftRole(req, res))) return
+
+    const result = await pool.query(`
+      SELECT ws.*, COUNT(r.id)::int AS report_count
+      FROM work_shifts ws LEFT JOIN reports r ON r.created_at >= ws.started_at
+        AND (ws.ended_at IS NULL OR r.created_at <= ws.ended_at)
+      WHERE ws.id = $1 GROUP BY ws.id
+    `, [req.params.id])
+    if (result.rowCount === 0) {
+      res.status(404).json({ error: 'Turno no encontrado.' })
+      return
+    }
+
+    const reports = await pool.query(`
+      SELECT id, insured_name, plate, service_type, status, created_by_name, created_at
+      FROM reports WHERE created_at >= $1 AND ($2::timestamptz IS NULL OR created_at <= $2)
+      ORDER BY created_at ASC
+    `, [result.rows[0].started_at, result.rows[0].ended_at])
+    res.json({ shift: serializeShiftRow(result.rows[0]), reports: reports.rows })
+  } catch (error) {
+    console.error('Error al consultar detalle del turno:', error)
+    res.status(500).json({ error: 'No se pudo cargar el detalle del turno.' })
+  }
+})
+
 app.get('/reports/count', async (req, res) => {
   try {
     const email = typeof req.query.email === 'string' ? req.query.email.trim().toLowerCase() : ''

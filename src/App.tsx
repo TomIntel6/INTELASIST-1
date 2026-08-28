@@ -12,6 +12,7 @@ const ReportDetail = React.lazy(() => import('@/pages/ReportDetail'))
 const Usuarios = React.lazy(() => import('@/pages/Usuarios'))
 const AdminDashboard = React.lazy(() => import('@/pages/AdminDashboard'))
 const SecurityAlerts = React.lazy(() => import('@/pages/SecurityAlerts'))
+const Shifts = React.lazy(() => import('@/pages/Shifts'))
 import { Spinner } from '@/components/ui/spinner'
 import ErrorBoundary from '@/components/ErrorBoundary'
 import { Button } from '@/components/ui/button'
@@ -44,6 +45,7 @@ function ProtectedContent() {
   const canViewSecurityAlerts =
     (userRoles.includes('Admin') || userRoles.includes('Support') || userRoles.includes('Gerente')) &&
     (hasPermission(PERMISSIONS.SYSTEM.VIEW_ALERTS) || hasPermission(PERMISSIONS.SYSTEM.MANAGE_ALERTS))
+  const canViewShifts = userRoles.some(role => ['Admin', 'Support', 'Gerente'].includes(role))
 
   return (
     <Routes>
@@ -74,6 +76,10 @@ function ProtectedContent() {
         <Route
           path="security/alerts"
           element={canViewSecurityAlerts ? <SecurityAlerts /> : <Navigate to="/dashboard" replace />}
+        />
+        <Route
+          path="turnos"
+          element={canViewShifts ? <Shifts /> : <Navigate to="/dashboard" replace />}
         />
         <Route
           path="admin/*"
