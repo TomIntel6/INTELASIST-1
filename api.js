@@ -1837,6 +1837,15 @@ app.get('/reports/dashboard-stats', async (req, res) => {
 })
 
 const SHIFT_ROLES = ['Admin', 'Support', 'Gerente']
+const SHIFT_CATEGORIES = [
+  ['SOAT', 'SOAT'],
+  ['SALDO MOROSO', 'SALDO MOROSO'],
+  ['RENOVACION NO PAGADA', 'RENOVACION NO PAGADA'],
+  ['SERVICIO UTILIZADO', 'SERVICIO UTILIZADO'],
+  ['BENEFICIO EN 24H', 'BENEFICIO EN 24H'],
+  ['POLIZA CANCELADA', 'POLIZA CANCELADA'],
+  ['NO CUBIERTO POR LA POLIZA', 'NO CUBIERTO POR LA POLIZA'],
+]
 
 async function requireShiftRole(req, res) {
   if (!req.user?.email && !req.user?.id) {
@@ -1853,6 +1862,7 @@ async function requireShiftRole(req, res) {
 }
 
 function serializeShiftRow(row) {
+  const categoryCounts = row.category_counts && typeof row.category_counts === 'object' ? row.category_counts : {}
   return {
     id: String(row.id),
     supervisorId: String(row.supervisor_id),
@@ -1862,7 +1872,23 @@ function serializeShiftRow(row) {
     startedAt: row.started_at,
     endedAt: row.ended_at,
     reportCount: Number(row.report_count || 0),
+    categoryCounts: Object.fromEntries([
+      ...SHIFT_CATEGORIES.map(([key]) => [key, Number(categoryCounts[key] || 0)]),
+      ['OTROS', Number(categoryCounts.OTROS || 0)],
+    ]),
   }
+}
+
+function shiftCategoryCountsSql(alias = 'r') {
+  const text = `lower(coalesce(${alias}.observation_comment, '') || ' ' || coalesce(${alias}.service_type, ''))`
+  const conditions = SHIFT_CATEGORIES.map(([key, keyword]) => {
+    const keywords = key === 'RENOVACION NO PAGADA' ? [keyword, 'POLIZA VENCIDA'] : [keyword]
+    return { key, sql: keywords.map(item => `position('${item.toLowerCase()}' in ${text}) > 0`).join(' OR ') }
+  })
+  const entries = conditions.map(({ key, sql }) => `'${key}', COUNT(*) FILTER (WHERE ${sql})::int`)
+  const otherCondition = conditions.map(({ sql }) => `NOT (${sql})`).join(' AND ')
+  entries.push(`'OTROS', COUNT(*) FILTER (WHERE ${otherCondition})::int`)
+  return `jsonb_build_object(${entries.join(', ')}) AS category_counts`
 }
 
 app.get('/shifts', async (req, res) => {
@@ -1870,7 +1896,7 @@ app.get('/shifts', async (req, res) => {
     if (!(await requireShiftRole(req, res))) return
 
     const result = await pool.query(`
-      SELECT ws.*, COUNT(r.id)::int AS report_count
+      SELECT ws.*, COUNT(r.id)::int AS report_count, ${shiftCategoryCountsSql()}
       FROM work_shifts ws
       LEFT JOIN reports r ON r.created_at >= ws.started_at
         AND (ws.ended_at IS NULL OR r.created_at <= ws.ended_at)
@@ -1903,7 +1929,7 @@ app.post('/shifts', async (req, res) => {
     )
     if (existing.rowCount > 0) {
       const detail = await pool.query(`
-        SELECT ws.*, COUNT(r.id)::int AS report_count
+        SELECT ws.*, COUNT(r.id)::int AS report_count, ${shiftCategoryCountsSql()}
         FROM work_shifts ws LEFT JOIN reports r ON r.created_at >= ws.started_at
         WHERE ws.id = $1 GROUP BY ws.id
       `, [existing.rows[0].id])
@@ -1915,7 +1941,7 @@ app.post('/shifts', async (req, res) => {
       INSERT INTO work_shifts (supervisor_id, supervisor_name, supervisor_email)
       VALUES ($1, $2, $3) RETURNING *
     `, [supervisorId, supervisorName, supervisorEmail])
-    res.status(201).json({ shift: serializeShiftRow({ ...result.rows[0], report_count: 0 }) })
+    res.status(201).json({ shift: serializeShiftRow({ ...result.rows[0], report_count: 0, category_counts: {} }) })
   } catch (error) {
     console.error('Error al iniciar turno:', error)
     res.status(500).json({ error: 'No se pudo iniciar el turno.' })
@@ -1936,7 +1962,7 @@ app.patch('/shifts/:id/close', async (req, res) => {
     }
 
     const detail = await pool.query(`
-      SELECT ws.*, COUNT(r.id)::int AS report_count
+      SELECT ws.*, COUNT(r.id)::int AS report_count, ${shiftCategoryCountsSql()}
       FROM work_shifts ws LEFT JOIN reports r ON r.created_at >= ws.started_at AND r.created_at <= ws.ended_at
       WHERE ws.id = $1 GROUP BY ws.id
     `, [req.params.id])
@@ -1952,7 +1978,7 @@ app.get('/shifts/:id', async (req, res) => {
     if (!(await requireShiftRole(req, res))) return
 
     const result = await pool.query(`
-      SELECT ws.*, COUNT(r.id)::int AS report_count
+      SELECT ws.*, COUNT(r.id)::int AS report_count, ${shiftCategoryCountsSql()}
       FROM work_shifts ws LEFT JOIN reports r ON r.created_at >= ws.started_at
         AND (ws.ended_at IS NULL OR r.created_at <= ws.ended_at)
       WHERE ws.id = $1 GROUP BY ws.id
