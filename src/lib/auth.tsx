@@ -134,9 +134,13 @@ function isJwtExpired(token: string, now = Date.now()): boolean {
 function clearExpiredSession() {
   writeAuthRaw(null)
   if (typeof window !== 'undefined') {
-    window.sessionStorage.setItem(AUTH_SESSION_MESSAGE_KEY, 'Tu sesion expiro. Inicia sesion nuevamente.')
+    window.sessionStorage.setItem(AUTH_SESSION_MESSAGE_KEY, 'Tu sesion expiro o dejo de ser valida. Inicia sesion nuevamente.')
     window.dispatchEvent(new Event(AUTH_SESSION_EXPIRED_EVENT))
   }
+}
+
+export function handleAuthenticationFailure() {
+  clearExpiredSession()
 }
 
 export function getAuthToken(): string | null {
@@ -316,6 +320,9 @@ async function requestJson<T>(url: string, options: RequestInit = {}): Promise<T
     const payload = await response.json().catch(() => ({}))
 
     if (!response.ok) {
+      if (response.status === 401) {
+        handleAuthenticationFailure()
+      }
       throw new Error((payload as { error?: string }).error || 'Error al comunicarse con el servidor.')
     }
 
