@@ -12,6 +12,10 @@ export interface Shift {
   startedAt: string
   endedAt: string | null
   reportCount: number
+  reportsAtStart: number
+  reportsAtClose: number | null
+  generatedReports: number
+  closingObservation: string | null
   categoryCounts: Record<string, number>
 }
 
@@ -78,8 +82,8 @@ export async function startShift(user?: { id?: string; email?: string; user_meta
   return payload.shift
 }
 
-export async function closeShift(id: string, user?: { id?: string; email?: string; user_metadata?: { full_name?: string } } | null): Promise<Shift> {
-  const payload = await request<{ shift: Shift }>(`/shifts/${encodeURIComponent(id)}/close`, { method: 'PATCH' }, getIdentity(user))
+export async function closeShift(id: string, user?: { id?: string; email?: string; user_metadata?: { full_name?: string } } | null, observation = ''): Promise<Shift> {
+  const payload = await request<{ shift: Shift }>(`/shifts/${encodeURIComponent(id)}/close`, { method: 'PATCH', body: JSON.stringify({ observation }) }, getIdentity(user))
   return payload.shift
 }
 

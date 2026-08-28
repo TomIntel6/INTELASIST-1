@@ -1917,6 +1917,10 @@ function serializeShiftRow(row) {
     startedAt: row.started_at,
     endedAt: row.ended_at,
     reportCount: Number(row.report_count || 0),
+    reportsAtStart: Number(row.started_reports_count || 0),
+    reportsAtClose: row.closed_reports_count == null ? (row.status === 'closed' ? Number(row.report_count || 0) : null) : Number(row.closed_reports_count),
+    generatedReports: Math.max(0, Number(row.report_count || 0) - Number(row.started_reports_count || 0)),
+    closingObservation: row.closing_observation || null,
     categoryCounts: Object.fromEntries([
       ...SHIFT_CATEGORIES.map(([key]) => [key, Number(categoryCounts[key] || 0)]),
       ['OTROS', Number(categoryCounts.OTROS || 0)],
@@ -1997,10 +2001,25 @@ app.patch('/shifts/:id/close', async (req, res) => {
   try {
     if (!(await requireShiftRole(req, res))) return
 
+    const observation = typeof req.body?.observation === 'string' ? req.body.observation.trim() : ''
+    const supervisorId = String(req.user?.id || '').trim()
+    const supervisorName = String(req.user?.user_metadata?.full_name || req.user?.email || 'Supervisor').trim()
+
     const result = await pool.query(`
-      UPDATE work_shifts SET status = 'closed', ended_at = COALESCE(ended_at, NOW())
-      WHERE id = $1 AND status = 'open' RETURNING *
-    `, [req.params.id])
+      UPDATE work_shifts ws
+      SET status = 'closed',
+          ended_at = COALESCE(ws.ended_at, NOW()),
+          closed_reports_count = (
+            SELECT COUNT(*)::int FROM reports r
+            WHERE r.created_at >= ws.started_at
+              AND r.created_at <= COALESCE(ws.ended_at, NOW())
+          ),
+          closing_observation = NULLIF($2, ''),
+          closed_by = $3,
+          closed_by_name = $4
+      WHERE ws.id = $1 AND ws.status = 'open' AND ws.supervisor_id = $3
+      RETURNING ws.*
+    `, [req.params.id, observation, supervisorId, supervisorName])
     if (result.rowCount === 0) {
       res.status(404).json({ error: 'Turno abierto no encontrado.' })
       return
