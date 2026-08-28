@@ -1839,6 +1839,11 @@ app.get('/reports/dashboard-stats', async (req, res) => {
 const SHIFT_ROLES = ['Admin', 'Support', 'Gerente']
 
 async function requireShiftRole(req, res) {
+  if (!req.user?.email && !req.user?.id) {
+    res.status(401).json({ error: 'Sesión no válida o caducada. Inicia sesión nuevamente.' })
+    return false
+  }
+
   const roles = await resolveRequesterRoles(req)
   if (!roles.some(role => SHIFT_ROLES.includes(role))) {
     res.status(403).json({ error: 'Solo Admin, Support y Gerente pueden gestionar turnos.' })
