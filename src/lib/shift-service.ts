@@ -12,6 +12,7 @@ export interface Shift {
   startedAt: string
   endedAt: string | null
   reportCount: number
+  categoryCounts: Record<string, number>
 }
 
 export interface ShiftReport {
@@ -26,8 +27,11 @@ export interface ShiftReport {
 
 const API_BASE = getDefaultApiBase()
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+async function request<T>(path: string, init?: RequestInit, identity?: { id?: string; email?: string; name?: string }): Promise<T> {
   const authHeaders = getAuthHeaders()
+  if (identity?.id) authHeaders['x-user-id'] = identity.id
+  if (identity?.email) authHeaders['x-user-email'] = identity.email
+  if (identity?.name) authHeaders['x-user-name'] = encodeURIComponent(identity.name)
   const response = await fetch(`${API_BASE}${path}`, {
     ...init,
     credentials: 'include',
@@ -42,21 +46,25 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return payload as T
 }
 
-export async function listShifts(): Promise<Shift[]> {
-  const payload = await request<{ shifts: Shift[] }>('/shifts')
+function getIdentity(user?: { id?: string; email?: string; user_metadata?: { full_name?: string } } | null) {
+  return user ? { id: user.id, email: user.email, name: user.user_metadata?.full_name } : undefined
+}
+
+export async function listShifts(user?: { id?: string; email?: string; user_metadata?: { full_name?: string } } | null): Promise<Shift[]> {
+  const payload = await request<{ shifts: Shift[] }>('/shifts', undefined, getIdentity(user))
   return payload.shifts
 }
 
-export async function startShift(): Promise<Shift> {
-  const payload = await request<{ shift: Shift }>('/shifts', { method: 'POST', body: '{}' })
+export async function startShift(user?: { id?: string; email?: string; user_metadata?: { full_name?: string } } | null): Promise<Shift> {
+  const payload = await request<{ shift: Shift }>('/shifts', { method: 'POST', body: '{}' }, getIdentity(user))
   return payload.shift
 }
 
-export async function closeShift(id: string): Promise<Shift> {
-  const payload = await request<{ shift: Shift }>(`/shifts/${encodeURIComponent(id)}/close`, { method: 'PATCH' })
+export async function closeShift(id: string, user?: { id?: string; email?: string; user_metadata?: { full_name?: string } } | null): Promise<Shift> {
+  const payload = await request<{ shift: Shift }>(`/shifts/${encodeURIComponent(id)}/close`, { method: 'PATCH' }, getIdentity(user))
   return payload.shift
 }
 
-export async function getShiftDetail(id: string): Promise<{ shift: Shift; reports: ShiftReport[] }> {
-  return request<{ shift: Shift; reports: ShiftReport[] }>(`/shifts/${encodeURIComponent(id)}`)
+export async function getShiftDetail(id: string, user?: { id?: string; email?: string; user_metadata?: { full_name?: string } } | null): Promise<{ shift: Shift; reports: ShiftReport[] }> {
+  return request<{ shift: Shift; reports: ShiftReport[] }>(`/shifts/${encodeURIComponent(id)}`, undefined, getIdentity(user))
 }

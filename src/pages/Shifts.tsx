@@ -10,6 +10,16 @@ import { CheckCircle2, Clock3, Download, Eye, LogIn, LogOut, RefreshCw, Users } 
 
 const dateFormatter = new Intl.DateTimeFormat('es-PA', { dateStyle: 'medium', timeStyle: 'short' })
 const allowedRoles = ['Admin', 'Support', 'Gerente']
+const shiftCategoryLabels = [
+  ['SOAT', 'SOAT'],
+  ['SALDO MOROSO', 'Saldo moroso'],
+  ['RENOVACION NO PAGADA', 'Póliza vencida / renovación no pagada'],
+  ['SERVICIO UTILIZADO', 'Servicio utilizado'],
+  ['BENEFICIO EN 24H', 'Beneficio en 24h'],
+  ['POLIZA CANCELADA', 'Póliza cancelada'],
+  ['NO CUBIERTO POR LA POLIZA', 'No cubierto por la póliza'],
+  ['OTROS', 'Otros'],
+] as const
 
 function formatDate(value: string | null) {
   return value ? dateFormatter.format(new Date(value)) : 'En curso'
@@ -39,31 +49,35 @@ export default function Shifts() {
   const refresh = React.useCallback(async () => {
     try {
       setLoading(true)
-      setShifts(await listShifts())
+      setShifts(await listShifts(user))
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'No se pudieron cargar los turnos.')
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [user])
 
   React.useEffect(() => { void refresh() }, [refresh])
+  React.useEffect(() => {
+    const interval = window.setInterval(() => void refresh(), 30000)
+    return () => window.clearInterval(interval)
+  }, [refresh])
 
   const handleStart = async () => {
-    try { setWorking(true); await startShift(); toast.success('Turno iniciado.'); await refresh() }
+    try { setWorking(true); await startShift(user); toast.success('Turno iniciado.'); await refresh() }
     catch (error) { toast.error(error instanceof Error ? error.message : 'No se pudo iniciar el turno.') }
     finally { setWorking(false) }
   }
 
   const handleClose = async () => {
     if (!currentOpenShift) return
-    try { setWorking(true); await closeShift(currentOpenShift.id); toast.success('Turno cerrado.'); await refresh() }
+    try { setWorking(true); await closeShift(currentOpenShift.id, user); toast.success('Turno cerrado.'); await refresh() }
     catch (error) { toast.error(error instanceof Error ? error.message : 'No se pudo cerrar el turno.') }
     finally { setWorking(false) }
   }
 
   const showDetail = async (shift: Shift) => {
-    try { setWorking(true); setSelected(await getShiftDetail(shift.id)) }
+    try { setWorking(true); setSelected(await getShiftDetail(shift.id, user)) }
     catch (error) { toast.error(error instanceof Error ? error.message : 'No se pudo cargar el detalle.') }
     finally { setWorking(false) }
   }
@@ -76,10 +90,12 @@ export default function Shifts() {
       <div className="flex gap-2"><Button variant="outline" onClick={() => void refresh()} disabled={loading}><RefreshCw className="mr-2 size-4" />Actualizar</Button>{currentOpenShift ? <Button variant="destructive" onClick={() => void handleClose()} disabled={working}><LogOut className="mr-2 size-4" />Cerrar turno</Button> : <Button onClick={() => void handleStart()} disabled={working}><LogIn className="mr-2 size-4" />Iniciar turno</Button>}</div>
     </header>
 
-    <div className="grid gap-4 sm:grid-cols-3"><Card><CardContent className="flex items-center gap-3 pt-6"><Clock3 className="size-5 text-primary" /><div><p className="text-sm text-muted-foreground">Turno actual</p><p className="font-semibold">{currentOpenShift ? 'En curso' : 'Sin turno abierto'}</p></div></CardContent></Card><Card><CardContent className="flex items-center gap-3 pt-6"><Users className="size-5 text-sky-600" /><div><p className="text-sm text-muted-foreground">Turnos registrados</p><p className="font-semibold">{shifts.length}</p></div></CardContent></Card><Card><CardContent className="flex items-center gap-3 pt-6"><CheckCircle2 className="size-5 text-emerald-600" /><div><p className="text-sm text-muted-foreground">Informes del turno actual</p><p className="font-semibold">{currentOpenShift?.reportCount ?? 0}</p></div></CardContent></Card></div>
+    <div className="grid gap-4 sm:grid-cols-3"><Card><CardContent className="flex items-center gap-3 pt-6"><Clock3 className="size-5 text-primary" /><div><p className="text-sm text-muted-foreground">Turno actual</p><p className="font-semibold">{currentOpenShift ? 'En curso' : 'Sin turno abierto'}</p></div></CardContent></Card><Card><CardContent className="flex items-center gap-3 pt-6"><Users className="size-5 text-sky-600" /><div><p className="text-sm text-muted-foreground">Turnos registrados</p><p className="font-semibold">{shifts.length}</p></div></CardContent></Card><Card><CardContent className="flex items-center gap-3 pt-6"><CheckCircle2 className="size-5 text-emerald-600" /><div><p className="text-sm text-muted-foreground">Total informes del turno</p><p className="font-semibold">{currentOpenShift?.reportCount ?? 0}</p></div></CardContent></Card></div>
 
-    <Card><CardHeader><CardTitle>Historial de turnos</CardTitle><CardDescription>Consulta horarios, estado y cantidad de informes generados.</CardDescription></CardHeader><CardContent>{loading ? <div className="flex justify-center py-10"><Spinner /></div> : shifts.length === 0 ? <p className="py-10 text-center text-muted-foreground">Aún no hay turnos registrados.</p> : <div className="space-y-3">{shifts.map(shift => <div key={shift.id} className="flex flex-col gap-3 rounded-lg border border-border p-4 sm:flex-row sm:items-center sm:justify-between"><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><h3 className="font-semibold">Turno del supervisor {shift.supervisorName}</h3><Badge variant={shift.status === 'closed' ? 'secondary' : 'default'}>{shift.status === 'closed' ? 'Cerrado' : 'En curso'}</Badge></div><p className="mt-1 text-sm text-muted-foreground">Inicio: {formatDate(shift.startedAt)} · Finalización: {formatDate(shift.endedAt)}</p><p className="mt-1 text-sm font-medium">{shift.reportCount} informe{shift.reportCount === 1 ? '' : 's'} generado{shift.reportCount === 1 ? '' : 's'}</p></div><div className="flex shrink-0 gap-2"><Button variant="outline" size="sm" onClick={() => void showDetail(shift)}><Eye className="mr-2 size-4" />Detalles</Button><Button variant="outline" size="sm" onClick={() => { if (selected?.shift.id === shift.id) printShift(selected.shift, selected.reports); else void getShiftDetail(shift.id).then(detail => printShift(detail.shift, detail.reports)) }}><Download className="mr-2 size-4" />PDF</Button></div></div>)}</div>}</CardContent></Card>
+    {currentOpenShift ? <Card><CardHeader><CardTitle>Conteo independiente del turno</CardTitle><CardDescription>Este conteo comienza al iniciar el turno y no modifica el dashboard.</CardDescription></CardHeader><CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{shiftCategoryLabels.map(([key, label]) => <div key={key} className="rounded-lg border border-border p-3"><p className="text-xs text-muted-foreground">{label}</p><p className="mt-1 text-2xl font-bold tabular-nums">{currentOpenShift.categoryCounts?.[key] ?? 0}</p></div>)}</CardContent></Card> : null}
 
-    {selected ? <Card><CardHeader><CardTitle>Detalle: Turno del supervisor {selected.shift.supervisorName}</CardTitle><CardDescription>{selected.reports.length} informe{selected.reports.length === 1 ? '' : 's'} generado{selected.reports.length === 1 ? '' : 's'} entre el inicio y el cierre.</CardDescription></CardHeader><CardContent><div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead><tr className="border-b border-border text-muted-foreground"><th className="p-2">Asegurado</th><th className="p-2">Placa</th><th className="p-2">Servicio</th><th className="p-2">Estado</th><th className="p-2">Fecha</th></tr></thead><tbody>{selected.reports.map(report => <tr key={report.id} className="border-b border-border"><td className="p-2">{report.insured_name}</td><td className="p-2 font-mono">{report.plate}</td><td className="p-2">{report.service_type}</td><td className="p-2">{report.status}</td><td className="p-2 whitespace-nowrap">{formatDate(report.created_at)}</td></tr>)}</tbody></table></div><Button className="mt-4" onClick={() => printShift(selected.shift, selected.reports)}><Download className="mr-2 size-4" />Descargar PDF</Button></CardContent></Card> : null}
+    <Card><CardHeader><CardTitle>Historial de turnos</CardTitle><CardDescription>Consulta horarios, estado y cantidad de informes generados.</CardDescription></CardHeader><CardContent>{loading ? <div className="flex justify-center py-10"><Spinner /></div> : shifts.length === 0 ? <p className="py-10 text-center text-muted-foreground">Aún no hay turnos registrados.</p> : <div className="space-y-3">{shifts.map(shift => <div key={shift.id} className="flex flex-col gap-3 rounded-lg border border-border p-4 sm:flex-row sm:items-center sm:justify-between"><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><h3 className="font-semibold">Turno del supervisor {shift.supervisorName}</h3><Badge variant={shift.status === 'closed' ? 'secondary' : 'default'}>{shift.status === 'closed' ? 'Cerrado' : 'En curso'}</Badge></div><p className="mt-1 text-sm text-muted-foreground">Inicio: {formatDate(shift.startedAt)} · Finalización: {formatDate(shift.endedAt)}</p><p className="mt-1 text-sm font-medium">{shift.reportCount} informe{shift.reportCount === 1 ? '' : 's'} generado{shift.reportCount === 1 ? '' : 's'}</p></div><div className="flex shrink-0 gap-2"><Button variant="outline" size="sm" onClick={() => void showDetail(shift)}><Eye className="mr-2 size-4" />Detalles</Button><Button variant="outline" size="sm" onClick={() => { if (selected?.shift.id === shift.id) printShift(selected.shift, selected.reports); else void getShiftDetail(shift.id, user).then(detail => printShift(detail.shift, detail.reports)) }}><Download className="mr-2 size-4" />PDF</Button></div></div>)}</div>}</CardContent></Card>
+
+    {selected ? <Card><CardHeader><CardTitle>Detalle: Turno del supervisor {selected.shift.supervisorName}</CardTitle><CardDescription>{selected.reports.length} informe{selected.reports.length === 1 ? '' : 's'} generado{selected.reports.length === 1 ? '' : 's'} entre el inicio y el cierre.</CardDescription></CardHeader><CardContent><div className="mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{shiftCategoryLabels.map(([key, label]) => <div key={key} className="rounded-lg border border-border p-3"><p className="text-xs text-muted-foreground">{label}</p><p className="mt-1 text-xl font-bold tabular-nums">{selected.shift.categoryCounts?.[key] ?? 0}</p></div>)}</div><div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead><tr className="border-b border-border text-muted-foreground"><th className="p-2">Asegurado</th><th className="p-2">Placa</th><th className="p-2">Servicio</th><th className="p-2">Estado</th><th className="p-2">Fecha</th></tr></thead><tbody>{selected.reports.map(report => <tr key={report.id} className="border-b border-border"><td className="p-2">{report.insured_name}</td><td className="p-2 font-mono">{report.plate}</td><td className="p-2">{report.service_type}</td><td className="p-2">{report.status}</td><td className="p-2 whitespace-nowrap">{formatDate(report.created_at)}</td></tr>)}</tbody></table></div><Button className="mt-4" onClick={() => printShift(selected.shift, selected.reports)}><Download className="mr-2 size-4" />Descargar PDF</Button></CardContent></Card> : null}
   </main>
 }
