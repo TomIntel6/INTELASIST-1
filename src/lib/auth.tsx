@@ -1180,6 +1180,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       body: JSON.stringify({ password: newPassword }),
     })
 
+    const loginPayload = await requestJson<{ token?: string }>(`${API_BASE_URL}/auth/login`, {
+      method: 'POST',
+      body: JSON.stringify({ email: user.email, password: newPassword }),
+    })
+
     const nextUser = normalizeUserRecord((payload.user ?? {}) as Record<string, unknown>)
 
     if (!nextUser) {
@@ -1191,7 +1196,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       must_change_password: false,
     }
 
-    persistCurrentUser(nextUser)
+    persistCurrentUser(nextUser, loginPayload.token)
     upsertOnlineUser(nextUser)
   }
 

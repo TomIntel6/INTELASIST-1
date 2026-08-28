@@ -198,6 +198,7 @@ app.use((req, res, next) => {
           full_name: decoded.fullName || '',
         },
       }
+      req.authMethod = 'jwt'
     }
   }
 
@@ -224,6 +225,7 @@ app.use((req, res, next) => {
           full_name: headerName || '',
         },
       }
+      req.authMethod = 'headers'
     }
   }
 
@@ -1272,6 +1274,7 @@ authRoutes.post('/login', async (req, res) => {
     if (user.must_change_password === true) {
       res.json({
         user: serializeUserRecord(user),
+        token: generateJwtToken(user),
         must_change_password: true,
       })
       return
@@ -1849,22 +1852,9 @@ const SHIFT_CATEGORIES = [
 ]
 
 async function requireShiftRole(req, res) {
-  const fallbackEmail = String(req.query?.email || req.body?.email || '').trim()
-  const fallbackId = String(req.query?.userId || req.body?.userId || '').trim()
-  if (!req.user && (fallbackEmail || fallbackId)) {
-    const lookup = fallbackEmail
-      ? await pool.query('SELECT id, nombre, correo, rol, roles FROM usuarios WHERE LOWER(correo) = LOWER($1) LIMIT 1', [fallbackEmail])
-      : await pool.query('SELECT id, nombre, correo, rol, roles FROM usuarios WHERE id::text = $1 LIMIT 1', [fallbackId])
-    if (lookup.rowCount > 0) {
-      const user = lookup.rows[0]
-      req.user = {
-        id: String(user.id),
-        email: String(user.correo || fallbackEmail),
-        role: user.rol,
-        roles: extractRolesFromRow(user),
-        user_metadata: { full_name: user.nombre || user.correo || '' },
-      }
-    }
+  if (req.authMethod !== 'jwt') {
+    res.status(401).json({ error: 'Se requiere un JWT válido para gestionar turnos.' })
+    return false
   }
 
   if (!req.user?.email && !req.user?.id) {
