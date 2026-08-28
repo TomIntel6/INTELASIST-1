@@ -1857,6 +1857,21 @@ async function requireShiftRole(req, res) {
     return false
   }
 
+  if (req.user?.id && !req.user.email) {
+    const result = await pool.query(
+      'SELECT id, nombre, correo, rol, roles FROM usuarios WHERE id::text = $1 LIMIT 1',
+      [String(req.user.id)]
+    )
+    const account = result.rows[0]
+    if (account) {
+      req.user.email = String(account.correo || '')
+      req.user.user_metadata = {
+        ...req.user.user_metadata,
+        full_name: account.nombre || account.correo || '',
+      }
+    }
+  }
+
   if (!req.user?.email && !req.user?.id) {
     res.status(401).json({ error: 'Sesión no válida o caducada. Inicia sesión nuevamente.' })
     return false
