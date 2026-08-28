@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Spinner } from '@/components/ui/spinner'
-import { useAuth } from '@/lib/auth'
+import { AUTH_SESSION_MESSAGE_KEY, useAuth } from '@/lib/auth'
 import useLoginLocation from '@/hooks/useLoginLocation'
 import {
   AlertCircle,
@@ -60,6 +60,14 @@ export default function Login() {
     if (sessionStorage.getItem('loginLocationPrompt') === '1') {
       sessionStorage.removeItem('loginLocationPrompt')
       window.alert('Necesitamos tu ubicación exacta para continuar. Acepta el permiso para ingresar.')
+    }
+  }, [])
+
+  React.useEffect(() => {
+    const message = sessionStorage.getItem(AUTH_SESSION_MESSAGE_KEY)
+    if (message) {
+      setError(message)
+      sessionStorage.removeItem(AUTH_SESSION_MESSAGE_KEY)
     }
   }, [])
 
