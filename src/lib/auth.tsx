@@ -35,6 +35,8 @@ interface AuthContextValue {
 
 const USER_ROLE_OPTIONS: UserRole[] = ['Agente', 'Admin', 'Support', 'Gerente']
 export const AUTH_STORAGE_KEY = 'intelasist-local-auth-session'
+export const AUTH_SESSION_EXPIRED_EVENT = 'intelasist-auth-session-expired'
+export const AUTH_SESSION_MESSAGE_KEY = 'intelasist-auth-session-message'
 export const PRESENCE_STORAGE_KEY = 'intelasist-online-users'
 export const PRESENCE_SYNC_STORAGE_KEY = 'intelasist-presence-sync'
 export const ROLE_SYNC_STORAGE_KEY = 'intelasist-role-sync'
@@ -110,6 +112,33 @@ function persistSession(session: LocalSession | null) {
   writeAuthRaw(session ? JSON.stringify(session) : null)
 }
 
+function decodeJwtPayload(token: string): { exp?: unknown } | null {
+  const parts = token.split('.')
+  if (parts.length !== 3) return null
+
+  try {
+    const payload = parts[1].replace(/-/g, '+').replace(/_/g, '/')
+    const paddedPayload = payload.padEnd(Math.ceil(payload.length / 4) * 4, '=')
+    return JSON.parse(window.atob(paddedPayload)) as { exp?: unknown }
+  } catch {
+    return null
+  }
+}
+
+function isJwtExpired(token: string, now = Date.now()): boolean {
+  const payload = decodeJwtPayload(token)
+  const expiration = typeof payload?.exp === 'number' ? payload.exp : Number(payload?.exp)
+  return !Number.isFinite(expiration) || expiration * 1000 <= now
+}
+
+function clearExpiredSession() {
+  writeAuthRaw(null)
+  if (typeof window !== 'undefined') {
+    window.sessionStorage.setItem(AUTH_SESSION_MESSAGE_KEY, 'Tu sesion expiro. Inicia sesion nuevamente.')
+    window.dispatchEvent(new Event(AUTH_SESSION_EXPIRED_EVENT))
+  }
+}
+
 export function getAuthToken(): string | null {
   if (typeof window === 'undefined') {
     return null
@@ -120,7 +149,12 @@ export function getAuthToken(): string | null {
     if (!raw) return null
 
     const parsed = JSON.parse(raw) as { token?: string }
-    return typeof parsed?.token === 'string' ? parsed.token : null
+    if (typeof parsed?.token !== 'string' || !parsed.token.trim()) return null
+    if (isJwtExpired(parsed.token)) {
+      clearExpiredSession()
+      return null
+    }
+    return parsed.token
   } catch {
     return null
   }
@@ -168,6 +202,16 @@ function loadSession(): LocalSession | null {
 
     const parsed = JSON.parse(raw) as LocalSession
     if (!parsed?.user?.email || !parsed?.user?.id) {
+      return null
+    }
+
+    if (typeof parsed.token !== 'string' || !parsed.token.trim()) {
+      if (parsed.user.user_metadata?.must_change_password !== true) writeAuthRaw(null)
+      return parsed.user.user_metadata?.must_change_password === true ? parsed : null
+    }
+
+    if (isJwtExpired(parsed.token)) {
+      clearExpiredSession()
       return null
     }
 
@@ -850,6 +894,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     void initializeSession()
   }, [])
+
+  React.useEffect(() => {
+    const handleExpiredSession = () => {
+      void removeOnlineUser(user?.id)
+      setUser(null)
+      setSession(null)
+    }
+
+    window.addEventListener(AUTH_SESSION_EXPIRED_EVENT, handleExpiredSession)
+    const interval = window.setInterval(() => {
+      const token = getAuthToken()
+      if (user && !requiresPasswordChange && !token) {
+        clearExpiredSession()
+      }
+    }, 60 * 1000)
+
+    return () => {
+      window.removeEventListener(AUTH_SESSION_EXPIRED_EVENT, handleExpiredSession)
+      window.clearInterval(interval)
+    }
+  }, [requiresPasswordChange, user])
 
   React.useEffect(() => {
     if (typeof window === 'undefined') {
