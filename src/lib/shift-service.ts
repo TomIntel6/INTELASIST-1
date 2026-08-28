@@ -1,4 +1,4 @@
-import { AUTH_STORAGE_KEY, getAuthHeaders } from '@/lib/auth'
+import { AUTH_STORAGE_KEY, getAuthHeaders, handleAuthenticationFailure } from '@/lib/auth'
 import { getDefaultApiBase } from '@/lib/supabase'
 
 export type ShiftStatus = 'open' | 'closed'
@@ -39,6 +39,9 @@ async function request<T>(path: string, init?: RequestInit, identity?: { id?: st
   })
   const payload = await response.json().catch(() => null)
   if (!response.ok) {
+    if (response.status === 401) {
+      handleAuthenticationFailure()
+    }
     throw new Error(String(payload?.error || (response.status === 401
       ? 'Sesión no válida o caducada. Inicia sesión nuevamente.'
       : 'No se pudo completar la operación.')))
