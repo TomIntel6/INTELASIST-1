@@ -25,6 +25,7 @@ const CATEGORY_STYLES: Record<ModuleKey, { dot: string; bar: string }> = {
   users: { dot: 'bg-amber-500', bar: 'bg-amber-500' },
   system: { dot: 'bg-rose-500', bar: 'bg-rose-500' },
   admin: { dot: 'bg-fuchsia-500', bar: 'bg-fuchsia-500' },
+  shifts: { dot: 'bg-indigo-500', bar: 'bg-indigo-500' },
   profile: { dot: 'bg-cyan-500', bar: 'bg-cyan-500' },
 }
 
@@ -43,6 +44,7 @@ const SENSITIVE_PERMISSIONS = new Set<PermissionKey>([
   'suspend_users',
   'restore_users',
   'access_trash',
+  'delete_closed_shifts',
   'manage_permissions',
 ])
 

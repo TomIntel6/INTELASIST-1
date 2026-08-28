@@ -50,6 +50,10 @@ export const PERMISSIONS = {
     ACCESS_TRASH: 'access_trash',
     PERMANENTLY_DELETE_REPORTS: 'permanently_delete_reports',
   },
+  // Shift permissions (1)
+  SHIFTS: {
+    DELETE_CLOSED: 'delete_closed_shifts',
+  },
   // Profile permissions (2)
   PROFILE: {
     CUSTOMIZE_AVATAR: 'customize_avatar',
@@ -187,6 +191,11 @@ export const PERMISSION_MODULES = {
     permissions: PERMISSIONS.ADMIN,
     color: 'pink',
   },
+  shifts: {
+    label: 'Turnos',
+    permissions: PERMISSIONS.SHIFTS,
+    color: 'indigo',
+  },
   profile: {
     label: 'Perfil',
     permissions: PERMISSIONS.PROFILE,
@@ -203,6 +212,7 @@ export const DEFAULT_MODULE_ACCESS: Record<ModuleKey, boolean> = {
   users: true,
   system: true,
   admin: false,
+  shifts: true,
   profile: true,
 }
 
@@ -270,6 +280,7 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   manage_alerts: 'Gestionar alertas',
   restore_report: 'Restaurar informe',
   permanently_delete_report: 'Eliminar permanentemente',
+  delete_closed_shift: 'Eliminar turno cerrado',
   empty_trash: 'Vaciar papelera',
   login: 'Iniciar sesión',
   logout: 'Cerrar sesión',
@@ -312,6 +323,7 @@ export const PERMISSION_LABELS: Record<PermissionKey, string> = {
   restore_users: 'Restaurar usuarios',
   access_trash: 'Acceder a papelera',
   permanently_delete_reports: 'Eliminar permanentemente',
+  delete_closed_shifts: 'Eliminar turnos cerrados',
   // Profile
   customize_avatar: 'Personalizar avatar de perfil',
   upload_avatar_image: 'Subir imagen como avatar',

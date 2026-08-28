@@ -5,7 +5,7 @@ const SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS
 const DEFAULT_MODULES = { reports: true, evidence: true, updates: true, users: true, system: true, admin: false, create_reports: true };
 
 const PERMISSION_KEYS = [
-  'create_reports','view_reports','view_all_reports','edit_reports','delete_reports','close_reports','reopen_reports','change_report_status','assign_reports','export_reports','upload_evidence','delete_evidence','download_evidence','add_updates','edit_updates','delete_updates','view_users','create_users','delete_users','reset_passwords','change_roles','view_alerts','manage_alerts','view_audit_logs','manage_permissions','suspend_users','restore_users','access_trash','permanently_delete_reports'
+  'create_reports','view_reports','view_all_reports','edit_reports','delete_reports','close_reports','reopen_reports','change_report_status','assign_reports','export_reports','upload_evidence','delete_evidence','download_evidence','add_updates','edit_updates','delete_updates','view_users','create_users','delete_users','reset_passwords','change_roles','view_alerts','manage_alerts','view_audit_logs','manage_permissions','suspend_users','restore_users','access_trash','permanently_delete_reports','delete_closed_shifts'
 ];
 
 async function request(path, options = {}){
