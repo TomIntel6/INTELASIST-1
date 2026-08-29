@@ -603,26 +603,12 @@ export default function Dashboard() {
               <CardTitle className="text-lg font-semibold">Resumen del día</CardTitle>
               <CardDescription>{currentDay.toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' })}</CardDescription>
             </CardHeader>
-            <CardContent className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              {[
-                { label: 'SOAT', keyword: 'SOAT', color: 'text-sky-600' },
-                { label: 'Saldo Moroso', keyword: 'SALDO MOROSO', color: 'text-red-600' },
-                { label: 'Renovación no pagada', keyword: 'RENOVACION NO PAGADA', color: 'text-orange-600' },
-                { label: 'Servicio utilizado', keyword: 'SERVICIO UTILIZADO', color: 'text-emerald-600' },
-                { label: 'Beneficio en 24h', keyword: 'BENEFICIO EN 24H', color: 'text-purple-600' },
-                { label: 'Póliza cancelada', keyword: 'POLIZA CANCELADA', color: 'text-slate-600' },
-                { label: 'No cubierto por la póliza', keyword: 'NO CUBIERTO POR LA POLIZA', color: 'text-slate-600' },
-                { label: 'Otros', keyword: null, color: 'text-neutral-600' },
-              ].map(({ label, keyword, color }) => {
-                const count = todayCategoryCounts.get(keyword ?? 'OTROS') ?? 0
-
-                return (
-                  <div key={label} className="group rounded-2xl border border-border/60 bg-background/55 p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-border hover:bg-accent/70 hover:shadow-sm">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{label}</p>
-                    <p className={`mt-3 text-3xl font-bold tabular-nums ${color}`}><AnimatedNumber value={count} /></p>
-                  </div>
-                )
-              })}
+            <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
+              <StatCard label="Total Informes" value={totalReports} delta={`${deltaTotal}% vs. día anterior`} icon={FileText} accent="slate" sparkline={sparklineByStatus.total} />
+              <StatCard label="Finalizados" value={totalFinalized} delta={`${deltaFinalized}% vs. día anterior`} icon={CheckCircle2} accent="emerald" sparkline={sparklineByStatus.finalized} />
+              <StatCard label="En Seguimiento" value={totalPending} delta={`${deltaPending}% vs. día anterior`} icon={Clock} accent="amber" sparkline={sparklineByStatus.pending} />
+              <StatCard label="Validacion" value={totalValidacion} delta={`${deltaValidacion}% vs. día anterior`} icon={ShieldCheck} accent="violet" sparkline={sparklineByStatus.validacion} />
+              <StatCard label="Informativo" value={totalInformativo} delta={`${deltaInformativo}% vs. día anterior`} icon={Info} accent="sky" sparkline={sparklineByStatus.informativo} />
             </CardContent>
           </Card>
         </div>
