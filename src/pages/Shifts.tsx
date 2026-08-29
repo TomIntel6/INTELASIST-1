@@ -65,7 +65,7 @@ export default function Shifts() {
   const [period, setPeriod] = React.useState<ShiftPeriod>('30')
   const canManage = getUserRoles(user).some(role => allowedRoles.includes(role))
   const canDeleteClosedShifts = hasPermission(PERMISSIONS.SHIFTS.DELETE_CLOSED)
-  const currentOpenShift = shifts.find(shift => shift.status === 'open' && shift.supervisorId === user?.id)
+  const currentOpenShift = shifts.find(shift => shift.status === 'open' && String(shift.supervisorId) === String(user?.id))
 
   const refresh = React.useCallback(async () => {
     try {

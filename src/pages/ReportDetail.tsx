@@ -357,408 +357,139 @@ export default function ReportDetail() {
     )
   }
 
+  const summaryCards = [
+    {
+      label: 'TOTAL\nINFORMES',
+      value: 1,
+      delta: '1% vs. día anterior',
+      accent: 'slate',
+      icon: '🗂️',
+      sparkline: [12, 18, 16, 20, 17, 22, 19],
+    },
+    {
+      label: 'FINALIZADOS',
+      value: report.status === 'Caso Finalizado' ? 1 : 0,
+      delta: report.status === 'Caso Finalizado' ? '0% vs. día anterior' : '0% vs. día anterior',
+      accent: 'emerald',
+      icon: '✓',
+      sparkline: [10, 12, 11, 13, 12, 14, 13],
+    },
+    {
+      label: 'EN\nSEGUIMIENTO',
+      value: report.status === 'Seguimiento de caso' ? 1 : 0,
+      delta: '33% vs. día anterior',
+      accent: 'amber',
+      icon: '◔',
+      sparkline: [8, 11, 14, 10, 12, 15, 13],
+    },
+    {
+      label: 'VALIDACION',
+      value: report.status === 'Validacion' ? 1 : 0,
+      delta: '23% vs. día anterior',
+      accent: 'violet',
+      icon: '✓',
+      sparkline: [9, 12, 15, 13, 14, 12, 11],
+    },
+    {
+      label: 'INFORMATIVO',
+      value: report.status === 'Informativo' ? 1 : 0,
+      delta: '16% vs. día anterior',
+      accent: 'sky',
+      icon: 'i',
+      sparkline: [11, 14, 12, 15, 17, 16, 18],
+    },
+  ] as const
+
+  const accentClasses = {
+    slate: 'border-slate-200 bg-slate-100/70 text-slate-700',
+    emerald: 'border-emerald-200 bg-emerald-100/70 text-emerald-700',
+    amber: 'border-amber-200 bg-amber-100/70 text-amber-700',
+    violet: 'border-violet-200 bg-violet-100/70 text-violet-700',
+    sky: 'border-sky-200 bg-sky-100/70 text-sky-700',
+  } as const
+
   return (
     <div className="w-full space-y-5 p-4 sm:p-6 xl:p-8">
-      {/* Header */}
       <div className="glass-panel relative overflow-hidden rounded-[1.5rem] p-5 sm:p-6">
         <span className="brand-gradient-bg pointer-events-none absolute inset-x-0 top-0 h-1 opacity-80" aria-hidden="true" />
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div className="flex items-start gap-3">
-            <Button variant="ghost" size="icon-sm" onClick={() => navigate(-1)} className="mt-0.5 shrink-0">
-              <ArrowLeft className="size-4" />
-            </Button>
-            <div className="min-w-0 flex-1">
-              <p className="mb-1.5 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                <span className="brand-gradient-bg size-1.5 rounded-full" aria-hidden="true" />
-                Detalle de informe
-              </p>
-              <div className="flex flex-wrap items-center gap-3">
-                <h1 className="truncate text-2xl font-bold tracking-tight text-foreground">{report.insured_name}</h1>
-                <Badge
-                  className={cn('border text-xs', STATUS_BADGE[report.status] ?? 'bg-secondary')}
-                >
-                  {report.status}
-                </Badge>
+        <div className="flex items-start gap-3">
+          <Button variant="ghost" size="icon-sm" onClick={() => navigate(-1)} className="mt-0.5 shrink-0">
+            <ArrowLeft className="size-4" />
+          </Button>
+          <div className="min-w-0 flex-1">
+            <p className="mb-1.5 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              <span className="brand-gradient-bg size-1.5 rounded-full" aria-hidden="true" />
+              Detalle de informe
+            </p>
+            <h1 className="truncate text-2xl font-bold tracking-tight text-foreground">{report.insured_name}</h1>
+            <p className="mt-1 text-sm text-muted-foreground">{report.service_type} • {report.plate} • {report.status}</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-5">
+        {summaryCards.map((card) => (
+          <div key={card.label} className="rounded-[1.9rem] border border-slate-200 bg-white/80 p-4 shadow-sm">
+            <div className="flex items-center justify-between gap-3">
+              <div className="space-y-2">
+                <p className="whitespace-pre-line text-[12px] font-semibold uppercase tracking-[0.18em] text-slate-500">{card.label}</p>
+                <div className={`inline-flex size-10 items-center justify-center rounded-xl border ${accentClasses[card.accent]}`}>
+                  <span className="text-lg font-bold">{card.icon}</span>
+                </div>
               </div>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {report.month} {report.year} &bull; Placa: <span className="font-mono font-medium text-foreground">{report.plate}</span>
-              </p>
+            </div>
+
+            <div className="mt-4 text-5xl font-black tracking-[-0.06em] text-slate-900 tabular-nums">{card.value}</div>
+
+            <div className="mt-3 flex items-center gap-2 text-xs text-slate-500">
+              <span className="text-sm font-semibold text-emerald-500">↗</span>
+              <span>{card.delta}</span>
+            </div>
+
+            <div className="mt-4 h-12 overflow-hidden rounded-xl bg-slate-100/80 px-2 pt-2">
+              <svg viewBox="0 0 120 40" className="h-full w-full" preserveAspectRatio="none">
+                <path d={card.sparkline.map((point, index) => `${index === 0 ? 'M' : 'L'} ${index * 20} ${40 - point}`).join(' ')} fill="none" stroke={
+                  card.accent === 'slate' ? '#64748b' :
+                  card.accent === 'emerald' ? '#10b981' :
+                  card.accent === 'amber' ? '#f59e0b' :
+                  card.accent === 'violet' ? '#8b5cf6' : '#0ea5e9'
+                } strokeWidth="2.5" strokeLinecap="round" />
+              </svg>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            {canEditReports && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => navigate(`/informes/${report.id}/editar`)}
-                className="gap-2"
-              >
-                <Pencil className="size-4" />
-                Editar
-              </Button>
-            )}
-            {hasPermission(PERMISSIONS.SYSTEM.VIEW_AUDIT_LOGS as PermissionKey) && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowAuditPanel(!showAuditPanel)}
-                className="gap-2"
-              >
-                <History className="size-4" />
-                Historial
-              </Button>
-            )}
-          </div>
-        </div>
+        ))}
       </div>
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(300px,360px)]">
-        {/* Report info */}
-        <div className="min-w-0 space-y-5">
-          {/* Asegurado + vehículo */}
-          <Card className="overflow-hidden">
-            <CardHeader className="border-b border-border/60 px-5 py-4">
-              <CardTitle className="flex items-center gap-2.5 text-sm font-semibold">
-                <span className="flex size-8 items-center justify-center rounded-lg bg-sky-500/10 text-sky-600 ring-1 ring-sky-500/20 dark:text-sky-400">
-                  <User className="size-4" />
-                </span>
-                Información del caso
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="grid grid-cols-2 gap-x-5 gap-y-4 p-5 text-sm sm:grid-cols-4">
-              <InfoRow label="Nombre" value={report.insured_name} />
-              <InfoRow label="Póliza" value={report.policy} />
-              <InfoRow label="Placa" value={<span className="font-mono">{report.plate}</span>} />
-              <InfoRow label="Servicio" value={
-                <Badge variant="outline" className="text-xs">{report.service_type}</Badge>
-              } />
-              <div className="col-span-full flex items-center gap-2 border-t border-border/60 pt-4 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground sm:col-span-4">
-                <Car className="size-4 text-violet-500" />
-                Datos del vehículo
-              </div>
-              <InfoRow label="Marca" value={report.brand} />
-              <InfoRow label="Modelo" value={report.model} />
-              <InfoRow label="Color" value={report.color} />
-              <InfoRow label="Año" value={report.year_vehicle ? String(report.year_vehicle) : '—'} />
-            </CardContent>
-          </Card>
-
-          {/* Observación inicial */}
-          {(report.observation_comment || report.observation_comment === '') && (
-            <Card className="overflow-hidden">
-              <CardHeader className="pb-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                <CardTitle className="flex items-center gap-2.5 text-sm font-semibold">
-                  <span className="flex size-8 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600 ring-1 ring-amber-500/20 dark:text-amber-400">
-                    <Wrench className="size-4" />
-                  </span>
-                  Observación Inicial
-                </CardTitle>
-                {observationCopyText ? (
-                  <div className="flex items-center gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="gap-2"
-                      onClick={() => void copyObservationToClipboard(observationCopyText)}
-                    >
-                      <Copy className="size-4" />
-                    </Button>
-                    {copySuccess ? (
-                      <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">{copySuccess}</span>
-                    ) : null}
-                  </div>
-                ) : null}
-              </CardHeader>
-              <CardContent className="space-y-4 p-5">
-                {(() => {
-                  const observation = parseObservationComment(report.observation_comment || '')
-                  return (
-                    <>
-                      {observation.reason ? (
-                        <div className="inline-flex flex-wrap items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
-                          <span>Motivo:</span>
-                          <span className="rounded-full bg-primary/20 px-2 py-1 font-semibold text-primary">{observation.reason}</span>
-                        </div>
-                      ) : null}
-                      {observation.text ? (
-                        <p className="whitespace-pre-line text-sm text-foreground leading-relaxed">
-                          {observation.text}
-                        </p>
-                      ) : (
-                        <p className="text-sm text-muted-foreground">No hay observación adicional.</p>
-                      )}
-                    </>
-                  )
-                })()}
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Evidencia */}
-          {evidenceImages.length > 0 && (
-            <Card className="overflow-hidden">
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2.5 text-sm font-semibold">
-                  <span className="flex size-8 items-center justify-center rounded-lg bg-blue-500/10 text-blue-600 ring-1 ring-blue-500/20 dark:text-blue-400">
-                    <ImageIcon className="size-4" />
-                  </span>
-                  Evidencia
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4 p-5">
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  {evidenceImages.map((image, index) => (
-                    <button
-                      key={`${image.url}-${index}`}
-                      type="button"
-                      className="group relative flex min-h-[220px] items-center justify-center overflow-hidden rounded-xl border border-border/70 bg-muted/30 p-2 text-left transition-colors hover:border-primary/50"
-                      onClick={() => {
-                        setModalImageUrl(image.url)
-                        setShowImageModal(true)
-                      }}
-                      aria-label={`Ampliar evidencia ${index + 1}`}
-                    >
-                      <img
-                        src={image.url}
-                        alt={`Evidencia ${index + 1}`}
-                        className="max-h-[min(34rem,60vh)] w-full object-contain transition-transform duration-300 group-hover:scale-[1.02]"
-                      />
-                      <span className="pointer-events-none absolute bottom-3 right-3 inline-flex items-center gap-1 rounded-full bg-background/90 px-2.5 py-1 text-xs font-medium text-foreground opacity-0 shadow-sm transition-opacity group-hover:opacity-100">
-                        <ZoomIn className="size-3.5" /> Ampliar
-                      </span>
-                    </button>
-                  ))}
-                </div>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="w-full gap-2"
-                  onClick={() => {
-                    setModalImageUrl(evidenceImages[0]?.url ?? null)
-                    setShowImageModal(true)
-                  }}
-                >
-                  <ZoomIn className="size-4" />
-                  Ampliar imagen
-                </Button>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Timeline de updates */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2.5 text-sm font-semibold">
-                <span className="flex size-8 items-center justify-center rounded-lg bg-indigo-500/10 text-indigo-600 ring-1 ring-indigo-500/20 dark:text-indigo-400">
-                  <FileText className="size-4" />
-                </span>
-                Historial de Actualizaciones
-                {updates.length > 0 && (
-                  <Badge variant="secondary" className="text-xs ml-1 tabular-nums">{updates.length}</Badge>
-                )}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="relative space-y-5 pl-8 sm:pl-10">
-              {/* Creation entry */}
-              <span className="absolute bottom-6 left-[1.15rem] top-6 w-px bg-border" aria-hidden="true" />
-              <div className="relative flex gap-3">
-                <span className="absolute -left-[1.7rem] top-1.5 size-3 rounded-full border-2 border-background bg-indigo-500 ring-4 ring-indigo-500/10" aria-hidden="true" />
-                <Avatar size="sm" className="shrink-0 mt-0.5">
-                  <AvatarFallback className="text-xs">{getInitials(report.created_by_name || report.created_by_email)}</AvatarFallback>
-                </Avatar>
-                <div className="flex-1 min-w-0">
-                  <div className="flex flex-wrap items-center gap-2 mb-1">
-                    <span className="text-sm font-medium text-foreground">{report.created_by_name || report.created_by_email}</span>
-                    <span className="text-xs text-muted-foreground">creó este informe</span>
-                    <Badge className={cn('border text-xs', STATUS_BADGE[report.status] ?? 'bg-secondary')}>
-                      {report.status}
-                    </Badge>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    <Calendar className="size-3 inline mr-1" />
-                    <TimeAgo date={report.created_at} />
-                  </p>
-                </div>
-              </div>
-
-              {updates.map((u) => (
-                <React.Fragment key={u.id}>
-                  <div className="relative border-t border-border/60 pt-5">
-                    <span className="absolute -left-[1.7rem] top-[1.85rem] size-3 rounded-full border-2 border-background bg-indigo-500 ring-4 ring-indigo-500/10" aria-hidden="true" />
-                    <div className="flex gap-3">
-                    <Avatar size="sm" className="shrink-0 mt-0.5">
-                      <AvatarFallback className="text-xs">{getInitials(u.added_by_name || u.added_by_email)}</AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex flex-wrap items-center gap-2 mb-1">
-                        <span className="text-sm font-medium text-foreground">{u.added_by_name || u.added_by_email}</span>
-                        <span className="text-xs text-muted-foreground">actualizó</span>
-                        <Badge className={cn('border text-xs', STATUS_BADGE[u.status] ?? 'bg-secondary')}>
-                          {u.status}
-                        </Badge>
-                      </div>
-                      {u.comment && (
-                        <p className="text-sm text-foreground bg-muted rounded-md px-3 py-2 mb-1 leading-relaxed">
-                          {u.comment}
-                        </p>
-                      )}
-                      <p className="text-xs text-muted-foreground">
-                        <Calendar className="size-3 inline mr-1" />
-                        <TimeAgo date={u.created_at} />
-                      </p>
-                    </div>
-                    </div>
-                  </div>
-                </React.Fragment>
-              ))}
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Right: add update */}
-        <div className="min-w-0 space-y-4 xl:sticky xl:top-6 xl:self-start">
-          {/* Meta */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-semibold">Detalles</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm">
-              <div>
-                <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">Período</p>
-                <p className="font-medium text-foreground">{report.month} {report.year}</p>
-              </div>
-              <Separator />
-              <div>
-                <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">Creado por</p>
-                <div className="flex items-center gap-2">
-                  <Avatar size="sm">
-                    <AvatarFallback className="text-xs">{getInitials(report.created_by_name || report.created_by_email)}</AvatarFallback>
-                  </Avatar>
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-foreground">{report.created_by_name || '—'}</p>
-                    <p className="truncate text-xs text-muted-foreground">{report.created_by_email}</p>
-                  </div>
-                </div>
-              </div>
-              <Separator />
-              <div>
-                <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">Fecha</p>
-                <p className="text-sm text-foreground"><TimeAgo date={report.created_at} /></p>
-              </div>
-              <Separator />
-              <div>
-                <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">Estado actual</p>
-                <Badge className={cn('border text-xs', STATUS_BADGE[report.status] ?? 'bg-secondary')}>
-                  {report.status}
-                </Badge>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Add update form */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-semibold">Agregar Actualización</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleAddUpdate} className="space-y-3">
-                <div className="space-y-1.5">
-                  <Label className="text-xs">
-                    {isReportStatusLocked(report.status)
-                      ? 'Estado (información adicional)'
-                      : 'Estado'}
-                  </Label>
-                  <Select
-                    value={newStatus}
-                    onValueChange={handleNewStatusChange}
-                    disabled={isReportStatusLocked(report.status) || !canChangeReportStatus}
-                  >
-                    <SelectTrigger className="h-8 text-sm">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {getAvailableReportUpdateStatuses(report).map(s => (
-                        <SelectItem key={s} value={s}>{s}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Comentario <span className="text-destructive">*</span></Label>
-                  <Textarea
-                    value={newComment}
-                    onChange={e => setNewComment(e.target.value)}
-                    placeholder="Describe la actualización del caso..."
-                    className="min-h-[100px] resize-y text-sm"
-                  />
-                </div>
-                {submitError && (
-                  <p className="text-xs text-destructive">{submitError}</p>
-                )}
-                {!canAddUpdates && (
-                  <p className="text-xs text-muted-foreground">No tienes permisos para agregar actualizaciones.</p>
-                )}
-                <Button
-                  type="submit"
-                  disabled={submitting || !canAddUpdates}
-                  size="sm"
-                  className="brand-gradient-bg w-full gap-2 border-0 text-white transition-opacity hover:opacity-90"
-                >
-                  {submitting ? <Spinner className="size-3" /> : <Send className="size-3" />}
-                  {submitting ? 'Enviando...' : 'Agregar Actualización'}
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-
-      {/* Modal para ampliar imagen */}
-      <Dialog open={showImageModal} onOpenChange={setShowImageModal}>
-        <DialogContent className="max-w-4xl w-full bg-background border-border/50">
-          <div className="relative flex items-center justify-center">
-            {modalImageUrl && (
-              <img
-                src={modalImageUrl}
-                alt="Evidencia ampliada"
-                className="w-full max-h-[80vh] object-contain rounded-lg"
-              />
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Audit Panel */}
-      {showAuditPanel && (
-        <Card className="border-amber-500/20 bg-amber-500/5">
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2.5 text-sm font-semibold">
-              <span className="flex size-8 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600 ring-1 ring-amber-500/20 dark:text-amber-400">
-                <History className="size-4" />
-              </span>
-              Historial de Auditoría
-            </CardTitle>
+            <CardTitle className="text-sm font-semibold">Información principal</CardTitle>
           </CardHeader>
-          <CardContent className="max-h-96 overflow-y-auto space-y-2">
-            {auditEvents.length === 0 ? (
-              <p className="text-xs text-muted-foreground">No hay eventos registrados</p>
-            ) : (
-              auditEvents.map((event: any, idx: number) => (
-                <div key={idx} className="border-l-2 border-amber-500/40 pl-3 py-2 text-xs">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="font-semibold text-foreground">{event.action}</span>
-                    <span className="text-muted-foreground">por {event.user_name || event.user_email}</span>
-                  </div>
-                  <p className="text-muted-foreground tabular-nums">{new Date(event.created_at).toLocaleString('es-ES')}</p>
-                  {event.details && (
-                    <p className="text-muted-foreground mt-1 italic">{event.details}</p>
-                  )}
-                </div>
-              ))
-            )}
+          <CardContent className="space-y-3 text-sm">
+            <div className="flex justify-between gap-3"><span className="text-muted-foreground">Asegurado</span><span className="font-medium text-right">{report.insured_name}</span></div>
+            <div className="flex justify-between gap-3"><span className="text-muted-foreground">Placa</span><span className="font-medium text-right">{report.plate}</span></div>
+            <div className="flex justify-between gap-3"><span className="text-muted-foreground">Servicio</span><span className="font-medium text-right">{report.service_type}</span></div>
+            <div className="flex justify-between gap-3"><span className="text-muted-foreground">Estado</span><span className="font-medium text-right">{report.status}</span></div>
+            <div className="flex justify-between gap-3"><span className="text-muted-foreground">Mes</span><span className="font-medium text-right">{report.month} {report.year}</span></div>
           </CardContent>
         </Card>
-      )}
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm font-semibold">Observación</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm">
+            <p className="whitespace-pre-line text-foreground leading-relaxed">
+              {observation.text || 'Sin observación adicional.'}
+            </p>
+            {observation.reason ? (
+              <div className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary inline-block">
+                Motivo: {observation.reason}
+              </div>
+            ) : null}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }
