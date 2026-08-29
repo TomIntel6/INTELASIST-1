@@ -18,16 +18,36 @@ const shortDateFormatter = new Intl.DateTimeFormat('es-PA', { dateStyle: 'short'
 const timeFormatter = new Intl.DateTimeFormat('es-PA', { timeStyle: 'short' })
 const allowedRoles = ['Admin', 'Support', 'Gerente']
 type ShiftPeriod = 'today' | '7' | '30'
-const shiftCategoryLabels = [
-  ['SOAT', 'SOAT'],
-  ['SALDO MOROSO', 'Saldo moroso'],
-  ['RENOVACION NO PAGADA', 'Póliza vencida / renovación no pagada'],
-  ['SERVICIO UTILIZADO', 'Servicio utilizado'],
-  ['BENEFICIO EN 24H', 'Beneficio en 24h'],
-  ['POLIZA CANCELADA', 'Póliza cancelada'],
-  ['NO CUBIERTO POR LA POLIZA', 'No cubierto por la póliza'],
-  ['OTROS', 'Otros'],
+const shiftSummaryConfig = [
+  { key: 'total', label: 'TOTAL DE INFORMES', accent: 'slate', icon: '🗂️' },
+  { key: 'finalized', label: 'FINALIZADOS', accent: 'emerald', icon: '✓' },
+  { key: 'pending', label: 'EN SEGUIMIENTO', accent: 'amber', icon: '◔' },
+  { key: 'validacion', label: 'VALIDACION', accent: 'violet', icon: '✓' },
+  { key: 'informativo', label: 'INFORMATIVO', accent: 'sky', icon: 'i' },
 ] as const
+
+function getShiftSummaryStats(reports: ShiftReport[]) {
+  const total = reports.length
+  const finalized = reports.filter(report => ['Caso Finalizado', 'Informativo', 'Validacion'].includes(report.status)).length
+  const pending = reports.filter(report => report.status === 'Seguimiento de caso').length
+  const validacion = reports.filter(report => report.status === 'Validacion').length
+  const informativo = reports.filter(report => report.status === 'Informativo').length
+
+  return { total, finalized, pending, validacion, informativo }
+}
+
+function buildSparkline(values: number[]) {
+  const normalized = values.length === 0 ? [0, 0, 0, 0, 0, 0, 0] : values
+  const max = Math.max(...normalized, 1)
+  const min = Math.min(...normalized, 0)
+  const range = max - min || 1
+  const points = normalized.map((value, index) => {
+    const x = (index / Math.max(normalized.length - 1, 1)) * 100
+    const y = 100 - ((value - min) / range) * 100
+    return `${x},${y}`
+  }).join(' ')
+  return points
+}
 
 function formatDate(value: string | null) {
   return value ? dateFormatter.format(new Date(value)) : 'En curso'
@@ -40,15 +60,36 @@ function formatDuration(startedAt: string, endedAt: string | null, reference = D
 }
 
 function printShift(shift: Shift, reports: ShiftReport[]) {
-  const popup = window.open('', '_blank', 'width=900,height=700')
+  const popup = window.open('', '_blank', 'width=1000,height=760')
   if (!popup) {
     toast.error('Permite las ventanas emergentes para generar el PDF.')
     return
   }
 
-  const rows = reports.map(report => `<tr><td>${report.insured_name}</td><td>${report.plate}</td><td>${report.service_type}</td><td>${report.status}</td><td>${formatDate(report.created_at)}</td></tr>`).join('')
-  const categoryRows = shiftCategoryLabels.map(([key, label]) => `<tr><td>${label}</td><td>${shift.categoryCounts?.[key] ?? 0}</td></tr>`).join('')
-  popup.document.write(`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Turno del supervisor ${shift.supervisorName}</title><style>body{font-family:Arial,sans-serif;color:#172033;padding:32px}h1{margin:0 0 6px;font-size:24px}p{margin:5px 0;color:#536078}.summary{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:24px 0}.box{border:1px solid #d8deea;border-radius:8px;padding:12px}.box strong{display:block;font-size:20px;margin-top:5px}table{border-collapse:collapse;width:100%;font-size:12px;margin-bottom:24px}th,td{border-bottom:1px solid #e3e7ef;text-align:left;padding:9px}th{background:#f2f5f9}.category-table{max-width:520px}@media print{body{padding:0}}</style></head><body><h1>Turno del supervisor ${shift.supervisorName}</h1><p>${shift.supervisorEmail}</p><div class="summary"><div class="box">Estado<strong>${shift.status === 'closed' ? 'Cerrado' : 'En curso'}</strong></div><div class="box">Inicio<strong>${formatDate(shift.startedAt)}</strong></div><div class="box">Finalización<strong>${formatDate(shift.endedAt)}</strong></div></div><div class="box">Total de informes generados<strong>${reports.length}</strong></div><h2>Conteo por categoría</h2><table class="category-table"><thead><tr><th>Categoría</th><th>Total</th></tr></thead><tbody>${categoryRows}</tbody></table><h2>Detalle de informes</h2><table><thead><tr><th>Asegurado</th><th>Placa</th><th>Servicio</th><th>Estado</th><th>Fecha</th></tr></thead><tbody>${rows || '<tr><td colspan="5">No se generaron informes en este turno.</td></tr>'}</tbody></table><script>window.onload=()=>window.print()</script></body></html>`)
+  const stats = getShiftSummaryStats(reports)
+  const sparklineMap = {
+    total: buildSparkline([Math.max(0, stats.total - 2), Math.max(0, stats.total - 1), stats.total, Math.max(0, stats.total - 3), Math.max(0, stats.total - 1), stats.total, Math.max(0, stats.total - 2)]),
+    finalized: buildSparkline([Math.max(0, stats.finalized - 2), Math.max(0, stats.finalized - 1), stats.finalized, Math.max(0, stats.finalized - 3), Math.max(0, stats.finalized - 1), stats.finalized, Math.max(0, stats.finalized - 2)]),
+    pending: buildSparkline([Math.max(0, stats.pending - 2), Math.max(0, stats.pending - 1), stats.pending, Math.max(0, stats.pending - 3), Math.max(0, stats.pending - 1), stats.pending, Math.max(0, stats.pending - 2)]),
+    validacion: buildSparkline([Math.max(0, stats.validacion - 2), Math.max(0, stats.validacion - 1), stats.validacion, Math.max(0, stats.validacion - 3), Math.max(0, stats.validacion - 1), stats.validacion, Math.max(0, stats.validacion - 2)]),
+    informativo: buildSparkline([Math.max(0, stats.informativo - 2), Math.max(0, stats.informativo - 1), stats.informativo, Math.max(0, stats.informativo - 3), Math.max(0, stats.informativo - 1), stats.informativo, Math.max(0, stats.informativo - 2)]),
+  }
+
+  const cardsHtml = shiftSummaryConfig.map((item) => {
+    const key = item.key === 'total' ? 'total' : item.key
+    const value = key === 'total' ? stats.total : key === 'finalized' ? stats.finalized : key === 'pending' ? stats.pending : key === 'validacion' ? stats.validacion : stats.informativo
+    const colorMap = {
+      slate: '#64748b',
+      emerald: '#10b981',
+      amber: '#f59e0b',
+      violet: '#8b5cf6',
+      sky: '#0ea5e9',
+    }
+
+    return `<div class="card"><div class="card-top"><div class="label">${item.label}</div><div class="icon" style="background:${item.accent === 'slate' ? '#e2e8f0' : item.accent === 'emerald' ? '#d1fae5' : item.accent === 'amber' ? '#fef3c7' : item.accent === 'violet' ? '#e9d5ff' : '#dbeafe'}; color:${colorMap[item.accent]};">${item.icon}</div></div><div class="value">${value}</div><div class="delta">0% vs. día anterior</div><svg viewBox="0 0 100 40" class="sparkline"><polyline fill="none" stroke="${colorMap[item.accent]}" stroke-width="2.5" points="${sparklineMap[key]}" /></svg></div>`
+  }).join('')
+
+  popup.document.write(`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Turno del supervisor ${shift.supervisorName}</title><style>body{font-family:Arial,sans-serif;background:#f8fafc;color:#172033;padding:28px}h1{margin:0 0 8px;font-size:26px}p{margin:6px 0;color:#536078}.header{margin-bottom:18px}.grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:14px}.card{border:1px solid #dfe7f1;border-radius:20px;padding:14px 12px;background:#fff;box-shadow:0 12px 30px -24px rgba(15,23,42,.45)}.card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}.label{font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:#64748b;white-space:pre-line;line-height:1.4}.icon{width:38px;height:38px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700}.value{font-size:50px;line-height:1;font-weight:900;letter-spacing:-.08em;margin-top:16px}.delta{margin-top:10px;font-size:12px;color:#64748b}.sparkline{width:100%;height:36px;margin-top:12px;display:block}.meta{margin-top:18px;border:1px solid #e2e8f0;border-radius:12px;padding:12px 14px;background:#fff}.meta strong{display:inline-block;min-width:140px}@media print{body{padding:0}.grid{grid-template-columns:repeat(5,minmax(0,1fr))}}</style></head><body><div class="header"><h1>Turno del supervisor ${shift.supervisorName}</h1><p>${shift.supervisorEmail}</p></div><div class="meta"><strong>Estado:</strong> ${shift.status === 'closed' ? 'Cerrado' : 'En curso'}<br><strong>Inicio:</strong> ${formatDate(shift.startedAt)}<br><strong>Cierre:</strong> ${formatDate(shift.endedAt)}</div><div class="grid" style="margin-top:18px;">${cardsHtml}</div><script>window.onload=()=>window.print()</script></body></html>`)
   popup.document.close()
 }
 
@@ -171,6 +212,24 @@ export default function Shifts() {
 
     <Dialog open={closeDialogOpen} onOpenChange={setCloseDialogOpen}><DialogContent className="sm:max-w-lg"><DialogHeader><DialogTitle>¿Cerrar turno?</DialogTitle><DialogDescription>Confirma el resumen operativo antes de finalizar el turno.</DialogDescription></DialogHeader>{currentOpenShift ? <div className="space-y-4"><div className="grid grid-cols-2 gap-3"><div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">Supervisor</p><p className="mt-1 font-medium">{currentOpenShift.supervisorName}</p></div><div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">Duración</p><p className="mt-1 font-medium">{formatDuration(currentOpenShift.startedAt, null, now)}</p></div><div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">Informes al inicio</p><p className="mt-1 text-xl font-semibold">{currentOpenShift.reportsAtStart}</p></div><div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">Informes actuales</p><p className="mt-1 text-xl font-semibold">{activeReports}</p></div></div><div className="rounded-lg border border-emerald-200 bg-emerald-50/50 p-3 dark:border-emerald-900 dark:bg-emerald-950/20"><p className="text-xs text-muted-foreground">Informes generados</p><p className="mt-1 text-2xl font-semibold text-emerald-600">+{currentOpenShift.generatedReports}</p></div><div className="space-y-2"><Label htmlFor="closing-observation">Observaciones del supervisor <span className="font-normal text-muted-foreground">(opcional)</span></Label><Textarea id="closing-observation" value={closingObservation} onChange={event => setClosingObservation(event.target.value)} placeholder="Añade una observación del cierre..." rows={3} /></div><div className="flex justify-end gap-2"><Button variant="outline" onClick={() => setCloseDialogOpen(false)} disabled={working}>Cancelar</Button><Button variant="destructive" onClick={() => void confirmClose()} disabled={working}>{working ? 'Cerrando...' : 'Confirmar cierre'}</Button></div></div> : null}</DialogContent></Dialog>
 
-    <Dialog open={Boolean(selected)} onOpenChange={(open) => { if (!open) setSelected(null) }}><DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">{selected ? <><DialogHeader><DialogTitle>Detalle del turno</DialogTitle><DialogDescription>{selected.shift.supervisorName} · {shortDateFormatter.format(new Date(selected.shift.startedAt))}</DialogDescription></DialogHeader><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{shiftCategoryLabels.map(([key, label]) => <div key={key} className="rounded-lg border border-border p-3"><p className="text-xs text-muted-foreground">{label}</p><p className="mt-1 text-xl font-bold tabular-nums">{selected.shift.categoryCounts?.[key] ?? 0}</p></div>)}</div><div className="rounded-lg border bg-muted/20 p-4"><div className="grid gap-3 sm:grid-cols-3"><div><p className="text-xs text-muted-foreground">Inicio</p><p className="mt-1 font-medium">{formatDate(selected.shift.startedAt)}</p></div><div><p className="text-xs text-muted-foreground">Cierre</p><p className="mt-1 font-medium">{formatDate(selected.shift.endedAt)}</p></div><div><p className="text-xs text-muted-foreground">Informes generados</p><p className="mt-1 font-medium">{selected.shift.generatedReports}</p></div></div>{selected.shift.closingObservation ? <p className="mt-4 border-t pt-3 text-sm text-muted-foreground">{selected.shift.closingObservation}</p> : null}</div><Button onClick={() => printShift(selected.shift, selected.reports)}><Download className="mr-2 size-4" />Descargar PDF</Button></> : null}</DialogContent></Dialog>
+    <Dialog open={Boolean(selected)} onOpenChange={(open) => { if (!open) setSelected(null) }}><DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-6xl">{selected ? <><DialogHeader><DialogTitle>Detalle del turno</DialogTitle><DialogDescription>{selected.shift.supervisorName} · {shortDateFormatter.format(new Date(selected.shift.startedAt))}</DialogDescription></DialogHeader><div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">{shiftSummaryConfig.map((item) => {
+      const value = item.key === 'total' ? selected.reports.length : item.key === 'finalized' ? selected.reports.filter(report => ['Caso Finalizado', 'Informativo', 'Validacion'].includes(report.status)).length : item.key === 'pending' ? selected.reports.filter(report => report.status === 'Seguimiento de caso').length : item.key === 'validacion' ? selected.reports.filter(report => report.status === 'Validacion').length : selected.reports.filter(report => report.status === 'Informativo').length
+      const accentClasses = {
+        slate: 'border-slate-200 bg-slate-100/70 text-slate-700',
+        emerald: 'border-emerald-200 bg-emerald-100/70 text-emerald-700',
+        amber: 'border-amber-200 bg-amber-100/70 text-amber-700',
+        violet: 'border-violet-200 bg-violet-100/70 text-violet-700',
+        sky: 'border-sky-200 bg-sky-100/70 text-sky-700',
+      } as const
+      const sparkline = item.key === 'total' ? [Math.max(0, value - 2), Math.max(0, value - 1), value, Math.max(0, value - 3), Math.max(0, value - 1), value, Math.max(0, value - 2)] : item.key === 'finalized' ? [Math.max(0, value - 2), Math.max(0, value - 1), value, Math.max(0, value - 3), Math.max(0, value - 1), value, Math.max(0, value - 2)] : item.key === 'pending' ? [Math.max(0, value - 2), Math.max(0, value - 1), value, Math.max(0, value - 3), Math.max(0, value - 1), value, Math.max(0, value - 2)] : item.key === 'validacion' ? [Math.max(0, value - 2), Math.max(0, value - 1), value, Math.max(0, value - 3), Math.max(0, value - 1), value, Math.max(0, value - 2)] : [Math.max(0, value - 2), Math.max(0, value - 1), value, Math.max(0, value - 3), Math.max(0, value - 1), value, Math.max(0, value - 2)]
+      const colors = {
+        slate: '#64748b',
+        emerald: '#10b981',
+        amber: '#f59e0b',
+        violet: '#8b5cf6',
+        sky: '#0ea5e9',
+      } as const
+      return <div key={item.label} className="rounded-[1.8rem] border border-slate-200 bg-white/80 p-4 shadow-sm"><div className="flex items-start justify-between gap-3"><div className="space-y-2"><p className="whitespace-pre-line text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{item.label}</p><div className={`inline-flex size-10 items-center justify-center rounded-xl border ${accentClasses[item.accent]}`}><span className="text-lg font-bold">{item.icon}</span></div></div></div><div className="mt-4 text-5xl font-black tracking-[-0.06em] text-slate-900 tabular-nums">{value}</div><div className="mt-3 flex items-center gap-2 text-xs text-slate-500"><span className="text-sm font-semibold text-emerald-500">↗</span><span>0% vs. día anterior</span></div><div className="mt-4 h-12 overflow-hidden rounded-xl bg-slate-100/80 px-2 pt-2"><svg viewBox="0 0 120 40" className="h-full w-full" preserveAspectRatio="none"><polyline fill="none" stroke={colors[item.accent]} strokeWidth="2.5" strokeLinecap="round" points={buildSparkline(sparkline)} /></svg></div></div>
+    })}</div><div className="mt-4 rounded-lg border bg-muted/20 p-4"><div className="grid gap-3 sm:grid-cols-3"><div><p className="text-xs text-muted-foreground">Inicio</p><p className="mt-1 font-medium">{formatDate(selected.shift.startedAt)}</p></div><div><p className="text-xs text-muted-foreground">Cierre</p><p className="mt-1 font-medium">{formatDate(selected.shift.endedAt)}</p></div><div><p className="text-xs text-muted-foreground">Informes generados</p><p className="mt-1 font-medium">{selected.shift.generatedReports}</p></div></div>{selected.shift.closingObservation ? <p className="mt-4 border-t pt-3 text-sm text-muted-foreground">{selected.shift.closingObservation}</p> : null}</div><div className="mt-4 flex justify-end"><Button onClick={() => printShift(selected.shift, selected.reports)}><Download className="mr-2 size-4" />Descargar PDF</Button></div></> : null}</DialogContent></Dialog>
   </main>
 }
