@@ -568,6 +568,48 @@ export default function ReportDetail() {
         </div>
       </div>
 
+      {evidenceImages.length > 0 ? (
+        <Card className="rounded-[1.5rem] border border-emerald-200 bg-emerald-50/30">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <span className="flex size-10 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 ring-1 ring-emerald-500/20" aria-hidden="true">
+                  <ImageIcon className="size-5" />
+                </span>
+                <CardTitle className="text-xl font-black tracking-tight">Evidencia subida</CardTitle>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {evidenceImages.map((image, index) => (
+                <div key={`${image.url}-${index}`} className="group relative overflow-hidden rounded-xl border border-emerald-200 bg-white shadow-sm">
+                  <img
+                    src={image.url}
+                    alt={image.filename || `Evidencia ${index + 1}`}
+                    className="h-40 w-full object-cover transition-transform duration-200 group-hover:scale-[1.02]"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setModalImageUrl(image.url)
+                      setShowImageModal(true)
+                    }}
+                    className="absolute inset-0 flex items-center justify-center bg-slate-950/20 opacity-0 transition-opacity duration-200 group-hover:opacity-100"
+                    aria-label={`Ver evidencia ${index + 1}`}
+                  >
+                    <span className="flex items-center gap-2 rounded-full bg-white/90 px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm">
+                      <ZoomIn className="size-4" />
+                      Ver imagen
+                    </span>
+                  </button>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
+
       {showAuditPanel ? (
         <Card className="rounded-[1.5rem] border border-slate-200">
           <CardHeader>
@@ -592,6 +634,19 @@ export default function ReportDetail() {
           </CardContent>
         </Card>
       ) : null}
+
+      <Dialog open={showImageModal} onOpenChange={open => {
+        setShowImageModal(open)
+        if (!open) {
+          setModalImageUrl(null)
+        }
+      }}>
+        <DialogContent className="max-w-4xl p-0 overflow-hidden">
+          {modalImageUrl ? (
+            <img src={modalImageUrl} alt="Evidencia ampliada" className="max-h-[80vh] w-full object-contain" />
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
