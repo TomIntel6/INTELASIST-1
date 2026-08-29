@@ -357,57 +357,6 @@ export default function ReportDetail() {
     )
   }
 
-  const summaryCards = [
-    {
-      label: 'TOTAL\nINFORMES',
-      value: 1,
-      delta: '1% vs. día anterior',
-      accent: 'slate',
-      icon: '🗂️',
-      sparkline: [12, 18, 16, 20, 17, 22, 19],
-    },
-    {
-      label: 'FINALIZADOS',
-      value: report.status === 'Caso Finalizado' ? 1 : 0,
-      delta: report.status === 'Caso Finalizado' ? '0% vs. día anterior' : '0% vs. día anterior',
-      accent: 'emerald',
-      icon: '✓',
-      sparkline: [10, 12, 11, 13, 12, 14, 13],
-    },
-    {
-      label: 'EN\nSEGUIMIENTO',
-      value: report.status === 'Seguimiento de caso' ? 1 : 0,
-      delta: '33% vs. día anterior',
-      accent: 'amber',
-      icon: '◔',
-      sparkline: [8, 11, 14, 10, 12, 15, 13],
-    },
-    {
-      label: 'VALIDACION',
-      value: report.status === 'Validacion' ? 1 : 0,
-      delta: '23% vs. día anterior',
-      accent: 'violet',
-      icon: '✓',
-      sparkline: [9, 12, 15, 13, 14, 12, 11],
-    },
-    {
-      label: 'INFORMATIVO',
-      value: report.status === 'Informativo' ? 1 : 0,
-      delta: '16% vs. día anterior',
-      accent: 'sky',
-      icon: 'i',
-      sparkline: [11, 14, 12, 15, 17, 16, 18],
-    },
-  ] as const
-
-  const accentClasses = {
-    slate: 'border-slate-200 bg-slate-100/70 text-slate-700',
-    emerald: 'border-emerald-200 bg-emerald-100/70 text-emerald-700',
-    amber: 'border-amber-200 bg-amber-100/70 text-amber-700',
-    violet: 'border-violet-200 bg-violet-100/70 text-violet-700',
-    sky: 'border-sky-200 bg-sky-100/70 text-sky-700',
-  } as const
-
   return (
     <div className="w-full space-y-5 p-4 sm:p-6 xl:p-8">
       <div className="glass-panel relative overflow-hidden rounded-[1.5rem] p-5 sm:p-6">
@@ -425,39 +374,6 @@ export default function ReportDetail() {
             <p className="mt-1 text-sm text-muted-foreground">{report.service_type} • {report.plate} • {report.status}</p>
           </div>
         </div>
-      </div>
-
-      <div className="grid gap-4 xl:grid-cols-5">
-        {summaryCards.map((card) => (
-          <div key={card.label} className="rounded-[1.9rem] border border-slate-200 bg-white/80 p-4 shadow-sm">
-            <div className="flex items-center justify-between gap-3">
-              <div className="space-y-2">
-                <p className="whitespace-pre-line text-[12px] font-semibold uppercase tracking-[0.18em] text-slate-500">{card.label}</p>
-                <div className={`inline-flex size-10 items-center justify-center rounded-xl border ${accentClasses[card.accent]}`}>
-                  <span className="text-lg font-bold">{card.icon}</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-4 text-5xl font-black tracking-[-0.06em] text-slate-900 tabular-nums">{card.value}</div>
-
-            <div className="mt-3 flex items-center gap-2 text-xs text-slate-500">
-              <span className="text-sm font-semibold text-emerald-500">↗</span>
-              <span>{card.delta}</span>
-            </div>
-
-            <div className="mt-4 h-12 overflow-hidden rounded-xl bg-slate-100/80 px-2 pt-2">
-              <svg viewBox="0 0 120 40" className="h-full w-full" preserveAspectRatio="none">
-                <path d={card.sparkline.map((point, index) => `${index === 0 ? 'M' : 'L'} ${index * 20} ${40 - point}`).join(' ')} fill="none" stroke={
-                  card.accent === 'slate' ? '#64748b' :
-                  card.accent === 'emerald' ? '#10b981' :
-                  card.accent === 'amber' ? '#f59e0b' :
-                  card.accent === 'violet' ? '#8b5cf6' : '#0ea5e9'
-                } strokeWidth="2.5" strokeLinecap="round" />
-              </svg>
-            </div>
-          </div>
-        ))}
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
