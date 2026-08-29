@@ -361,51 +361,237 @@ export default function ReportDetail() {
     <div className="w-full space-y-5 p-4 sm:p-6 xl:p-8">
       <div className="glass-panel relative overflow-hidden rounded-[1.5rem] p-5 sm:p-6">
         <span className="brand-gradient-bg pointer-events-none absolute inset-x-0 top-0 h-1 opacity-80" aria-hidden="true" />
-        <div className="flex items-start gap-3">
-          <Button variant="ghost" size="icon-sm" onClick={() => navigate(-1)} className="mt-0.5 shrink-0">
-            <ArrowLeft className="size-4" />
-          </Button>
-          <div className="min-w-0 flex-1">
-            <p className="mb-1.5 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-              <span className="brand-gradient-bg size-1.5 rounded-full" aria-hidden="true" />
-              Detalle de informe
-            </p>
-            <h1 className="truncate text-2xl font-bold tracking-tight text-foreground">{report.insured_name}</h1>
-            <p className="mt-1 text-sm text-muted-foreground">{report.service_type} • {report.plate} • {report.status}</p>
+
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-start gap-3 min-w-0 flex-1">
+            <Button variant="ghost" size="icon-sm" onClick={() => navigate(-1)} className="mt-0.5 shrink-0">
+              <ArrowLeft className="size-4" />
+            </Button>
+
+            <div className="min-w-0 flex-1">
+              <p className="mb-1.5 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                <span className="brand-gradient-bg size-1.5 rounded-full" aria-hidden="true" />
+                Detalle de informe
+              </p>
+
+              <div className="flex flex-wrap items-center gap-3">
+                <h1 className="truncate text-2xl font-black tracking-[-0.04em] text-foreground">{report.insured_name}</h1>
+                {report.status ? (
+                  <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide ${STATUS_BADGE[report.status] ?? 'bg-secondary text-secondary-foreground border-border'}`}>
+                    {report.status}
+                  </span>
+                ) : null}
+              </div>
+
+              <p className="mt-1 text-sm text-muted-foreground">
+                {report.month} {report.year} • Placa: {report.plate}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex shrink-0 items-center gap-2">
+            {canEditReports ? (
+              <Button variant="outline" size="sm" onClick={() => navigate(`/informes/${id}/editar`)} className="gap-2">
+                <Pencil className="size-4" />
+                Editar
+              </Button>
+            ) : null}
+            <Button variant="outline" size="sm" onClick={() => setShowAuditPanel(v => !v)} className="gap-2">
+              <History className="size-4" />
+              Historial
+            </Button>
           </div>
         </div>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-semibold">Información principal</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3 text-sm">
-            <div className="flex justify-between gap-3"><span className="text-muted-foreground">Asegurado</span><span className="font-medium text-right">{report.insured_name}</span></div>
-            <div className="flex justify-between gap-3"><span className="text-muted-foreground">Placa</span><span className="font-medium text-right">{report.plate}</span></div>
-            <div className="flex justify-between gap-3"><span className="text-muted-foreground">Servicio</span><span className="font-medium text-right">{report.service_type}</span></div>
-            <div className="flex justify-between gap-3"><span className="text-muted-foreground">Estado</span><span className="font-medium text-right">{report.status}</span></div>
-            <div className="flex justify-between gap-3"><span className="text-muted-foreground">Mes</span><span className="font-medium text-right">{report.month} {report.year}</span></div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-semibold">Observación</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3 text-sm">
-            <p className="whitespace-pre-line text-foreground leading-relaxed">
-              {observation.text || 'Sin observación adicional.'}
-            </p>
-            {observation.reason ? (
-              <div className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary inline-block">
-                Motivo: {observation.reason}
+      <div className="grid gap-4 lg:grid-cols-[1.7fr_1fr]">
+        <div className="space-y-4">
+          <Card className="rounded-[1.5rem] border border-slate-200 bg-slate-50/30">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xl font-black tracking-tight">Información del Asegurado</CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-x-6 gap-y-4 sm:grid-cols-2 text-sm">
+              <div className="space-y-1">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Nombre</p>
+                <p className="text-base font-black tracking-tight text-foreground">{report.insured_name}</p>
               </div>
-            ) : null}
+
+              <div className="space-y-1">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Placa</p>
+                <p className="text-base font-black tracking-tight text-foreground">{report.plate}</p>
+              </div>
+
+              <div className="space-y-1">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Póliza</p>
+                <p className="text-base font-medium text-foreground">{report.policy || '—'}</p>
+              </div>
+
+              <div className="space-y-1">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Servicio</p>
+                <div className="inline-flex items-center rounded-full border border-slate-300 bg-slate-100/80 px-2.5 py-1 text-xs font-medium text-foreground">
+                  {report.service_type}
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Estado</p>
+                <p className="text-base font-medium text-foreground">{report.status}</p>
+              </div>
+
+              <div className="space-y-1">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Mes</p>
+                <p className="text-base font-medium text-foreground">{report.month} {report.year}</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="rounded-[1.5rem] border border-violet-200 bg-violet-50/30">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xl font-black tracking-tight">Datos del Vehículo</CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-x-6 gap-y-4 sm:grid-cols-2 text-sm">
+              <div className="space-y-1">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Marca</p>
+                <p className="text-base font-black tracking-tight text-foreground">{report.brand || '—'}</p>
+              </div>
+
+              <div className="space-y-1">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Modelo</p>
+                <p className="text-base font-black tracking-tight text-foreground">{report.model || '—'}</p>
+              </div>
+
+              <div className="space-y-1">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Color</p>
+                <p className="text-base font-medium text-foreground">{report.color || '—'}</p>
+              </div>
+
+              <div className="space-y-1">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Año</p>
+                <p className="text-base font-medium text-foreground">{report.year_vehicle || '—'}</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="rounded-[1.5rem] border border-amber-200 bg-amber-50/30">
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between gap-3">
+                <CardTitle className="text-xl font-black tracking-tight">Observación Inicial</CardTitle>
+                <Button variant="ghost" size="icon-sm" onClick={() => copyObservationToClipboard(observationCopyText)} disabled={!observationCopyText} title="Copiar observación">
+                  <Copy className="size-4" />
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {observation.reason ? (
+                <div className="inline-flex items-center rounded-full bg-slate-200/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-700">
+                  Motivo: {observation.reason}
+                </div>
+              ) : null}
+
+              <p className="whitespace-pre-line text-sm leading-relaxed text-foreground">
+                {observation.text || 'Sin observación adicional.'}
+              </p>
+
+              {copySuccess ? (
+                <p className="text-xs text-emerald-600">{copySuccess}</p>
+              ) : null}
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="space-y-4">
+          <Card className="rounded-[1.5rem] border border-slate-200 bg-slate-50/30">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xl font-black tracking-tight">Detalles</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 text-sm">
+              <div className="space-y-1 border-b border-slate-200 pb-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Periodo</p>
+                <p className="text-base font-medium text-foreground">{report.month} {report.year}</p>
+              </div>
+
+              <div className="space-y-1 border-b border-slate-200 pb-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Creado por</p>
+                <p className="text-base font-medium text-foreground">{report.created_by_name || report.created_by_email || '—'}</p>
+                {report.created_by_email ? (
+                  <p className="text-xs text-muted-foreground">{report.created_by_email}</p>
+                ) : null}
+              </div>
+
+              <div className="space-y-1">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Fecha</p>
+                <p className="text-base font-medium text-foreground">{formatDateTimeWithMeridiem(report.created_at)}</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="rounded-[1.5rem] border border-slate-200 bg-slate-50/30">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xl font-black tracking-tight">Agregar Actualización</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Estado</Label>
+                <Select value={newStatus} onValueChange={handleNewStatusChange}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Selecciona un estado" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {getAvailableReportUpdateStatuses(report).map(status => (
+                      <SelectItem key={status} value={status}>{status}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="newComment" className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Comentario</Label>
+                <Textarea
+                  id="newComment"
+                  value={newComment}
+                  onChange={e => setNewComment(e.target.value)}
+                  placeholder="Describe la actualización del caso..."
+                  className="min-h-[120px] resize-none"
+                />
+              </div>
+
+              {submitError ? (
+                <p className="text-sm text-destructive">{submitError}</p>
+              ) : null}
+
+              <Button onClick={handleAddUpdate as any} disabled={submitting || !newComment.trim()} className="w-full gap-2">
+                <Send className="size-4" />
+                {submitting ? 'Guardando...' : 'Guardar actualización'}
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      {showAuditPanel ? (
+        <Card className="rounded-[1.5rem] border border-slate-200">
+          <CardHeader>
+            <CardTitle className="text-xl font-black tracking-tight">Historial</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {auditEvents.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No hay historial para este informe.</p>
+            ) : (
+              auditEvents.map((event, index) => (
+                <div key={`${event.id ?? index}`} className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="font-medium text-foreground">{event.action ?? 'Evento'}</span>
+                    <span className="text-xs text-muted-foreground">{event.created_at ? TimeAgo({ date: event.created_at }) : '—'}</span>
+                  </div>
+                  {event.details ? (
+                    <p className="mt-2 whitespace-pre-line text-xs text-muted-foreground">{event.details}</p>
+                  ) : null}
+                </div>
+              ))
+            )}
           </CardContent>
         </Card>
-      </div>
+      ) : null}
     </div>
   )
 }
