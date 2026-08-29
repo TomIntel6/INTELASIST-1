@@ -1944,15 +1944,17 @@ app.get('/shifts', async (req, res) => {
   try {
     if (!(await requireShiftRole(req, res))) return
 
+    const supervisorId = String(req.user?.id || '').trim()
     const result = await pool.query(`
       SELECT ws.*, COUNT(r.id)::int AS report_count, ${shiftCategoryCountsSql()}
       FROM work_shifts ws
       LEFT JOIN reports r ON r.created_at >= ws.started_at
         AND (ws.ended_at IS NULL OR r.created_at <= ws.ended_at)
+      WHERE ws.supervisor_id = $1
       GROUP BY ws.id
       ORDER BY ws.started_at DESC
       LIMIT 100
-    `)
+    `, [supervisorId])
     res.json({ shifts: result.rows.map(serializeShiftRow) })
   } catch (error) {
     console.error('Error al listar turnos:', error)
@@ -2044,17 +2046,18 @@ app.delete('/shifts/:id', async (req, res) => {
       return res.status(403).json({ error: 'No tienes permiso para eliminar turnos cerrados.' })
     }
 
+    const supervisorId = String(req.user?.id || '').trim()
     const existing = await pool.query(
-      "SELECT * FROM work_shifts WHERE id = $1 AND status = 'closed'",
-      [req.params.id]
+      "SELECT * FROM work_shifts WHERE id = $1 AND status = 'closed' AND supervisor_id = $2",
+      [req.params.id, supervisorId]
     )
     if (existing.rowCount === 0) {
-      return res.status(404).json({ error: 'Solo se pueden eliminar turnos cerrados.' })
+      return res.status(404).json({ error: 'Solo puedes eliminar tus turnos cerrados.' })
     }
 
     const result = await pool.query(
-      "DELETE FROM work_shifts WHERE id = $1 AND status = 'closed' RETURNING id",
-      [req.params.id]
+      "DELETE FROM work_shifts WHERE id = $1 AND status = 'closed' AND supervisor_id = $2 RETURNING id",
+      [req.params.id, supervisorId]
     )
     if (result.rowCount === 0) {
       return res.status(404).json({ error: 'El turno cerrado ya no existe.' })
@@ -2080,14 +2083,15 @@ app.get('/shifts/:id', async (req, res) => {
   try {
     if (!(await requireShiftRole(req, res))) return
 
+    const supervisorId = String(req.user?.id || '').trim()
     const result = await pool.query(`
       SELECT ws.*, COUNT(r.id)::int AS report_count, ${shiftCategoryCountsSql()}
       FROM work_shifts ws LEFT JOIN reports r ON r.created_at >= ws.started_at
         AND (ws.ended_at IS NULL OR r.created_at <= ws.ended_at)
-      WHERE ws.id = $1 GROUP BY ws.id
-    `, [req.params.id])
+      WHERE ws.id = $1 AND ws.supervisor_id = $2 GROUP BY ws.id
+    `, [req.params.id, supervisorId])
     if (result.rowCount === 0) {
-      res.status(404).json({ error: 'Turno no encontrado.' })
+      res.status(404).json({ error: 'Turno no encontrado o no autorizado.' })
       return
     }
 
