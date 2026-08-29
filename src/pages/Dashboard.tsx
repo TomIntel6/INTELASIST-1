@@ -604,11 +604,11 @@ export default function Dashboard() {
               <CardDescription>{currentDay.toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' })}</CardDescription>
             </CardHeader>
             <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
-              <StatCard label="Total Informes" value={totalReports} delta={`${deltaTotal}% vs. día anterior`} icon={FileText} accent="slate" sparkline={sparklineByStatus.total} />
-              <StatCard label="Finalizados" value={totalFinalized} delta={`${deltaFinalized}% vs. día anterior`} icon={CheckCircle2} accent="emerald" sparkline={sparklineByStatus.finalized} />
-              <StatCard label="En Seguimiento" value={totalPending} delta={`${deltaPending}% vs. día anterior`} icon={Clock} accent="amber" sparkline={sparklineByStatus.pending} />
-              <StatCard label="Validacion" value={totalValidacion} delta={`${deltaValidacion}% vs. día anterior`} icon={ShieldCheck} accent="violet" sparkline={sparklineByStatus.validacion} />
-              <StatCard label="Informativo" value={totalInformativo} delta={`${deltaInformativo}% vs. día anterior`} icon={Info} accent="sky" sparkline={sparklineByStatus.informativo} />
+              <StatCard label="Total Informes" value={totalReports} delta={deltaTotal} icon={FileText} accent="slate" sparkline={sparklineByStatus.total} />
+              <StatCard label="Finalizados" value={totalFinalized} delta={deltaFinalized} icon={CheckCircle2} accent="emerald" sparkline={sparklineByStatus.finalized} />
+              <StatCard label="En Seguimiento" value={totalPending} delta={deltaPending} icon={Clock} accent="amber" sparkline={sparklineByStatus.pending} />
+              <StatCard label="Validacion" value={totalValidacion} delta={deltaValidacion} icon={ShieldCheck} accent="violet" sparkline={sparklineByStatus.validacion} />
+              <StatCard label="Informativo" value={totalInformativo} delta={deltaInformativo} icon={Info} accent="sky" sparkline={sparklineByStatus.informativo} />
             </CardContent>
           </Card>
         </div>
