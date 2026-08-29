@@ -607,40 +607,6 @@ export default function ReportsList() {
         </div>
       </div>
 
-      {/* Categories Palette */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-        {/* Total de Informes */}
-        <Card className="dashboard-soft-surface relative overflow-hidden rounded-[1.35rem] border">
-          <span className="brand-gradient-bg absolute inset-x-0 top-0 h-0.5" aria-hidden="true" />
-          <CardContent className="p-4">
-            <div className="flex flex-col items-center gap-2 text-center">
-              <span className="flex size-10 items-center justify-center rounded-xl ring-1 brand-monogram ring-transparent">
-                <FileText className="size-5" />
-              </span>
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Total de Informes</p>
-              <p className="text-3xl font-bold tabular-nums text-foreground">{stats.total}</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        {categories.map(cat => {
-          const IconComponent = cat.icon
-          return (
-            <Card key={cat.label} className="dashboard-soft-surface rounded-[1.35rem] border">
-              <CardContent className="p-4">
-                <div className="flex flex-col items-center gap-2 text-center">
-                  <span className={`flex size-10 items-center justify-center rounded-xl ring-1 ${cat.chip}`}>
-                    <IconComponent className="size-5" />
-                  </span>
-                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{cat.label}</p>
-                  <p className="text-3xl font-bold tabular-nums text-foreground">{cat.count}</p>
-                </div>
-              </CardContent>
-            </Card>
-          )
-        })}
-      </div>
-
       {/* Filters */}
       <div className="glass-panel flex flex-wrap gap-3 rounded-[1.35rem] p-3">
         <div className="relative flex-1 min-w-[200px]">
