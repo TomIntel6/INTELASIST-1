@@ -193,6 +193,11 @@ export default function Shifts() {
   const totalGeneratedReports = visibleShifts.reduce((total, shift) => total + shift.generatedReports, 0)
   const averageReportsPerShift = visibleShifts.length > 0 ? (totalGeneratedReports / visibleShifts.length).toFixed(1) : '0'
   const activeReports = currentOpenShift?.reportCount ?? 0
+  const reportsSummaryLabel = period === 'all'
+    ? 'Historial completo'
+    : period === 'today'
+      ? 'Período: hoy'
+      : `Período: ${period} días`
   const supervisorPerformance = Array.from(visibleShifts.reduce((groups, shift) => {
     const current = groups.get(shift.supervisorName) || { name: shift.supervisorName, reports: 0, hours: 0, active: false }
     current.reports += shift.generatedReports
@@ -211,7 +216,20 @@ export default function Shifts() {
     </header>
 
     <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-      {[['Turnos de hoy', String(todayShifts.length), 'Registro del día'], ['Supervisores activos', String(shifts.filter(shift => shift.status === 'open').length), 'En operación'], ['Informes generados', String(totalGeneratedReports), period === 'all' ? 'Historial completo' : `Período: ${period === 'today' ? 'hoy' : `${period} días`}`], ['Promedio por turno', averageReportsPerShift, 'Informes generados']].map(([label, value, caption]) => <Card key={label} className="border-border/70 shadow-sm"><CardContent className="p-5"><p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{label}</p><p className="mt-3 text-3xl font-semibold tracking-tight">{value}</p><p className="mt-1 text-xs text-muted-foreground">{caption}</p></CardContent></Card>)]}
+      {[
+        ['Turnos de hoy', String(todayShifts.length), 'Registro del día'],
+        ['Supervisores activos', String(shifts.filter(shift => shift.status === 'open').length), 'En operación'],
+        ['Informes generados', String(totalGeneratedReports), reportsSummaryLabel],
+        ['Promedio por turno', averageReportsPerShift, 'Informes generados'],
+      ].map(([label, value, caption]) => (
+        <Card key={label} className="border-border/70 shadow-sm">
+          <CardContent className="p-5">
+            <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{label}</p>
+            <p className="mt-3 text-3xl font-semibold tracking-tight">{value}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{caption}</p>
+          </CardContent>
+        </Card>
+      ))}
     </section>
 
     {currentOpenShift ? <Card className="border-primary/30 bg-primary/[0.03] shadow-sm"><CardHeader className="flex flex-row items-start justify-between gap-4"><div><p className="text-xs font-semibold uppercase tracking-wider text-primary">Turno activo</p><CardTitle className="mt-1">{currentOpenShift.supervisorName}</CardTitle><CardDescription className="mt-1"><span className="mr-1 inline-block size-2 rounded-full bg-emerald-500" />En operación desde {timeFormatter.format(new Date(currentOpenShift.startedAt))}</CardDescription></div><Badge variant="secondary">{formatDuration(currentOpenShift.startedAt, null, now)}</Badge></CardHeader><CardContent className="grid gap-3 sm:grid-cols-3"><div className="rounded-lg border border-border/70 bg-background/70 p-4"><p className="text-xs uppercase tracking-wider text-muted-foreground">Informes al inicio</p><p className="mt-2 text-2xl font-semibold">{currentOpenShift.reportsAtStart}</p></div><div className="rounded-lg border border-border/70 bg-background/70 p-4"><p className="text-xs uppercase tracking-wider text-muted-foreground">Informes actuales</p><p className="mt-2 text-2xl font-semibold">{activeReports}</p></div><div className="rounded-lg border border-border/70 bg-background/70 p-4"><p className="text-xs uppercase tracking-wider text-muted-foreground">Generados durante el turno</p><p className="mt-2 text-2xl font-semibold text-emerald-600">+{currentOpenShift.generatedReports}</p></div></CardContent></Card> : null}
