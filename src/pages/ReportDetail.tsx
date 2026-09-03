@@ -411,34 +411,34 @@ export default function ReportDetail() {
               <CardTitle className="text-xl font-black tracking-tight">Información del Asegurado</CardTitle>
             </CardHeader>
             <CardContent className="grid gap-x-6 gap-y-4 sm:grid-cols-2 text-sm">
-              <div className="space-y-1">
+              <div className="space-y-1 rounded-xl border border-slate-200/80 bg-white/70 p-3 shadow-sm dark:border-slate-700/70 dark:bg-slate-900/30">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Nombre</p>
                 <p className="text-base font-black tracking-tight text-foreground">{report.insured_name}</p>
               </div>
 
-              <div className="space-y-1">
+              <div className="space-y-1 rounded-xl border border-slate-200/80 bg-white/70 p-3 shadow-sm dark:border-slate-700/70 dark:bg-slate-900/30">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Placa</p>
                 <p className="text-base font-black tracking-tight text-foreground">{report.plate}</p>
               </div>
 
-              <div className="space-y-1">
+              <div className="space-y-1 rounded-xl border border-slate-200/80 bg-white/70 p-3 shadow-sm dark:border-slate-700/70 dark:bg-slate-900/30">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Póliza</p>
                 <p className="text-base font-medium text-foreground">{report.policy || '—'}</p>
               </div>
 
-              <div className="space-y-1">
+              <div className="space-y-1 rounded-xl border border-slate-200/80 bg-white/70 p-3 shadow-sm dark:border-slate-700/70 dark:bg-slate-900/30">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Servicio</p>
                 <div className="inline-flex items-center rounded-full border border-slate-300 bg-slate-100/80 px-2.5 py-1 text-xs font-medium text-foreground">
                   {report.service_type}
                 </div>
               </div>
 
-              <div className="space-y-1">
+              <div className="space-y-1 rounded-xl border border-slate-200/80 bg-white/70 p-3 shadow-sm dark:border-slate-700/70 dark:bg-slate-900/30">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Estado</p>
                 <p className="text-base font-medium text-foreground">{report.status}</p>
               </div>
 
-              <div className="space-y-1">
+              <div className="space-y-1 rounded-xl border border-slate-200/80 bg-white/70 p-3 shadow-sm dark:border-slate-700/70 dark:bg-slate-900/30">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Mes</p>
                 <p className="text-base font-medium text-foreground">{report.month} {report.year}</p>
               </div>
@@ -450,22 +450,22 @@ export default function ReportDetail() {
               <CardTitle className="text-xl font-black tracking-tight">Datos del Vehículo</CardTitle>
             </CardHeader>
             <CardContent className="grid gap-x-6 gap-y-4 sm:grid-cols-2 text-sm">
-              <div className="space-y-1">
+              <div className="space-y-1 rounded-xl border border-violet-200/80 bg-white/70 p-3 shadow-sm dark:border-violet-900/60 dark:bg-slate-900/30">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Marca</p>
                 <p className="text-base font-black tracking-tight text-foreground">{report.brand || '—'}</p>
               </div>
 
-              <div className="space-y-1">
+              <div className="space-y-1 rounded-xl border border-violet-200/80 bg-white/70 p-3 shadow-sm dark:border-violet-900/60 dark:bg-slate-900/30">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Modelo</p>
                 <p className="text-base font-black tracking-tight text-foreground">{report.model || '—'}</p>
               </div>
 
-              <div className="space-y-1">
+              <div className="space-y-1 rounded-xl border border-violet-200/80 bg-white/70 p-3 shadow-sm dark:border-violet-900/60 dark:bg-slate-900/30">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Color</p>
                 <p className="text-base font-medium text-foreground">{report.color || '—'}</p>
               </div>
 
-              <div className="space-y-1">
+              <div className="space-y-1 rounded-xl border border-violet-200/80 bg-white/70 p-3 shadow-sm dark:border-violet-900/60 dark:bg-slate-900/30">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Año</p>
                 <p className="text-base font-medium text-foreground">{report.year_vehicle || '—'}</p>
               </div>
@@ -505,12 +505,12 @@ export default function ReportDetail() {
               <CardTitle className="text-xl font-black tracking-tight">Detalles</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4 text-sm">
-              <div className="space-y-1 border-b border-slate-200 pb-3">
+              <div className="space-y-1 rounded-xl border border-sky-200/80 bg-white/70 p-3 shadow-sm dark:border-sky-900/60 dark:bg-slate-900/30">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Periodo</p>
                 <p className="text-base font-medium text-foreground">{report.month} {report.year}</p>
               </div>
 
-              <div className="space-y-1 border-b border-slate-200 pb-3">
+              <div className="space-y-1 rounded-xl border border-sky-200/80 bg-white/70 p-3 shadow-sm dark:border-sky-900/60 dark:bg-slate-900/30">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Creado por</p>
                 <p className="text-base font-medium text-foreground">{report.created_by_name || report.created_by_email || '—'}</p>
                 {report.created_by_email ? (
@@ -518,7 +518,7 @@ export default function ReportDetail() {
                 ) : null}
               </div>
 
-              <div className="space-y-1">
+              <div className="space-y-1 rounded-xl border border-sky-200/80 bg-white/70 p-3 shadow-sm dark:border-sky-900/60 dark:bg-slate-900/30">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Fecha</p>
                 <p className="text-base font-medium text-foreground">{formatDateTimeWithMeridiem(report.created_at)}</p>
               </div>
