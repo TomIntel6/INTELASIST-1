@@ -20,7 +20,7 @@ import {
   Info,
   ArrowUpRight,
 } from 'lucide-react'
-import { Area, AreaChart, CartesianGrid, Pie, PieChart, ResponsiveContainer, Tooltip, Cell } from 'recharts'
+import { Area, AreaChart, CartesianGrid, Pie, PieChart, ResponsiveContainer, Tooltip, Cell, XAxis, YAxis } from 'recharts'
 
 const PANAMA_TIME_ZONE = 'America/Panama'
 
@@ -348,7 +348,9 @@ export default function Dashboard() {
   const deltaInformativo = previousDayCount === 0 ? 100 : Math.round(((totalInformativo - previousDayStatusCounts.informativo) / Math.max(previousDayStatusCounts.informativo, 1)) * 100)
 
   const dailySeries = React.useMemo(() => {
-    const seriesMap = new Map<string, number>()
+    const todayKey = getPanamaDateKey(currentDay)
+    const dayKeys = Array.from({ length: 14 }, (_, index) => shiftDateKey(todayKey, -(13 - index)))
+    const seriesMap = new Map(dayKeys.map(day => [day, 0]))
 
     reports.forEach(report => {
       if (!hasValidReportMeta(report)) {
@@ -361,19 +363,19 @@ export default function Dashboard() {
       }
 
       const key = getPanamaDateKey(created)
-      seriesMap.set(key, (seriesMap.get(key) ?? 0) + 1)
+      if (seriesMap.has(key)) {
+        seriesMap.set(key, (seriesMap.get(key) ?? 0) + 1)
+      }
     })
 
-    const ordered = Array.from(seriesMap.entries()).sort(([a], [b]) => a.localeCompare(b))
-    const lastPoints = ordered.slice(-14)
-
-    return lastPoints.map(([key, value]) => ({
+    return dayKeys.map(key => ({
       date: key,
-      reports: value,
+      day: key.slice(8, 10),
+      reports: seriesMap.get(key) ?? 0,
     }))
-  }, [reports])
+  }, [reports, currentDay])
 
-  const chartSeries = dailySeries.length > 0 ? dailySeries : [{ date: formatApiDate(currentDay), reports: 0 }]
+  const chartSeries = dailySeries
 
   const recentSevenDays = React.useMemo(() => {
     const todayKey = getPanamaDateKey(currentDay)
@@ -491,7 +493,7 @@ export default function Dashboard() {
                   </div>
                   <span className="inline-flex items-center gap-1 rounded-full bg-indigo-500/10 px-2.5 py-1 text-[11px] font-semibold text-indigo-600 dark:text-indigo-300">
                     <ArrowUpRight className="size-3.5" />
-                    {dashboardReady && dailySeries.length > 0 ? dailySeries[dailySeries.length - 1].reports : 0} hoy
+                    {dashboardReady ? dailySeries[dailySeries.length - 1].reports : 0} hoy
                   </span>
                 </div>
               </CardHeader>
@@ -507,6 +509,20 @@ export default function Dashboard() {
                         </linearGradient>
                       </defs>
                       <CartesianGrid vertical={false} stroke="rgba(148,163,184,0.18)" strokeDasharray="4 4" />
+                      <XAxis
+                        dataKey="day"
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fontSize: 11, fill: '#64748b' }}
+                        dy={8}
+                      />
+                      <YAxis
+                        allowDecimals={false}
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fontSize: 11, fill: '#64748b' }}
+                        width={28}
+                      />
                       <Tooltip
                         cursor={{ stroke: '#6366f1', strokeWidth: 1, strokeDasharray: '4 4' }}
                         contentStyle={{

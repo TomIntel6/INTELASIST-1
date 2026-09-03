@@ -2500,7 +2500,7 @@ app.patch('/reports/:id', async (req, res) => {
         continue
       }
 
-      values.push(value)
+      values.push(key === 'evidence_urls' && value !== null ? JSON.stringify(value) : value)
       setClauses.push(`${key} = $${values.length}`)
     }
 
