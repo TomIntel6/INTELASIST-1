@@ -29,6 +29,29 @@ export interface ShiftReport {
   created_at: string
 }
 
+function normalizeShift(raw: Partial<Shift> & Record<string, unknown>): Shift {
+  const startedAt = raw.startedAt ?? raw.started_at ?? raw.startTime ?? raw.start_time
+  const endedAt = raw.endedAt ?? raw.ended_at ?? raw.endTime ?? raw.end_time ?? null
+
+  return {
+    id: String(raw.id ?? ''),
+    supervisorId: String(raw.supervisorId ?? raw.supervisor_id ?? ''),
+    supervisorName: String(raw.supervisorName ?? raw.supervisor_name ?? raw.supervisorEmail ?? raw.supervisor_email ?? 'Supervisor'),
+    supervisorEmail: String(raw.supervisorEmail ?? raw.supervisor_email ?? ''),
+    status: raw.status === 'closed' ? 'closed' : 'open',
+    startedAt: typeof startedAt === 'string' && startedAt ? startedAt : new Date(0).toISOString(),
+    endedAt: typeof endedAt === 'string' && endedAt ? endedAt : null,
+    reportCount: Number(raw.reportCount ?? raw.report_count ?? 0),
+    reportsAtStart: Number(raw.reportsAtStart ?? raw.started_reports_count ?? 0),
+    reportsAtClose: raw.reportsAtClose == null && raw.closed_reports_count == null
+      ? null
+      : Number(raw.reportsAtClose ?? raw.closed_reports_count),
+    generatedReports: Number(raw.generatedReports ?? 0),
+    closingObservation: (raw.closingObservation ?? raw.closing_observation ?? null) as string | null,
+    categoryCounts: (raw.categoryCounts ?? raw.category_counts ?? {}) as Record<string, number>,
+  }
+}
+
 const API_BASE = getDefaultApiBase()
 
 async function request<T>(path: string, init?: RequestInit, identity?: { id?: string; email?: string; name?: string }): Promise<T> {
@@ -74,17 +97,19 @@ function getIdentity(user?: { id?: string; email?: string; user_metadata?: { ful
 
 export async function listShifts(user?: { id?: string; email?: string; user_metadata?: { full_name?: string } } | null): Promise<Shift[]> {
   const payload = await request<{ shifts: Shift[] }>('/shifts', undefined, getIdentity(user))
-  return payload.shifts
+  return (Array.isArray(payload.shifts) ? payload.shifts : [])
+    .map(shift => normalizeShift(shift as Partial<Shift> & Record<string, unknown>))
+    .filter(shift => shift.id)
 }
 
 export async function startShift(user?: { id?: string; email?: string; user_metadata?: { full_name?: string } } | null): Promise<Shift> {
   const payload = await request<{ shift: Shift }>('/shifts', { method: 'POST', body: '{}' }, getIdentity(user))
-  return payload.shift
+  return normalizeShift(payload.shift as Partial<Shift> & Record<string, unknown>)
 }
 
 export async function closeShift(id: string, user?: { id?: string; email?: string; user_metadata?: { full_name?: string } } | null, observation = ''): Promise<Shift> {
   const payload = await request<{ shift: Shift }>(`/shifts/${encodeURIComponent(id)}/close`, { method: 'PATCH', body: JSON.stringify({ observation }) }, getIdentity(user))
-  return payload.shift
+  return normalizeShift(payload.shift as Partial<Shift> & Record<string, unknown>)
 }
 
 export async function deleteClosedShift(id: string, user?: { id?: string; email?: string; user_metadata?: { full_name?: string } } | null): Promise<void> {
@@ -92,5 +117,9 @@ export async function deleteClosedShift(id: string, user?: { id?: string; email?
 }
 
 export async function getShiftDetail(id: string, user?: { id?: string; email?: string; user_metadata?: { full_name?: string } } | null): Promise<{ shift: Shift; reports: ShiftReport[] }> {
-  return request<{ shift: Shift; reports: ShiftReport[] }>(`/shifts/${encodeURIComponent(id)}`, undefined, getIdentity(user))
+  const payload = await request<{ shift: Shift; reports: ShiftReport[] }>(`/shifts/${encodeURIComponent(id)}`, undefined, getIdentity(user))
+  return {
+    shift: normalizeShift(payload.shift as Partial<Shift> & Record<string, unknown>),
+    reports: Array.isArray(payload.reports) ? payload.reports : [],
+  }
 }

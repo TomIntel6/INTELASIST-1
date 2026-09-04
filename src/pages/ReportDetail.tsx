@@ -242,7 +242,7 @@ export default function ReportDetail() {
     const statusToSend = isLocked ? report!.status : newStatus
 
     try {
-      await addReportUpdate(id!, {
+      const createdUpdate = await addReportUpdate(id!, {
         status: statusToSend,
         comment: newComment,
         added_by: user?.id ?? null,
@@ -259,7 +259,10 @@ export default function ReportDetail() {
         )
       }
       
-      await AuditService.logUpdateAdded(id!, id!, { comment: newComment })
+      await AuditService.logUpdateAdded(id!, createdUpdate.id, {
+        status: statusToSend,
+        comment: newComment,
+      })
 
       setNewComment('')
       await fetchData()
@@ -634,6 +637,30 @@ export default function ReportDetail() {
           </CardContent>
         </Card>
       ) : null}
+
+      <Card className="rounded-[1.5rem] border border-slate-200">
+        <CardHeader>
+          <CardTitle className="text-xl font-black tracking-tight">Actualizaciones del informe</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {updates.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No hay actualizaciones para este informe.</p>
+          ) : (
+            updates.map(update => (
+              <div key={update.id} className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm">
+                <div className="flex items-center justify-between gap-3">
+                  <Badge className={STATUS_BADGE[update.status] ?? ''}>{update.status}</Badge>
+                  <TimeAgo date={update.created_at} />
+                </div>
+                <p className="mt-2 whitespace-pre-line text-sm text-foreground">{update.comment}</p>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  {update.added_by_name || update.added_by_email || 'Usuario'}
+                </p>
+              </div>
+            ))
+          )}
+        </CardContent>
+      </Card>
 
       <Dialog open={showImageModal} onOpenChange={open => {
         setShowImageModal(open)
