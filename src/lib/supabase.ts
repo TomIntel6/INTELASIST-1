@@ -591,6 +591,8 @@ export async function addReportUpdate(reportId: string, payload: Omit<ReportUpda
 
   const update = normalizeUpdate(response.update as Record<string, unknown>)
 
+  // El detalle y la lista pueden estar abiertos en vistas distintas.
+  reportsForMonthCache.clear()
   return update
 }
 
