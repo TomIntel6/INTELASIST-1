@@ -138,7 +138,10 @@ export default function AppLayout() {
               </span>
               <div className="leading-tight">
                 <p className="app-greeting-name">Buenos días, {displayName}</p>
-                <p className="app-greeting-subtitle">Centro de Inteligencia Operacional</p>
+                <p className="app-greeting-subtitle app-brand-tagline">
+                  <span>FEDPA ASISTENCIA</span>
+                  <span>100% panameña</span>
+                </p>
                 <p className="app-greeting-date">{formatHeaderDate()}</p>
               </div>
             </div>
