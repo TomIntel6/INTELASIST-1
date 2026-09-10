@@ -109,6 +109,15 @@ export default function AppLayout() {
     await updateCurrentUserAvatar(avatar)
   }
 
+  function getHeaderGreeting() {
+    const hour = new Date().getHours()
+
+    if (hour < 5) return 'Buenas noches'
+    if (hour < 12) return 'Buenos días'
+    if (hour < 19) return 'Buenas tardes'
+    return 'Buenas noches'
+  }
+
   function formatHeaderDate() {
     try {
       const now = new Date()
@@ -137,7 +146,7 @@ export default function AppLayout() {
                 IA
               </span>
               <div className="leading-tight">
-                <p className="app-greeting-name">Buenos días, {displayName}</p>
+                <p className="app-greeting-name">{getHeaderGreeting()}, {displayName}</p>
                 <p className="app-greeting-subtitle app-brand-tagline">
                   <span>FEDPA ASISTENCIA</span>
                   <span>100% panameña</span>
