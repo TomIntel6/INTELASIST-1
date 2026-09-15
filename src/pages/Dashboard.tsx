@@ -76,16 +76,25 @@ const ACCENTS: Record<AccentKey, { bar: string; chipBg: string; chipFg: string; 
 
 function AnimatedNumber({ value }: { value: number }) {
   const [displayValue, setDisplayValue] = React.useState(0)
+  const displayValueRef = React.useRef(0)
 
   React.useEffect(() => {
-    const animationDuration = 900
+    const animationDuration = 650
+    const startValue = value > 0
+      ? Math.min(Math.max(displayValueRef.current, 1), value)
+      : 0
     const startedAt = performance.now()
     let frameId = 0
+
+    displayValueRef.current = startValue
+    setDisplayValue(startValue)
 
     const animate = (now: number) => {
       const progress = Math.min((now - startedAt) / animationDuration, 1)
       const easedProgress = 1 - Math.pow(1 - progress, 3)
-      setDisplayValue(Math.round(value * easedProgress))
+      const nextValue = Math.round(startValue + (value - startValue) * easedProgress)
+      displayValueRef.current = nextValue
+      setDisplayValue(nextValue)
 
       if (progress < 1) {
         frameId = window.requestAnimationFrame(animate)
