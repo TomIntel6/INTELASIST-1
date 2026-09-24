@@ -100,14 +100,14 @@
   --chart-3: oklch(0.398 0.07 227.392);
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(1 0 0);
-  --sidebar-foreground: oklch(0.18 0.015 90);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.65 0.03 250);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(0.88 0.02 95);
-  --sidebar-ring: oklch(0.58 0.02 220);
+  --sidebar: #0b0f14;
+  --sidebar-foreground: #f5f7fa;
+  --sidebar-primary: #22d3ee;
+  --sidebar-primary-foreground: #071014;
+  --sidebar-accent: #1d2732;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: rgba(255,255,255,0.09);
+  --sidebar-ring: #22d3ee;
 
   /* Identidad de marca "IA" (Inteligencia Asistida): cian → índigo → violeta */
   --brand-1: #22d3ee;
@@ -146,14 +146,14 @@
   --chart-3: #A1B8D7;
   --chart-4: #6A8BC7;
   --chart-5: #5E7AC0;
-  --sidebar: #F6F9FD;
-  --sidebar-foreground: #21282E;
-  --sidebar-primary: #1F4ED8;
-  --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: #5D7EDB;
-  --sidebar-accent-foreground: #FFFFFF;
-  --sidebar-border: #D8E1EC;
-  --sidebar-ring: #9BB2E7;
+  --sidebar: #0b0f14;
+  --sidebar-foreground: #f5f7fa;
+  --sidebar-primary: #22d3ee;
+  --sidebar-primary-foreground: #071014;
+  --sidebar-accent: #1d2732;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: rgba(255,255,255,0.09);
+  --sidebar-ring: #22d3ee;
   --brand-1: #1F6AE5;
   --brand-2: #1F4ED8;
   --brand-3: #6B8ED6;
@@ -301,9 +301,17 @@
 
   /* Sidebar: estilo premium y barra activa fina azul */
   [data-slot="sidebar"] {
-    background: color-mix(in srgb, var(--sidebar) 96%, white 4%);
-    border-right: 0;
-    padding: 0.5rem 0.6rem;
+    background:
+      radial-gradient(circle at 12% 0%, rgba(34,211,238,0.11), transparent 30%),
+      linear-gradient(180deg, #0b0f14 0%, #101720 100%);
+    border-right: 1px solid rgba(255,255,255,0.08);
+    padding: 0.65rem 0.6rem;
+    color: var(--sidebar-foreground);
+    box-shadow: 18px 0 50px -36px rgba(0,0,0,0.75);
+  }
+
+  [data-slot="sidebar"] [data-slot="sidebar-group-label"] {
+    color: rgba(226,232,240,0.48);
   }
 
   [data-slot="sidebar-menu-button"] {
@@ -314,10 +322,19 @@
   }
 
   [data-slot="sidebar-menu-button"][data-active="true"] {
-    box-shadow: inset 4px 0 0 var(--brand-2), 0 8px 20px -14px rgba(15,23,42,0.06);
-    background: color-mix(in srgb, var(--primary) 8%, transparent);
-    color: var(--foreground);
+    box-shadow: inset 3px 0 0 #22d3ee, 0 12px 28px -18px rgba(34,211,238,0.65);
+    background: linear-gradient(90deg, rgba(34,211,238,0.18), rgba(34,211,238,0.05));
+    color: #ffffff;
     font-weight: 600;
+  }
+
+  [data-slot="sidebar-menu-button"] {
+    color: rgba(226,232,240,0.68);
+  }
+
+  [data-slot="sidebar-menu-button"]:hover {
+    background: rgba(255,255,255,0.08);
+    color: #ffffff;
   }
 
   /* Metrics: números grandes y respiración */
@@ -792,6 +809,14 @@
     box-shadow:
       0 8px 20px -8px color-mix(in srgb, var(--brand-2) 65%, transparent),
       inset 0 0 0 1px color-mix(in srgb, #fff 22%, transparent);
+  }
+
+  .sidebar-brand-mark {
+    background: #f8fafc;
+    box-shadow:
+      0 0 0 1px rgba(255,255,255,0.35),
+      0 0 24px rgba(34,211,238,0.5),
+      0 16px 34px -14px rgba(0,0,0,0.85);
   }
 
   /* Superficie de cristal (glassmorphism) refinada */
