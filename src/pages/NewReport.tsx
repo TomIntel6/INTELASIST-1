@@ -897,16 +897,20 @@ const [form, setForm] = React.useState<NewReportForm>({
                 </Select>
               )}
             </div>
-            {isMedicalReport && form.document_type === 'Otro' && (
+            {isMedicalReport && (
               <div className="space-y-1.5">
-                <Label htmlFor="document_other">Especificar documento <span className="text-destructive">*</span></Label>
+                <Label htmlFor="document_other">
+                  Información del documento
+                  {form.document_type === 'Otro' ? <span className="text-destructive"> *</span> : null}
+                </Label>
                 <Input
                   id="document_other"
-                  required
+                  disabled={!form.document_type}
+                  required={form.document_type === 'Otro'}
                   value={form.document_other}
                   onChange={e => set('document_other', e.target.value)}
-                  placeholder="Indica el documento"
-                  className="bg-muted/50 border-border/70"
+                  placeholder={form.document_type ? 'Escribe la información del documento' : 'Selecciona un documento primero'}
+                  className="bg-muted/50 border-border/70 disabled:cursor-not-allowed disabled:opacity-60"
                 />
               </div>
             )}
