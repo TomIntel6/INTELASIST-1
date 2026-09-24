@@ -656,6 +656,8 @@ async function ensureReportsTable() {
     CREATE TABLE IF NOT EXISTS reports (
       id TEXT PRIMARY KEY,
       report_category TEXT NOT NULL DEFAULT 'Asistencia Vial',
+      document_type TEXT,
+      document_other TEXT,
       month TEXT NOT NULL,
       year INTEGER NOT NULL,
       insured_name TEXT NOT NULL,
@@ -684,6 +686,16 @@ async function ensureReportsTable() {
   await pool.query(`
     ALTER TABLE reports
     ADD COLUMN IF NOT EXISTS report_category TEXT NOT NULL DEFAULT 'Asistencia Vial'
+  `)
+
+  await pool.query(`
+    ALTER TABLE reports
+    ADD COLUMN IF NOT EXISTS document_type TEXT
+  `)
+
+  await pool.query(`
+    ALTER TABLE reports
+    ADD COLUMN IF NOT EXISTS document_other TEXT
   `)
 
   await pool.query(`
@@ -1133,7 +1145,7 @@ async function ensureUserActivityLogTable() {
 
 // Columnas que SI usa la vista de lista (ReportsList): NO incluye evidence_* (solo el detalle las usa).
 const REPORTS_LIST_COLUMNS = `
-  id, report_category, month, year, insured_name, plate, policy, service_type, coverage,
+  id, report_category, document_type, document_other, month, year, insured_name, plate, policy, service_type, coverage,
   brand, model, color, year_vehicle, status, observation_comment,
   created_by, created_by_name, created_by_email, created_at, updated_at
 `
@@ -2271,6 +2283,8 @@ function normalizeReportPayload(payload) {
     report_category: ['Asistencia Vial', 'Servicios Médicos', 'Asistencia en el Hogar'].includes(payload.report_category)
       ? payload.report_category
       : 'Asistencia Vial',
+    document_type: ['Cedula', 'Pasaporte', 'Otro'].includes(payload.document_type) ? payload.document_type : null,
+    document_other: String(payload.document_other || '').trim() || null,
     month,
     year,
     insured_name: String(payload.insured_name || ''),
@@ -2373,14 +2387,16 @@ app.post('/reports', async (req, res) => {
 
     const result = await pool.query(`
       INSERT INTO reports (
-        id, report_category, month, year, insured_name, plate, policy, service_type, coverage, brand, model, color,
+        id, report_category, document_type, document_other, month, year, insured_name, plate, policy, service_type, coverage, brand, model, color,
         year_vehicle, status, observation_comment, evidence_url, evidence_filename, evidence_path, evidence_urls, created_by, created_by_name, created_by_email,
         created_at, updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26)
       RETURNING *
     `, [
       reportId,
       payload.report_category,
+      payload.document_type,
+      payload.document_other,
       payload.month,
       Number(payload.year),
       payload.insured_name,
@@ -2449,6 +2465,8 @@ app.post('/reports/bulk', async (req, res) => {
       values.push(
         reportId,
         payload.report_category,
+        payload.document_type,
+        payload.document_other,
         payload.month,
         payload.year,
         payload.insured_name,
@@ -2473,14 +2491,14 @@ app.post('/reports/bulk', async (req, res) => {
         createdAt
       )
 
-      const rowPlaceholders = Array.from({ length: 24 }, (_, offset) => `$${index + offset}`)
+      const rowPlaceholders = Array.from({ length: 26 }, (_, offset) => `$${index + offset}`)
       placeholders.push(`(${rowPlaceholders.join(', ')})`)
-      index += 24
+      index += 26
     }
 
     const result = await pool.query(`
       INSERT INTO reports (
-        id, report_category, month, year, insured_name, plate, policy, service_type, coverage, brand, model, color,
+        id, report_category, document_type, document_other, month, year, insured_name, plate, policy, service_type, coverage, brand, model, color,
         year_vehicle, status, observation_comment, evidence_url, evidence_filename, evidence_path, evidence_urls, created_by, created_by_name, created_by_email,
         created_at, updated_at
       ) VALUES ${placeholders.join(', ')}
