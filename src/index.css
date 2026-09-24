@@ -339,7 +339,8 @@
   [data-slot="sidebar-menu-button"][data-active="true"]::after {
     content: '';
     position: absolute;
-    left: 0.8rem;
+    left: 0.3rem;
+    right: auto;
     top: 50%;
     width: 0.42rem;
     height: 0.42rem;
@@ -347,6 +348,7 @@
     background: #f4d3bf;
     box-shadow: 0 0 12px rgba(244,211,191,0.72);
     transform: translateY(-50%);
+    z-index: 2;
     animation: sidebar-active-glow 1.8s ease-in-out infinite;
   }
 
