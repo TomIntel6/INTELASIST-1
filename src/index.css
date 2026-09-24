@@ -400,10 +400,17 @@
 
   /* Encabezado: saludo y metadatos */
   .app-greeting-name {
-    font-size: 18px;
-    font-weight: 700;
+    font-size: 15px;
+    font-weight: 650;
     color: var(--foreground);
     margin: 0;
+    letter-spacing: 0.005em;
+  }
+
+  .app-header-monogram {
+    background: linear-gradient(145deg, #1e293b, #0f172a);
+    color: #f8fafc;
+    box-shadow: 0 8px 18px -10px rgba(15, 23, 42, 0.7), inset 0 0 0 1px rgba(255,255,255,0.18);
   }
 
   .app-greeting-subtitle {
@@ -864,11 +871,11 @@
 
   /* Topbar global con cristal */
   .app-header {
-    background: color-mix(in srgb, var(--card) 82%, transparent);
-    backdrop-filter: blur(14px) saturate(1.1);
-    -webkit-backdrop-filter: blur(14px) saturate(1.1);
-    border-bottom: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
-    box-shadow: 0 18px 44px -32px color-mix(in srgb, var(--foreground) 22%, transparent);
+    background: color-mix(in srgb, var(--card) 90%, transparent);
+    backdrop-filter: blur(16px) saturate(1.05);
+    -webkit-backdrop-filter: blur(16px) saturate(1.05);
+    border-bottom: 1px solid color-mix(in srgb, var(--border) 58%, transparent);
+    box-shadow: 0 12px 32px -28px color-mix(in srgb, var(--foreground) 18%, transparent);
   }
 
   /* Elevación sutil al pasar el cursor */

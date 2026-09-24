@@ -121,40 +121,20 @@ export default function AppLayout() {
     return 'Buenas noches'
   }
 
-  function formatHeaderDate() {
-    try {
-      const now = new Date()
-      const parts = new Intl.DateTimeFormat('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).formatToParts(now)
-      const weekday = parts.find(p => p.type === 'weekday')?.value ?? ''
-      const day = parts.find(p => p.type === 'day')?.value ?? ''
-      const month = parts.find(p => p.type === 'month')?.value ?? ''
-      const year = parts.find(p => p.type === 'year')?.value ?? ''
-      const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
-      return `${cap(weekday)} ${day} ${cap(month)} ${year}`
-    } catch {
-      return new Date().toLocaleDateString('es-ES')
-    }
-  }
-
   return (
     <SidebarProvider>
       <AppSidebar />
       <SidebarInset>
-        <header className="app-header sticky top-0 z-30 flex h-18 shrink-0 items-center gap-3 px-4">
+        <header className="app-header sticky top-0 z-30 flex h-16 shrink-0 items-center gap-3 px-4">
           <SidebarTrigger className="-ml-1" />
           <Separator orientation="vertical" className="h-5" />
           <div className="flex flex-1 items-center justify-between gap-3">
-            <div className="flex items-center gap-4">
-              <span className="brand-monogram flex size-9 shrink-0 items-center justify-center rounded-xl text-sm font-bold tracking-tight">
+            <div className="flex items-center gap-3">
+              <span className="app-header-monogram flex size-8 shrink-0 items-center justify-center rounded-lg text-xs font-bold tracking-tight">
                 IA
               </span>
               <div className="leading-tight">
                 <p className="app-greeting-name">{getHeaderGreeting()}, {displayName}</p>
-                <p className="app-greeting-subtitle app-brand-tagline">
-                  <span>FEDPA ASISTENCIA</span>
-                  <span>100% panameña</span>
-                </p>
-                <p className="app-greeting-date">{formatHeaderDate()}</p>
               </div>
             </div>
 
