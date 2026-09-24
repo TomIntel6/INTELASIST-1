@@ -655,6 +655,7 @@ async function ensureReportsTable() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS reports (
       id TEXT PRIMARY KEY,
+      report_category TEXT NOT NULL DEFAULT 'Asistencia Vial',
       month TEXT NOT NULL,
       year INTEGER NOT NULL,
       insured_name TEXT NOT NULL,
@@ -678,6 +679,11 @@ async function ensureReportsTable() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
+  `)
+
+  await pool.query(`
+    ALTER TABLE reports
+    ADD COLUMN IF NOT EXISTS report_category TEXT NOT NULL DEFAULT 'Asistencia Vial'
   `)
 
   await pool.query(`
@@ -1127,7 +1133,7 @@ async function ensureUserActivityLogTable() {
 
 // Columnas que SI usa la vista de lista (ReportsList): NO incluye evidence_* (solo el detalle las usa).
 const REPORTS_LIST_COLUMNS = `
-  id, month, year, insured_name, plate, policy, service_type, coverage,
+  id, report_category, month, year, insured_name, plate, policy, service_type, coverage,
   brand, model, color, year_vehicle, status, observation_comment,
   created_by, created_by_name, created_by_email, created_at, updated_at
 `
@@ -1752,6 +1758,7 @@ app.get('/reports', async (req, res) => {
     const month = typeof req.query.month === 'string' ? req.query.month.trim() : ''
     const year = typeof req.query.year === 'string' && req.query.year.trim() ? Number(req.query.year) : null
     const search = typeof req.query.search === 'string' ? req.query.search.trim() : ''
+  const reportCategory = typeof req.query.reportCategory === 'string' ? req.query.reportCategory.trim() : ''
 
     console.log('[API] GET /reports request', { month, year, search, query: req.query })
 
@@ -1766,6 +1773,11 @@ app.get('/reports', async (req, res) => {
     if (year !== null && Number.isFinite(year)) {
       values.push(year)
       conditions.push(`year = $${values.length}`)
+    }
+
+    if (reportCategory) {
+      values.push(reportCategory)
+      conditions.push(`report_category = $${values.length}`)
     }
 
     // Búsqueda server-side sobre los MISMOS campos que filtra el frontend
@@ -2256,6 +2268,9 @@ function normalizeReportPayload(payload) {
   const year = Number.isFinite(Number(payload.year)) ? Number(payload.year) : now.getFullYear()
 
   return {
+    report_category: ['Asistencia Vial', 'Servicios Médicos', 'Asistencia en el Hogar'].includes(payload.report_category)
+      ? payload.report_category
+      : 'Asistencia Vial',
     month,
     year,
     insured_name: String(payload.insured_name || ''),
@@ -2358,13 +2373,14 @@ app.post('/reports', async (req, res) => {
 
     const result = await pool.query(`
       INSERT INTO reports (
-        id, month, year, insured_name, plate, policy, service_type, coverage, brand, model, color,
+        id, report_category, month, year, insured_name, plate, policy, service_type, coverage, brand, model, color,
         year_vehicle, status, observation_comment, evidence_url, evidence_filename, evidence_path, evidence_urls, created_by, created_by_name, created_by_email,
         created_at, updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)
       RETURNING *
     `, [
       reportId,
+      payload.report_category,
       payload.month,
       Number(payload.year),
       payload.insured_name,
@@ -2432,6 +2448,7 @@ app.post('/reports/bulk', async (req, res) => {
 
       values.push(
         reportId,
+        payload.report_category,
         payload.month,
         payload.year,
         payload.insured_name,
@@ -2456,14 +2473,14 @@ app.post('/reports/bulk', async (req, res) => {
         createdAt
       )
 
-      const rowPlaceholders = Array.from({ length: 23 }, (_, offset) => `$${index + offset}`)
+      const rowPlaceholders = Array.from({ length: 24 }, (_, offset) => `$${index + offset}`)
       placeholders.push(`(${rowPlaceholders.join(', ')})`)
-      index += 23
+      index += 24
     }
 
     const result = await pool.query(`
       INSERT INTO reports (
-        id, month, year, insured_name, plate, policy, service_type, coverage, brand, model, color,
+        id, report_category, month, year, insured_name, plate, policy, service_type, coverage, brand, model, color,
         year_vehicle, status, observation_comment, evidence_url, evidence_filename, evidence_path, evidence_urls, created_by, created_by_name, created_by_email,
         created_at, updated_at
       ) VALUES ${placeholders.join(', ')}

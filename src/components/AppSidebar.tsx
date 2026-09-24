@@ -32,7 +32,7 @@ import { UserAvatar } from '@/components/UserAvatar'
 import { normalizeAvatar } from '@/lib/avatar'
 import type { AvatarData } from '@/lib/avatar'
 import { toast } from 'sonner'
-import { LayoutDashboard, FileText, LogOut, FilePlus, Users, AlertCircle, Settings, Clock3 } from 'lucide-react'
+import { LayoutDashboard, FileText, LogOut, FilePlus, Users, AlertCircle, Settings, Clock3, HeartPulse, House } from 'lucide-react'
 
 const ONLINE_USER_FETCH_INTERVAL_MS = 10 * 60 * 1000
 const FAILED_ATTEMPTS_REFRESH_INTERVAL_MS = 10 * 60 * 1000
@@ -66,6 +66,8 @@ function areOnlineUsersEqual(a: Array<ReturnType<typeof getOnlineUsers>[number]>
 const navItems = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/informes', label: 'Informes', icon: FileText },
+  { to: '/servicios-medicos', label: 'Servicios Médicos', icon: HeartPulse },
+  { to: '/asistencia-hogar', label: 'Asistencia en el Hogar', icon: House },
   { to: '/usuarios', label: 'Usuarios', icon: Users },
   { to: '/turnos', label: 'Turnos', icon: Clock3 },
 ]
@@ -501,8 +503,8 @@ export default function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {navItems.map(({ to, label, icon: Icon }) => {
-                if ((to === '/informes' && !canViewReportsModule) ||
-                    (to === '/usuarios' && !canViewUsersModule) ||
+                if (((to === '/informes' || to === '/servicios-medicos' || to === '/asistencia-hogar') && !canViewReportsModule) ||
+                  (to === '/usuarios' && !canViewUsersModule) ||
                   (to === '/turnos' && !canViewShifts) ||
                     (to === '/security/alerts' && !canViewAlerts)) {
                   return null

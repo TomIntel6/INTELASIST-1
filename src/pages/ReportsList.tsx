@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Spinner } from '@/components/ui/spinner'
@@ -37,6 +37,8 @@ import {
   fetchReportCategoryStats,
   normalizeReportRecord,
   REPORTS_PAGE_SIZE,
+  REPORT_CATEGORIES,
+  type ReportCategory,
 } from '@/lib/supabase'
 import { useRealtimeReports } from '@/hooks/useRealtime'
 import type { RealtimeEvent } from '@/lib/realtime-service'
@@ -258,6 +260,7 @@ const EMPTY_STATS: ReportCategoryStats = { total: 0, categories: {} }
 
 export default function ReportsList() {
   const navigate = useNavigate()
+  const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
   const { user } = useAuth()
   const { hasPermission } = usePermissions()
@@ -273,6 +276,11 @@ export default function ReportsList() {
 
   const selectedMonth = searchParams.get('month') ?? MONTHS[currentMonthIdx]
   const selectedYear = parseInt(searchParams.get('year') ?? String(currentYear))
+  const reportCategory: ReportCategory = searchParams.get('category') === 'Servicios Médicos' || location.pathname === '/servicios-medicos'
+    ? 'Servicios Médicos'
+    : searchParams.get('category') === 'Asistencia en el Hogar' || location.pathname === '/asistencia-hogar'
+      ? 'Asistencia en el Hogar'
+      : 'Asistencia Vial'
 
   const [reports, setReports] = React.useState<Report[]>([])
   const [total, setTotal] = React.useState(0)
@@ -342,7 +350,7 @@ export default function ReportsList() {
   React.useEffect(() => {
     let cancelled = false
     setLoading(true)
-    loadReportsPage({ month: selectedMonth, year: selectedYear, page, pageSize, search: debouncedSearch })
+    loadReportsPage({ month: selectedMonth, year: selectedYear, page, pageSize, search: debouncedSearch, reportCategory })
       .then(res => {
         if (cancelled || !isMountedRef.current) return
         setReports(res.reports)
@@ -357,7 +365,7 @@ export default function ReportsList() {
         }
       })
     return () => { cancelled = true }
-  }, [selectedMonth, selectedYear, page, pageSize, debouncedSearch, reloadKey])
+  }, [selectedMonth, selectedYear, page, pageSize, debouncedSearch, reportCategory, reloadKey])
 
   // Tarjetas de estadísticas — endpoint INDEPENDIENTE, sobre todo el mes.
   React.useEffect(() => {
@@ -572,9 +580,9 @@ export default function ReportsList() {
             <div>
               <p className="mb-1.5 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                 <span className="brand-gradient-bg size-1.5 rounded-full" aria-hidden="true" />
-                Informes
+                {reportCategory}
               </p>
-              <h1 className="text-2xl font-bold tracking-tight text-foreground">Informes</h1>
+              <h1 className="text-2xl font-bold tracking-tight text-foreground">{reportCategory}</h1>
               <p className="mt-1 text-sm text-muted-foreground">
                 {total} informe{total !== 1 ? 's' : ''} en {selectedMonth} {selectedYear}
               </p>
@@ -596,7 +604,7 @@ export default function ReportsList() {
             {hasPermission(PERMISSIONS.REPORTS.CREATE as PermissionKey) && (
               <Button
                 size="sm"
-                onClick={() => navigate('/informes/nuevo')}
+                onClick={() => navigate(`/informes/nuevo?category=${encodeURIComponent(reportCategory)}`)}
                 className="gap-2 bg-destructive hover:bg-destructive/90 text-white"
               >
                 <FilePlus className="size-4" />
@@ -620,7 +628,7 @@ export default function ReportsList() {
         </div>
         <Select
           value={selectedMonth}
-          onValueChange={v => { setPage(1); setSearchParams({ month: v, year: String(selectedYear) }) }}
+          onValueChange={v => { setPage(1); setSearchParams({ month: v, year: String(selectedYear), category: reportCategory }) }}
         >
           <SelectTrigger className="w-40">
             <SelectValue />
@@ -633,7 +641,7 @@ export default function ReportsList() {
         </Select>
         <Select
           value={String(selectedYear)}
-          onValueChange={v => { setPage(1); setSearchParams({ month: selectedMonth, year: v }) }}
+          onValueChange={v => { setPage(1); setSearchParams({ month: selectedMonth, year: v, category: reportCategory }) }}
         >
           <SelectTrigger className="w-28">
             <SelectValue />
@@ -683,7 +691,7 @@ export default function ReportsList() {
                   variant="outline"
                   size="sm"
                   className="mt-4"
-                  onClick={() => navigate('/informes/nuevo')}
+                  onClick={() => navigate(`/informes/nuevo?category=${encodeURIComponent(reportCategory)}`)}
                 >
                   Crear informe
                 </Button>
