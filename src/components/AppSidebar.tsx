@@ -518,7 +518,7 @@ export default function AppSidebar() {
                         : location.pathname.startsWith(to)}
                       tooltip={label}
                       onClick={() => navigate(to)}
-                      className="group relative rounded-xl px-2.5 py-2.5 text-sm font-medium transition-all duration-200 hover:bg-accent/70 hover:text-foreground data-[active=true]:bg-gradient-to-r data-[active=true]:from-primary/12 data-[active=true]:to-primary/6 data-[active=true]:text-foreground data-[active=true]:shadow-[0_10px_30px_-18px_rgba(99,102,241,0.72)]"
+                      className="group relative rounded-md px-2.5 py-2.5 text-sm font-medium transition-all duration-200 hover:bg-white/5 hover:text-white data-[active=true]:bg-[#43271f] data-[active=true]:text-white data-[active=true]:shadow-none"
                     >
                       <Icon className="size-4 shrink-0 transition-transform duration-200 group-hover:scale-105" />
                       <span>{label}</span>
@@ -540,7 +540,7 @@ export default function AppSidebar() {
                 <SidebarMenuButton
                   tooltip="Nuevo Informe"
                   onClick={() => navigate('/informes/nuevo')}
-                  className="rounded-xl bg-gradient-to-r from-rose-500/12 to-rose-500/6 text-rose-600 font-semibold transition-all duration-200 hover:from-rose-500/18 hover:to-rose-500/10 hover:text-rose-600 hover:shadow-[0_12px_30px_-18px_rgba(244,63,94,0.7)]"
+                  className="rounded-md text-slate-300 font-semibold transition-all duration-200 hover:bg-white/5 hover:text-white"
                 >
                   <FilePlus className="size-4 transition-transform duration-200 group-hover:scale-105" />
                   <span>Nuevo Informe</span>
@@ -550,10 +550,10 @@ export default function AppSidebar() {
                 <SidebarMenuItem>
                   <button
                     onClick={() => setAlertsOpen(true)}
-                    className={`w-full rounded-xl px-2.5 py-2.5 font-medium transition-all duration-200 flex items-center gap-2 group ${
+                    className={`w-full rounded-md px-2.5 py-2.5 font-medium transition-all duration-200 flex items-center gap-2 group text-slate-300 hover:bg-white/5 hover:text-white ${
                       failedAttempts.length > 0
-                        ? 'bg-amber-500/10 text-amber-600 hover:bg-amber-500/15 hover:text-amber-700 hover:shadow-[0_12px_30px_-18px_rgba(217,119,6,0.65)]'
-                        : 'bg-slate-500/10 text-slate-600 hover:bg-slate-500/15 hover:text-slate-700 hover:shadow-[0_12px_30px_-18px_rgba(71,85,105,0.6)]'
+                        ? 'bg-white/5'
+                        : 'bg-transparent'
                     }`}
                     title={failedAttempts.length > 0 ? `${failedAttempts.length} usuario(s) con intentos incompletos` : 'Sin alertas'}
                   >
@@ -579,7 +579,7 @@ export default function AppSidebar() {
                   <SidebarMenuButton
                     tooltip="Gestión de Permisos"
                     onClick={() => navigate('/admin/permisos')}
-                    className="rounded-xl bg-gradient-to-r from-violet-500/12 to-violet-500/5 text-violet-600 font-semibold transition-all duration-200 hover:from-violet-500/18 hover:to-violet-500/10 hover:text-violet-700 hover:shadow-[0_12px_30px_-18px_rgba(168,85,247,0.65)]"
+                    className="rounded-md text-slate-300 font-semibold transition-all duration-200 hover:bg-white/5 hover:text-white"
                   >
                     <Settings className="size-4 transition-transform duration-200 group-hover:scale-105" />
                     <span>Gestión de Permisos</span>
