@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { Outlet, useNavigate } from 'react-router-dom'
-import { AlertCircle, Bell, Mail, Phone, ShieldCheck, Sparkles, UserCircle2 } from 'lucide-react'
+import { AlertCircle, Bell, Clock3, Mail, Phone, ShieldCheck, Sparkles, UserCircle2 } from 'lucide-react'
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -30,6 +30,7 @@ export default function AppLayout() {
   const displayName = profileName || rawDisplayName
   const avatarData = React.useMemo(() => normalizeAvatar(user?.user_metadata?.avatar), [user])
   const userRoles = React.useMemo(() => getUserRoles(user), [user])
+  const canViewShifts = userRoles.some(role => ['Admin', 'Support', 'Gerente'].includes(role))
   const metadata = (user?.user_metadata ?? {}) as Record<string, unknown>
   const phoneNumber = typeof metadata.phone === 'string'
     ? metadata.phone
@@ -156,6 +157,18 @@ export default function AppLayout() {
             </div>
 
             <div className="flex items-center gap-2 lg:gap-3">
+              {canViewShifts ? (
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={() => navigate('/turnos')}
+                  className="rounded-xl border border-border/70 bg-background/70 text-muted-foreground shadow-sm transition-all hover:scale-[1.02] hover:bg-accent hover:text-foreground"
+                  aria-label="Turnos"
+                  title="Turnos"
+                >
+                  <Clock3 className="size-4" />
+                </Button>
+              ) : null}
               <div className="relative">
                 <Button
                   variant="ghost"

@@ -32,7 +32,7 @@ import { UserAvatar } from '@/components/UserAvatar'
 import { normalizeAvatar } from '@/lib/avatar'
 import type { AvatarData } from '@/lib/avatar'
 import { toast } from 'sonner'
-import { LayoutDashboard, FileText, LogOut, FilePlus, Users, AlertCircle, Settings, Clock3, HeartPulse, House } from 'lucide-react'
+import { LayoutDashboard, FileText, LogOut, FilePlus, AlertCircle, Settings, HeartPulse, House } from 'lucide-react'
 
 const ONLINE_USER_FETCH_INTERVAL_MS = 10 * 60 * 1000
 const FAILED_ATTEMPTS_REFRESH_INTERVAL_MS = 10 * 60 * 1000
@@ -68,8 +68,6 @@ const navItems = [
   { to: '/informes', label: 'Informes', icon: FileText },
   { to: '/servicios-medicos', label: 'Servicios Médicos', icon: HeartPulse },
   { to: '/asistencia-hogar', label: 'Asistencia en el Hogar', icon: House },
-  { to: '/usuarios', label: 'Usuarios', icon: Users },
-  { to: '/turnos', label: 'Turnos', icon: Clock3 },
 ]
 
 export default function AppSidebar() {
@@ -84,15 +82,10 @@ export default function AppSidebar() {
   const avatarData = React.useMemo(() => normalizeAvatar(user?.user_metadata?.avatar), [user])
   const userRoles = React.useMemo(() => getUserRoles(user), [user])
   const canViewReportsModule = React.useMemo(() => hasModuleAccess('reports'), [hasModuleAccess])
-  const canViewUsersModule = React.useMemo(
-    () => hasModuleAccess('users') || hasPermission(PERMISSIONS.USERS.VIEW),
-    [hasModuleAccess, hasPermission]
-  )
   const canViewAdminModule = React.useMemo(
     () => hasPermission(PERMISSIONS.SYSTEM.MANAGE_PERMISSIONS),
     [hasPermission]
   )
-  const canViewShifts = userRoles.some(role => ['Admin', 'Support', 'Gerente'].includes(role))
   const rawSystemPermissions = React.useMemo<Record<string, boolean>>(
     () => permissions?.permissions ?? {},
     [permissions]
@@ -504,8 +497,6 @@ export default function AppSidebar() {
             <SidebarMenu>
               {navItems.map(({ to, label, icon: Icon }) => {
                 if (((to === '/informes' || to === '/servicios-medicos' || to === '/asistencia-hogar') && !canViewReportsModule) ||
-                  (to === '/usuarios' && !canViewUsersModule) ||
-                  (to === '/turnos' && !canViewShifts) ||
                     (to === '/security/alerts' && !canViewAlerts)) {
                   return null
                 }
