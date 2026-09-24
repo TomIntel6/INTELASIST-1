@@ -358,7 +358,8 @@ export default function AppSidebar() {
                             avatar={user.avatar}
                             name={user.fullName || user.email || 'U'}
                             size={24}
-                            className="border border-white/40"
+                            characterWithBackground={false}
+                            className="border border-white/70 bg-white shadow-sm"
                           />
                           <span className="absolute -bottom-0.5 -right-0.5 inline-flex h-2 w-2 rounded-full border-1 border-sidebar bg-emerald-500" />
                         </div>
