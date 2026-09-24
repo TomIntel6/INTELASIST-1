@@ -57,6 +57,14 @@ function ProtectedContent() {
           element={canAccessReports ? <ReportsList /> : <Navigate to="/dashboard" replace />}
         />
         <Route
+          path="servicios-medicos"
+          element={canAccessReports ? <ReportsList /> : <Navigate to="/dashboard" replace />}
+        />
+        <Route
+          path="asistencia-hogar"
+          element={canAccessReports ? <ReportsList /> : <Navigate to="/dashboard" replace />}
+        />
+        <Route
           path="informes/nuevo"
           element={canAccessReports ? <NewReport /> : <Navigate to="/dashboard" replace />}
         />

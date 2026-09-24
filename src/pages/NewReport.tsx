@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -14,13 +14,13 @@ import {
 } from '@/components/ui/select'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Spinner } from '@/components/ui/spinner'
-import { SERVICE_TYPES, REPORT_STATUSES, MONTHS, type ReportStatus, type Report, createReport, updateReport, loadReportWithUpdates, uploadEvidenceFile } from '@/lib/supabase'
+import { SERVICE_TYPES, REPORT_STATUSES, MONTHS, REPORT_CATEGORIES, type ReportCategory, type ReportStatus, type Report, createReport, updateReport, loadReportWithUpdates, uploadEvidenceFile } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth'
 import { usePermissions } from '@/lib/permissions-context'
 import { AuditService } from '@/lib/audit-service'
 import type { PermissionKey } from '@/lib/permissions'
 import { PERMISSIONS } from '@/lib/permissions'
-import { ArrowLeft, Save, Upload, X, FileText, CalendarDays, User, Car, MessageSquare, ImageIcon } from 'lucide-react'
+import { ArrowLeft, Save, Upload, X, FileText, User, Car, MessageSquare, ImageIcon } from 'lucide-react'
 import { buildIncompleteReportSummary } from '@/lib/report-alerts'
 
 // El comentario se guarda con el prefijo "Motivo: ..." cuando el estado es
@@ -38,6 +38,7 @@ function splitObservationComment(comment: string): { reason: string | null; text
 export default function NewReport() {
   const mountedAtRef = React.useRef(performance.now())
   const navigate = useNavigate()
+    const [searchParams] = useSearchParams()
   const { id: editId } = useParams<{ id?: string }>()
   const isEditMode = Boolean(editId)
   const { user } = useAuth()
@@ -51,6 +52,11 @@ export default function NewReport() {
   const existingReportRef = React.useRef<Report | null>(null)
   const [error, setError] = React.useState<string | null>(null)
   const [periodDate, setPeriodDate] = React.useState(() => new Date())
+  const initialCategory = searchParams.get('category') === 'Servicios Médicos'
+    ? 'Servicios Médicos'
+    : searchParams.get('category') === 'Asistencia en el Hogar'
+      ? 'Asistencia en el Hogar'
+      : 'Asistencia Vial'
 
   const currentMonthIdx = periodDate.getMonth()
   const currentYear = periodDate.getFullYear()
@@ -60,6 +66,7 @@ export default function NewReport() {
   const VALIDATION_MOTIVOS = ['SOAT', 'SALDO MOROSO', 'RENOVACION NO PAGADA', 'BENEFICIO EN 24H', 'POLIZA CANCELADA', 'OTROS'] as const
 
 type NewReportForm = {
+    report_category: ReportCategory
   month: string
   year: number
   insured_name: string
@@ -77,6 +84,7 @@ type NewReportForm = {
 }
 
 const [form, setForm] = React.useState<NewReportForm>({
+      report_category: initialCategory,
     month: MONTHS[currentMonthIdx],
     year: currentYear,
     insured_name: '',
@@ -134,6 +142,7 @@ const [form, setForm] = React.useState<NewReportForm>({
       setForm({
         month: report.month,
         year: report.year,
+        report_category: report.report_category,
         insured_name: report.insured_name ?? '',
         plate: report.plate ?? '',
         policy: report.policy ?? '',
@@ -522,6 +531,7 @@ const [form, setForm] = React.useState<NewReportForm>({
       : observationComment
 
     const coreFields = {
+      report_category: form.report_category,
       month: form.month,
       year: form.year,
       insured_name: form.insured_name.trim(),
@@ -697,26 +707,6 @@ const [form, setForm] = React.useState<NewReportForm>({
         <Card className="rounded-xl border shadow-sm">
           <CardHeader className="pb-3">
             <div className="flex items-center gap-3">
-              <span className="flex size-10 items-center justify-center rounded-xl bg-sky-500/10 text-sky-600 ring-1 ring-sky-500/20 dark:text-sky-400" aria-hidden="true">
-                <CalendarDays className="size-5" />
-              </span>
-              <div>
-                <CardTitle className="text-sm font-semibold">Período</CardTitle>
-                <CardDescription className="text-xs">El período se toma automáticamente del mes y año actual.</CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="rounded-xl border border-border bg-muted px-4 py-3 text-sm">
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Mes y año del informe</p>
-              <p className="mt-1 text-base font-semibold tabular-nums text-foreground">{form.month} {form.year}</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="rounded-xl border shadow-sm">
-          <CardHeader className="pb-3">
-            <div className="flex items-center gap-3">
               <span className="flex size-10 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-600 ring-1 ring-indigo-500/20 dark:text-indigo-400" aria-hidden="true">
                 <User className="size-5" />
               </span>
@@ -727,6 +717,17 @@ const [form, setForm] = React.useState<NewReportForm>({
             </div>
           </CardHeader>
           <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div className="space-y-1.5 sm:col-span-2 lg:col-span-3">
+                          <Label>Tipo de informe <span className="text-destructive">*</span></Label>
+                          <Select value={form.report_category} onValueChange={v => set('report_category', v)}>
+                            <SelectTrigger className="bg-muted/50 border-border/70">
+                              <SelectValue placeholder="Seleccionar tipo de informe" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {REPORT_CATEGORIES.map(category => <SelectItem key={category} value={category}>{category}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
             <div className="space-y-1.5 sm:col-span-2 lg:col-span-1">
               <Label htmlFor="insured_name">Nombre del Asegurado <span className="text-destructive">*</span></Label>
               <Input

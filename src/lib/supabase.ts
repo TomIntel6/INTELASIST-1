@@ -70,8 +70,12 @@ export const MONTHS = [
   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
 ]
 
+export const REPORT_CATEGORIES = ['Asistencia Vial', 'Servicios Médicos', 'Asistencia en el Hogar'] as const
+export type ReportCategory = typeof REPORT_CATEGORIES[number]
+
 export interface Report {
   id: string
+  report_category: ReportCategory
   month: string
   year: number
   insured_name: string
@@ -178,6 +182,9 @@ function normalizeReport(raw: Record<string, unknown>): Report {
 
   return {
     id: String(raw.id ?? createId()),
+    report_category: REPORT_CATEGORIES.includes(raw.report_category as ReportCategory)
+      ? raw.report_category as ReportCategory
+      : 'Asistencia Vial',
     month: String(raw.month ?? ''),
     year: Number(raw.year ?? 0),
     insured_name: String(raw.insured_name ?? ''),
@@ -390,6 +397,7 @@ export async function loadReportsPage(params: {
   page: number
   pageSize?: number
   search?: string
+  reportCategory?: ReportCategory
 }): Promise<ReportsPage> {
   const { month, year, page } = params
   const pageSize = params.pageSize ?? REPORTS_PAGE_SIZE
@@ -403,6 +411,9 @@ export async function loadReportsPage(params: {
   })
   if (search) {
     qs.set('search', search)
+  }
+  if (params.reportCategory) {
+    qs.set('reportCategory', params.reportCategory)
   }
 
   try {
