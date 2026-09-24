@@ -63,6 +63,7 @@ export default function NewReport() {
 
   const COVERAGE_OPTIONS = ['No', 'KC', 'K1', 'K8', 'VA', 'FAB', 'FAP', 'FAV', 'FP', 'FAM', 'FAE', 'CB', 'CP', 'CV'] as const
   const MEDICAL_SERVICE_TYPES = ['Ambulancia', 'Orientacion Medica', 'Telemedicina'] as const
+  const HOME_SERVICE_TYPES = ['Cerrajeria Hogar', 'Electricidad', 'Plomeria', 'Vidrieria'] as const
   const INFORMATIVE_MOTIVOS = ['SERVICIO UTILIZADO', 'NO CUBIERTO POR LA POLIZA', 'OTROS'] as const
   const VALIDATION_MOTIVOS = ['SOAT', 'SALDO MOROSO', 'RENOVACION NO PAGADA', 'BENEFICIO EN 24H', 'POLIZA CANCELADA', 'OTROS'] as const
 
@@ -399,16 +400,27 @@ const [form, setForm] = React.useState<NewReportForm>({
   }, [form.status, form.motivo])
 
   const isMedicalReport = form.report_category === 'Servicios Médicos'
-  const availableServiceTypes = isMedicalReport ? MEDICAL_SERVICE_TYPES : SERVICE_TYPES
+  const isHomeReport = form.report_category === 'Asistencia en el Hogar'
+  const availableServiceTypes = isMedicalReport
+    ? MEDICAL_SERVICE_TYPES
+    : isHomeReport
+      ? HOME_SERVICE_TYPES
+      : SERVICE_TYPES
 
   React.useEffect(() => {
-    if (isMedicalReport && !MEDICAL_SERVICE_TYPES.includes(form.service_type as typeof MEDICAL_SERVICE_TYPES[number])) {
+    const selectedServiceIsValid = isMedicalReport
+      ? MEDICAL_SERVICE_TYPES.includes(form.service_type as typeof MEDICAL_SERVICE_TYPES[number])
+      : isHomeReport
+        ? HOME_SERVICE_TYPES.includes(form.service_type as typeof HOME_SERVICE_TYPES[number])
+        : SERVICE_TYPES.includes(form.service_type as typeof SERVICE_TYPES[number])
+
+    if (!selectedServiceIsValid && form.service_type) {
       setForm(prev => ({ ...prev, service_type: '' }))
     }
     if (!isMedicalReport && form.document_type) {
       setForm(prev => ({ ...prev, document_type: '', document_other: '' }))
     }
-  }, [isMedicalReport, form.service_type, form.document_type])
+  }, [isMedicalReport, isHomeReport, form.service_type, form.document_type])
 
   const handleEvidenceChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (!canUploadEvidence) {
