@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { Outlet, useNavigate } from 'react-router-dom'
-import { AlertCircle, Bell, Clock3, Mail, Phone, ShieldCheck, Sparkles, UserCircle2 } from 'lucide-react'
+import { AlertCircle, Bell, Clock3, Mail, Phone, Settings, ShieldCheck, Sparkles, UserCircle2 } from 'lucide-react'
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -16,6 +16,7 @@ import { UserAvatar } from '@/components/UserAvatar'
 import AppSidebar from './AppSidebar'
 import { Separator } from '@/components/ui/separator'
 import UpdateNotice from '@/components/UpdateNotice'
+import FailedAttemptsAlert from '@/components/FailedAttemptsAlert'
 
 export default function AppLayout() {
   const { user, updateCurrentUserProfile, updateCurrentUserAvatar } = useAuth()
@@ -31,6 +32,7 @@ export default function AppLayout() {
   const avatarData = React.useMemo(() => normalizeAvatar(user?.user_metadata?.avatar), [user])
   const userRoles = React.useMemo(() => getUserRoles(user), [user])
   const canViewShifts = userRoles.some(role => ['Admin', 'Support', 'Gerente'].includes(role))
+  const canViewAdmin = hasPermission(PERMISSIONS.SYSTEM.MANAGE_PERMISSIONS)
   const metadata = (user?.user_metadata ?? {}) as Record<string, unknown>
   const phoneNumber = typeof metadata.phone === 'string'
     ? metadata.phone
@@ -169,6 +171,7 @@ export default function AppLayout() {
                   <Clock3 className="size-4" />
                 </Button>
               ) : null}
+              <FailedAttemptsAlert />
               <div className="relative">
                 <Button
                   variant="ghost"
@@ -218,6 +221,19 @@ export default function AppLayout() {
                     ) : null}
                   </Button>
                 </div>
+              ) : null}
+
+              {canViewAdmin ? (
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={() => navigate('/admin/permisos')}
+                  className="rounded-xl border border-border/70 bg-background/70 text-muted-foreground shadow-sm transition-all hover:scale-[1.02] hover:bg-accent hover:text-foreground"
+                  aria-label="Gestión de Permisos"
+                  title="Gestión de Permisos"
+                >
+                  <Settings className="size-4" />
+                </Button>
               ) : null}
 
               <Button
