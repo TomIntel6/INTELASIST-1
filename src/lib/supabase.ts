@@ -399,6 +399,9 @@ export interface ReportsPage {
 }
 
 export const REPORTS_PAGE_SIZE = 20
+const REPORTS_PAGE_CACHE_TTL_MS = 15_000
+const reportsPageCache = new Map<string, { value: ReportsPage; expiresAt: number }>()
+const reportsPageInFlight = new Map<string, Promise<ReportsPage>>()
 
 export async function loadReportsPage(params: {
   month: string
@@ -407,6 +410,7 @@ export async function loadReportsPage(params: {
   pageSize?: number
   search?: string
   reportCategory?: ReportCategory
+  skipCache?: boolean
 }): Promise<ReportsPage> {
   const { month, year, page } = params
   const pageSize = params.pageSize ?? REPORTS_PAGE_SIZE
@@ -425,17 +429,31 @@ export async function loadReportsPage(params: {
     qs.set('reportCategory', params.reportCategory)
   }
 
-  try {
+  const cacheKey = qs.toString()
+  const cached = reportsPageCache.get(cacheKey)
+  if (!params.skipCache && cached && cached.expiresAt > Date.now()) {
+    return Promise.resolve(cached.value)
+  }
+
+  if (!params.skipCache) {
+    const inFlight = reportsPageInFlight.get(cacheKey)
+    if (inFlight) return inFlight
+  }
+
+  const request = (async () => {
+    try {
     const payload = await requestJson<{ reports: unknown[]; total: number; page: number; pageSize: number }>(
       `/reports?${qs.toString()}`
     )
     const reports = payload.reports.map(item => normalizeReport(item as Record<string, unknown>))
-    return {
+    const result = {
       reports: sortReports(reports),
       total: Number(payload.total ?? reports.length),
       page: Number(payload.page ?? page),
       pageSize: Number(payload.pageSize ?? pageSize),
     }
+    reportsPageCache.set(cacheKey, { value: result, expiresAt: Date.now() + REPORTS_PAGE_CACHE_TTL_MS })
+    return result
   } catch (error) {
     console.warn('No se pudo cargar la página de informes desde el servidor.', error)
     return {
@@ -444,7 +462,15 @@ export async function loadReportsPage(params: {
       page,
       pageSize,
     }
+    }
+  })()
+
+  if (!params.skipCache) {
+    reportsPageInFlight.set(cacheKey, request)
+    void request.finally(() => reportsPageInFlight.delete(cacheKey))
   }
+
+  return request
 }
 
 // ---- Estadísticas por motivo (tarjetas) ----
@@ -453,6 +479,14 @@ export async function loadReportsPage(params: {
 export interface ReportCategoryStats {
   total: number
   categories: Record<string, number>
+}
+
+const reportCategoryStatsCache = new Map<string, { value: ReportCategoryStats; expiresAt: number }>()
+const reportCategoryStatsInFlight = new Map<string, Promise<ReportCategoryStats>>()
+
+export function clearReportsListCache() {
+  reportsPageCache.clear()
+  reportCategoryStatsCache.clear()
 }
 
 const REPORT_MOTIVO_KEYWORDS = [
@@ -480,20 +514,35 @@ export function computeCategoryStatsFromReports(reports: Report[]): ReportCatego
   return { total: reports.length, categories }
 }
 
-export async function fetchReportCategoryStats(month: string, year: number): Promise<ReportCategoryStats> {
+export async function fetchReportCategoryStats(month: string, year: number, skipCache = false): Promise<ReportCategoryStats> {
   const qs = new URLSearchParams({ month, year: String(year) })
+  const cacheKey = qs.toString()
+  const cached = reportCategoryStatsCache.get(cacheKey)
+  if (!skipCache && cached && cached.expiresAt > Date.now()) return Promise.resolve(cached.value)
+  const inFlight = !skipCache ? reportCategoryStatsInFlight.get(cacheKey) : undefined
+  if (inFlight) return inFlight
+
+  const request = (async () => {
   try {
     const payload = await requestJson<{ total: number; categories: Record<string, number> }>(
       `/reports/category-stats?${qs.toString()}`
     )
-    return {
+    const result = {
       total: Number(payload?.total ?? 0),
       categories: (payload?.categories ?? {}) as Record<string, number>,
     }
+    reportCategoryStatsCache.set(cacheKey, { value: result, expiresAt: Date.now() + REPORTS_PAGE_CACHE_TTL_MS })
+    return result
   } catch (error) {
     console.warn('No se pudieron obtener las estadísticas de categorías desde el servidor.', error)
     return { total: 0, categories: {} }
   }
+  })()
+  if (!skipCache) {
+    reportCategoryStatsInFlight.set(cacheKey, request)
+    void request.finally(() => reportCategoryStatsInFlight.delete(cacheKey))
+  }
+  return request
 }
 
 export async function uploadEvidenceFile(file: File): Promise<{ filename: string; path: string; url: string }> {
@@ -565,6 +614,7 @@ export async function createReport(report: Omit<Report, 'id' | 'created_at' | 'u
 
   const created = normalizeReport(payload.report as Record<string, unknown>)
   reportsForMonthCache.delete(`${created.month}:${created.year}`)
+  clearReportsListCache()
   return created
 }
 
@@ -582,6 +632,7 @@ export async function createReports(reports: Array<Omit<Report, 'id' | 'created_
 
   const created = payload.reports.map(item => normalizeReport(item as Record<string, unknown>))
   created.forEach(report => reportsForMonthCache.delete(`${report.month}:${report.year}`))
+  clearReportsListCache()
   return created
 }
 
@@ -590,6 +641,7 @@ export async function deleteReport(id: string): Promise<void> {
     method: 'DELETE',
   })
   reportsForMonthCache.clear()
+  clearReportsListCache()
 }
 
 export async function updateReport(id: string, changes: Partial<Report>): Promise<Report> {
@@ -600,6 +652,7 @@ export async function updateReport(id: string, changes: Partial<Report>): Promis
 
   const updated = normalizeReport(payload.report as Record<string, unknown>)
   reportsForMonthCache.clear()
+  clearReportsListCache()
   return updated
 }
 
@@ -613,6 +666,7 @@ export async function addReportUpdate(reportId: string, payload: Omit<ReportUpda
 
   // El detalle y la lista pueden estar abiertos en vistas distintas.
   reportsForMonthCache.clear()
+  clearReportsListCache()
   return update
 }
 

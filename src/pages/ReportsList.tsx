@@ -350,7 +350,7 @@ export default function ReportsList() {
   React.useEffect(() => {
     let cancelled = false
     setLoading(true)
-    loadReportsPage({ month: selectedMonth, year: selectedYear, page, pageSize, search: debouncedSearch, reportCategory })
+    loadReportsPage({ month: selectedMonth, year: selectedYear, page, pageSize, search: debouncedSearch, reportCategory, skipCache: reloadKey > 0 })
       .then(res => {
         if (cancelled || !isMountedRef.current) return
         setReports(res.reports)
@@ -370,7 +370,7 @@ export default function ReportsList() {
   // Tarjetas de estadísticas — endpoint INDEPENDIENTE, sobre todo el mes.
   React.useEffect(() => {
     let cancelled = false
-    fetchReportCategoryStats(selectedMonth, selectedYear)
+    fetchReportCategoryStats(selectedMonth, selectedYear, reloadKey > 0)
       .then(next => {
         if (!cancelled && isMountedRef.current) {
           setStats(next)
