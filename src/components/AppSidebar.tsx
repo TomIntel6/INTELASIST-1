@@ -469,22 +469,22 @@ export default function AppSidebar() {
   return (
     <Sidebar
       collapsible="icon"
-      className="border-r border-sidebar-border bg-sidebar shadow-[0_0_0_1px_rgba(15,23,42,0.05),16px_0_60px_-30px_rgba(15,23,42,0.28)]"
+      className="border-r border-sidebar-border bg-sidebar shadow-[0_0_0_1px_rgba(15,23,42,0.05),16px_0_60px_-30px_rgba(0,0,0,0.55)]"
     >
       <SidebarHeader className="px-4 py-5">
         <button
           type="button"
           onClick={() => navigate('/dashboard')}
-          className="group flex items-center gap-2.5 rounded-2xl px-2 py-1.5 text-left transition-all duration-200 hover:bg-primary/5"
+          className="group flex items-center gap-2.5 rounded-2xl px-2 py-1.5 text-left transition-all duration-200 hover:bg-white/5"
         >
-          <div className="rounded-2xl bg-background/90 p-1 shadow-sm ring-1 ring-border transition-all duration-200 group-hover:scale-105 group-hover:shadow-[0_12px_30px_-18px_rgba(99,102,241,0.7)]">
+          <div className="sidebar-brand-mark rounded-2xl p-1 transition-all duration-200 group-hover:scale-105 group-hover:shadow-[0_0_30px_rgba(34,211,238,0.65)]">
             <img src="/intelasist.png" alt="INTELASIST" className="h-11 w-11 shrink-0 object-contain" />
           </div>
           <div className="leading-tight group-data-[collapsible=icon]:hidden">
-            <span className="block text-sm font-bold tracking-tight">
-              <span className="brand-text">INTELASIST</span>
+            <span className="block text-sm font-bold tracking-tight text-white">
+              INTELASIST
             </span>
-            <span className="block text-[10px] font-medium italic tracking-[0.18em] text-muted-foreground">
+            <span className="block text-[10px] font-medium italic tracking-[0.18em] text-slate-400">
               100% panameña
             </span>
           </div>

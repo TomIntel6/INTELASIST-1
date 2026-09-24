@@ -401,6 +401,7 @@ const [form, setForm] = React.useState<NewReportForm>({
 
   const isMedicalReport = form.report_category === 'Servicios Médicos'
   const isHomeReport = form.report_category === 'Asistencia en el Hogar'
+  const isDocumentReport = isMedicalReport || isHomeReport
   const availableServiceTypes = isMedicalReport
     ? MEDICAL_SERVICE_TYPES
     : isHomeReport
@@ -417,10 +418,10 @@ const [form, setForm] = React.useState<NewReportForm>({
     if (!selectedServiceIsValid && form.service_type) {
       setForm(prev => ({ ...prev, service_type: '' }))
     }
-    if (!isMedicalReport && form.document_type) {
+    if (!isDocumentReport && form.document_type) {
       setForm(prev => ({ ...prev, document_type: '', document_other: '' }))
     }
-  }, [isMedicalReport, isHomeReport, form.service_type, form.document_type])
+  }, [isMedicalReport, isHomeReport, isDocumentReport, form.service_type, form.document_type])
 
   const handleEvidenceChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (!canUploadEvidence) {
@@ -496,7 +497,7 @@ const [form, setForm] = React.useState<NewReportForm>({
       model: 'modelo del vehículo',
       color: 'color del vehículo',
     }
-    if (isMedicalReport) {
+    if (isDocumentReport) {
       requiredFields.document_type = 'documento'
     } else {
       requiredFields.status = 'estado del caso'
@@ -511,7 +512,7 @@ const [form, setForm] = React.useState<NewReportForm>({
       }
     }
 
-    if (isMedicalReport && form.document_type === 'Otro' && !form.document_other.trim()) {
+    if (isDocumentReport && form.document_type === 'Otro' && !form.document_other.trim()) {
       setError('Por favor especifica el documento.')
       setSaving(false)
       return
@@ -567,14 +568,14 @@ const [form, setForm] = React.useState<NewReportForm>({
     }
 
     const observationComment = form.observation_comment.trim()
-    const fullObservationComment = (!isMedicalReport && (form.status === 'Validacion' || form.status === 'Informativo')) && form.motivo
+    const fullObservationComment = (!isDocumentReport && (form.status === 'Validacion' || form.status === 'Informativo')) && form.motivo
       ? `Motivo: ${form.motivo}${observationComment ? `\n\n${observationComment}` : ''}`
       : observationComment
 
     const coreFields = {
       report_category: form.report_category,
-      document_type: isMedicalReport ? form.document_type || null : null,
-      document_other: isMedicalReport && form.document_type === 'Otro' ? form.document_other.trim() : null,
+      document_type: isDocumentReport ? form.document_type || null : null,
+      document_other: isDocumentReport && form.document_type === 'Otro' ? form.document_other.trim() : null,
       month: form.month,
       year: form.year,
       insured_name: form.insured_name.trim(),
@@ -585,7 +586,7 @@ const [form, setForm] = React.useState<NewReportForm>({
       model: form.model.trim(),
       color: form.color.trim(),
       year_vehicle: form.year_vehicle ? parseInt(form.year_vehicle) : null,
-      status: (isMedicalReport ? 'Informativo' : form.status) as ReportStatus,
+      status: (isDocumentReport ? 'Informativo' : form.status) as ReportStatus,
       observation_comment: fullObservationComment,
       coverage: form.coverage || null,
     }
@@ -884,8 +885,8 @@ const [form, setForm] = React.useState<NewReportForm>({
           </CardHeader>
           <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <Label>{isMedicalReport ? 'Documento' : 'Estado del Caso'} <span className="text-destructive">*</span></Label>
-              {isMedicalReport ? (
+              <Label>{isDocumentReport ? 'Documento' : 'Estado del Caso'} <span className="text-destructive">*</span></Label>
+              {isDocumentReport ? (
                 <Select value={form.document_type} onValueChange={v => set('document_type', v)}>
                   <SelectTrigger className="bg-muted/50 border-border/70">
                     <SelectValue placeholder="Seleccionar documento" />
@@ -909,7 +910,7 @@ const [form, setForm] = React.useState<NewReportForm>({
                 </Select>
               )}
             </div>
-            {isMedicalReport && (
+            {isDocumentReport && (
               <div className="space-y-1.5">
                 <Label htmlFor="document_other">
                   Información del documento
