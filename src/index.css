@@ -573,22 +573,11 @@
 
 /* Fondo claro para que el degradado animado del rol se lea sobre el sidebar oscuro. */
 .role-badge-contrast {
-  position: relative;
-  isolation: isolate;
   background-color: transparent !important;
-  border: 1px solid rgba(255, 255, 255, 0.72) !important;
-  border-radius: 999px !important;
-  padding: 0.18rem 0.48rem !important;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.16) !important;
-}
-
-.role-badge-contrast::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  border-radius: inherit;
-  background: #ffffff;
+  border: 0 !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+  box-shadow: none !important;
 }
 
 @keyframes agente-special-pulse {
