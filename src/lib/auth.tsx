@@ -739,19 +739,19 @@ export function getNameColorClasses(fullName: string | null | undefined): string
 export function getRoleColorClasses(role: UserRole, fullName?: string | null) {
   // Sin cuadro ni fondo: el degradado se aplica dentro del propio texto
   if (isRainbowUser(fullName)) {
-    return 'rainbow-animated font-bold bg-transparent border-0'
+    return 'rainbow-animated role-badge-contrast font-bold'
   }
 
   switch (role) {
     case 'Support':
-      return 'support-animated uppercase tracking-[0.12em] font-semibold bg-transparent border-0'
+      return 'support-animated role-badge-contrast uppercase tracking-[0.12em] font-semibold'
     case 'Gerente':
-      return 'gerente-animated font-bold bg-transparent border-0'
+      return 'gerente-animated role-badge-contrast font-bold'
     case 'Admin':
-      return 'admin-animated font-bold bg-transparent border-0'
+      return 'admin-animated role-badge-contrast font-bold'
     case 'Agente':
     default:
-      return 'agente-animated font-bold bg-transparent border-0'
+      return 'agente-animated role-badge-contrast font-bold'
   }
 }
 
