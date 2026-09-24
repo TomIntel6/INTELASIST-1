@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/select'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Spinner } from '@/components/ui/spinner'
-import { SERVICE_TYPES, REPORT_STATUSES, MONTHS, REPORT_CATEGORIES, type ReportCategory, type ReportStatus, type Report, createReport, updateReport, loadReportWithUpdates, uploadEvidenceFile } from '@/lib/supabase'
+import { SERVICE_TYPES, REPORT_STATUSES, MONTHS, REPORT_CATEGORIES, MEDICAL_DOCUMENT_TYPES, type ReportCategory, type ReportStatus, type Report, createReport, updateReport, loadReportWithUpdates, uploadEvidenceFile } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth'
 import { usePermissions } from '@/lib/permissions-context'
 import { AuditService } from '@/lib/audit-service'
@@ -62,11 +62,14 @@ export default function NewReport() {
   const currentYear = periodDate.getFullYear()
 
   const COVERAGE_OPTIONS = ['No', 'KC', 'K1', 'K8', 'VA', 'FAB', 'FAP', 'FAV', 'FP', 'FAM', 'FAE', 'CB', 'CP', 'CV'] as const
+  const MEDICAL_SERVICE_TYPES = ['Ambulancia', 'Orientacion Medica', 'Telemedicina'] as const
   const INFORMATIVE_MOTIVOS = ['SERVICIO UTILIZADO', 'NO CUBIERTO POR LA POLIZA', 'OTROS'] as const
   const VALIDATION_MOTIVOS = ['SOAT', 'SALDO MOROSO', 'RENOVACION NO PAGADA', 'BENEFICIO EN 24H', 'POLIZA CANCELADA', 'OTROS'] as const
 
 type NewReportForm = {
     report_category: ReportCategory
+    document_type: typeof MEDICAL_DOCUMENT_TYPES[number] | ''
+    document_other: string
   month: string
   year: number
   insured_name: string
@@ -85,6 +88,8 @@ type NewReportForm = {
 
 const [form, setForm] = React.useState<NewReportForm>({
       report_category: initialCategory,
+    document_type: '',
+    document_other: '',
     month: MONTHS[currentMonthIdx],
     year: currentYear,
     insured_name: '',
@@ -143,6 +148,8 @@ const [form, setForm] = React.useState<NewReportForm>({
         month: report.month,
         year: report.year,
         report_category: report.report_category,
+        document_type: report.document_type ?? '',
+        document_other: report.document_other ?? '',
         insured_name: report.insured_name ?? '',
         plate: report.plate ?? '',
         policy: report.policy ?? '',
@@ -391,6 +398,18 @@ const [form, setForm] = React.useState<NewReportForm>({
     }
   }, [form.status, form.motivo])
 
+  const isMedicalReport = form.report_category === 'Servicios Médicos'
+  const availableServiceTypes = isMedicalReport ? MEDICAL_SERVICE_TYPES : SERVICE_TYPES
+
+  React.useEffect(() => {
+    if (isMedicalReport && !MEDICAL_SERVICE_TYPES.includes(form.service_type as typeof MEDICAL_SERVICE_TYPES[number])) {
+      setForm(prev => ({ ...prev, service_type: '' }))
+    }
+    if (!isMedicalReport && form.document_type) {
+      setForm(prev => ({ ...prev, document_type: '', document_other: '' }))
+    }
+  }, [isMedicalReport, form.service_type, form.document_type])
+
   const handleEvidenceChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (!canUploadEvidence) {
       setError('No tienes permisos para subir evidencias.')
@@ -456,7 +475,7 @@ const [form, setForm] = React.useState<NewReportForm>({
     }
 
     // Validar campos requeridos
-    const requiredFields = {
+    const requiredFields: Record<string, string> = {
       service_type: 'tipo de servicio',
       insured_name: 'nombre del asegurado',
       plate: 'placa del vehículo',
@@ -464,7 +483,11 @@ const [form, setForm] = React.useState<NewReportForm>({
       brand: 'marca del vehículo',
       model: 'modelo del vehículo',
       color: 'color del vehículo',
-      status: 'estado del caso',
+    }
+    if (isMedicalReport) {
+      requiredFields.document_type = 'documento'
+    } else {
+      requiredFields.status = 'estado del caso'
     }
     
     for (const [field, label] of Object.entries(requiredFields)) {
@@ -474,6 +497,12 @@ const [form, setForm] = React.useState<NewReportForm>({
         setSaving(false)
         return
       }
+    }
+
+    if (isMedicalReport && form.document_type === 'Otro' && !form.document_other.trim()) {
+      setError('Por favor especifica el documento.')
+      setSaving(false)
+      return
     }
 
     if ((form.status === 'Validacion' || form.status === 'Informativo') && !form.motivo) {
@@ -526,12 +555,14 @@ const [form, setForm] = React.useState<NewReportForm>({
     }
 
     const observationComment = form.observation_comment.trim()
-    const fullObservationComment = (form.status === 'Validacion' || form.status === 'Informativo') && form.motivo
+    const fullObservationComment = (!isMedicalReport && (form.status === 'Validacion' || form.status === 'Informativo')) && form.motivo
       ? `Motivo: ${form.motivo}${observationComment ? `\n\n${observationComment}` : ''}`
       : observationComment
 
     const coreFields = {
       report_category: form.report_category,
+      document_type: isMedicalReport ? form.document_type || null : null,
+      document_other: isMedicalReport && form.document_type === 'Otro' ? form.document_other.trim() : null,
       month: form.month,
       year: form.year,
       insured_name: form.insured_name.trim(),
@@ -542,7 +573,7 @@ const [form, setForm] = React.useState<NewReportForm>({
       model: form.model.trim(),
       color: form.color.trim(),
       year_vehicle: form.year_vehicle ? parseInt(form.year_vehicle) : null,
-      status: form.status as ReportStatus,
+      status: (isMedicalReport ? 'Informativo' : form.status) as ReportStatus,
       observation_comment: fullObservationComment,
       coverage: form.coverage || null,
     }
@@ -768,7 +799,7 @@ const [form, setForm] = React.useState<NewReportForm>({
                   <SelectValue placeholder="Seleccionar servicio" />
                 </SelectTrigger>
                 <SelectContent>
-                  {SERVICE_TYPES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                  {availableServiceTypes.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -841,8 +872,20 @@ const [form, setForm] = React.useState<NewReportForm>({
           </CardHeader>
           <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <Label>Estado del Caso <span className="text-destructive">*</span></Label>
-              <Select value={form.status} onValueChange={v => set('status', v)}>
+              <Label>{isMedicalReport ? 'Documento' : 'Estado del Caso'} <span className="text-destructive">*</span></Label>
+              {isMedicalReport ? (
+                <Select value={form.document_type} onValueChange={v => set('document_type', v)}>
+                  <SelectTrigger className="bg-muted/50 border-border/70">
+                    <SelectValue placeholder="Seleccionar documento" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {MEDICAL_DOCUMENT_TYPES.map(documentType => (
+                      <SelectItem key={documentType} value={documentType}>{documentType}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Select value={form.status} onValueChange={v => set('status', v)}>
                 <SelectTrigger className="bg-muted/50 border-border/70">
                   <SelectValue placeholder="Seleccionar estado" />
                 </SelectTrigger>
@@ -851,9 +894,23 @@ const [form, setForm] = React.useState<NewReportForm>({
                     <SelectItem key={s} value={s}>{s}</SelectItem>
                   ))}
                 </SelectContent>
-              </Select>
+                </Select>
+              )}
             </div>
-            {(form.status === 'Validacion' || form.status === 'Informativo') && (
+            {isMedicalReport && form.document_type === 'Otro' && (
+              <div className="space-y-1.5">
+                <Label htmlFor="document_other">Especificar documento <span className="text-destructive">*</span></Label>
+                <Input
+                  id="document_other"
+                  required
+                  value={form.document_other}
+                  onChange={e => set('document_other', e.target.value)}
+                  placeholder="Indica el documento"
+                  className="bg-muted/50 border-border/70"
+                />
+              </div>
+            )}
+            {!isMedicalReport && (form.status === 'Validacion' || form.status === 'Informativo') && (
               <div className="space-y-1.5">
                 <Label>Motivo</Label>
                 <Select value={form.motivo} onValueChange={v => set('motivo', v)}>
@@ -876,7 +933,7 @@ const [form, setForm] = React.useState<NewReportForm>({
                 value={form.observation_comment}
                 onChange={e => set('observation_comment', e.target.value)}
                 placeholder="Describe lo sucedido en el servicio..."
-                className="min-h-[100px] resize-y bg-muted/50 border-border/70"
+                className="min-h-[64px] resize-y bg-muted/50 border-border/70"
               />
             </div>
           </CardContent>
@@ -900,7 +957,7 @@ const [form, setForm] = React.useState<NewReportForm>({
                 ref={pasteTextareaRef}
                 onPaste={handleClipboardPaste}
                 placeholder="Pega tus imágenes aquí (Ctrl+V)"
-                className="w-full min-h-[120px] p-3 border border-border rounded-xl bg-muted/40 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-ring"
+                className="w-full min-h-[64px] p-2 border border-border rounded-xl bg-muted/40 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-ring"
               />
               <div className="flex gap-2 items-center flex-wrap">
                 <Button
@@ -934,7 +991,7 @@ const [form, setForm] = React.useState<NewReportForm>({
                     <img
                       src={item.preview}
                       alt={`Evidencia ${index + 1}`}
-                      className="h-28 w-full object-cover"
+                      className="h-20 w-full object-cover"
                     />
                     <Button
                       type="button"
