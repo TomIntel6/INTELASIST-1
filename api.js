@@ -1968,17 +1968,23 @@ app.get('/shifts', async (req, res) => {
   try {
     if (!(await requireShiftRole(req, res))) return
 
+    const roles = await resolveRequesterRoles(req)
+    const canViewAllShifts = roles.some(role => SHIFT_ROLES.includes(role))
     const supervisorId = String(req.user?.id || '').trim()
-    const result = await pool.query(`
+
+    const query = `
       SELECT ws.*, COUNT(r.id)::int AS report_count, ${shiftCategoryCountsSql()}
       FROM work_shifts ws
       LEFT JOIN reports r ON r.created_at >= ws.started_at
         AND (ws.ended_at IS NULL OR r.created_at <= ws.ended_at)
-      WHERE ws.supervisor_id = $1
+      ${canViewAllShifts ? '' : 'WHERE ws.supervisor_id = $1'}
       GROUP BY ws.id
       ORDER BY ws.started_at DESC
       LIMIT 100
-    `, [supervisorId])
+    `
+
+    const params = canViewAllShifts ? [] : [supervisorId]
+    const result = await pool.query(query, params)
     res.json({ shifts: result.rows.map(serializeShiftRow) })
   } catch (error) {
     console.error('Error al listar turnos:', error)
@@ -2107,13 +2113,17 @@ app.get('/shifts/:id', async (req, res) => {
   try {
     if (!(await requireShiftRole(req, res))) return
 
+    const roles = await resolveRequesterRoles(req)
+    const canViewAllShifts = roles.some(role => SHIFT_ROLES.includes(role))
     const supervisorId = String(req.user?.id || '').trim()
-    const result = await pool.query(`
+    const query = `
       SELECT ws.*, COUNT(r.id)::int AS report_count, ${shiftCategoryCountsSql()}
       FROM work_shifts ws LEFT JOIN reports r ON r.created_at >= ws.started_at
         AND (ws.ended_at IS NULL OR r.created_at <= ws.ended_at)
-      WHERE ws.id = $1 AND ws.supervisor_id = $2 GROUP BY ws.id
-    `, [req.params.id, supervisorId])
+      WHERE ws.id = $1 ${canViewAllShifts ? '' : 'AND ws.supervisor_id = $2'} GROUP BY ws.id
+    `
+    const params = canViewAllShifts ? [req.params.id] : [req.params.id, supervisorId]
+    const result = await pool.query(query, params)
     if (result.rowCount === 0) {
       res.status(404).json({ error: 'Turno no encontrado o no autorizado.' })
       return
