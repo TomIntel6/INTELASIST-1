@@ -23,14 +23,15 @@ import {
 import { Area, AreaChart, CartesianGrid, Pie, PieChart, ResponsiveContainer, Tooltip, Cell, XAxis, YAxis } from 'recharts'
 
 const PANAMA_TIME_ZONE = 'America/Panama'
+const PANAMA_DATE_FORMATTER = new Intl.DateTimeFormat('en-US', {
+  timeZone: PANAMA_TIME_ZONE,
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+})
 
 function getPanamaDateKey(date: Date): string {
-  const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone: PANAMA_TIME_ZONE,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).formatToParts(date)
+  const parts = PANAMA_DATE_FORMATTER.formatToParts(date)
   const values = Object.fromEntries(parts.map(part => [part.type, part.value]))
   return `${values.year}-${values.month}-${values.day}`
 }
@@ -44,13 +45,6 @@ function shiftDateKey(dateKey: string, days: number): string {
   const date = new Date(`${dateKey}T12:00:00Z`)
   date.setUTCDate(date.getUTCDate() + days)
   return date.toISOString().slice(0, 10)
-}
-
-function isCreatedToday(createdAt: string, referenceDate = new Date()): boolean {
-  if (!createdAt) return false
-
-  const createdDate = new Date(createdAt)
-  return !Number.isNaN(createdDate.getTime()) && getPanamaDateKey(createdDate) === getPanamaDateKey(referenceDate)
 }
 
 function isCreatedOnDay(createdAt: string, date: Date | string): boolean {
@@ -312,10 +306,11 @@ export default function Dashboard() {
 
   const displayName = user?.user_metadata?.full_name ?? user?.email ?? 'Usuario'
   const userRoles = getUserRoles(user)
+  const todayDateKey = React.useMemo(() => getPanamaDateKey(currentDay), [currentDay])
 
   const todayReports = React.useMemo(
-    () => reports.filter(r => hasValidReportMeta(r) && isCreatedToday(r.created_at, currentDay)),
-    [reports, currentDay]
+    () => reports.filter(r => hasValidReportMeta(r) && isCreatedOnDay(r.created_at, todayDateKey)),
+    [reports, todayDateKey]
   )
 
   const dashboardReady = !reportsLoading && dashboardStats !== null
