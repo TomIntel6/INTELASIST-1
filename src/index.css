@@ -336,20 +336,26 @@
     transform: scale(0.985);
   }
 
-  [data-slot="sidebar-menu-button"][data-active="true"]::after {
-    content: '';
+  .sidebar-nav-indicator {
     position: absolute;
     right: 0.55rem;
-    left: auto;
-    top: 50%;
     width: 0.42rem;
     height: 0.42rem;
     border-radius: 999px;
     background: #f4d3bf;
     box-shadow: 0 0 12px rgba(244,211,191,0.72);
     transform: translateY(-50%);
-    z-index: 2;
+    transition: top 520ms cubic-bezier(0.34, 1.56, 0.64, 1), opacity 160ms ease;
+    z-index: 3;
+    pointer-events: none;
     animation: sidebar-active-glow 1.8s ease-in-out infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .sidebar-nav-indicator {
+      transition: none;
+      animation: none;
+    }
   }
 
   @keyframes sidebar-active-glow {

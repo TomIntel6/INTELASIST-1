@@ -62,6 +62,8 @@ export default function AppSidebar() {
   const { user, signOut } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
+  const navigationMenuRef = React.useRef<HTMLUListElement>(null)
+  const [activeIndicatorTop, setActiveIndicatorTop] = React.useState<number | null>(null)
 
   const rawDisplayName = (user?.user_metadata?.full_name as string) ?? user?.email ?? 'Usuario'
   const displayName = rawDisplayName
@@ -75,6 +77,20 @@ export default function AppSidebar() {
   const lastServerUsersRef = React.useRef<ReturnType<typeof getOnlineUsers> | null>(null)
   const remoteIntervalRef = React.useRef<number | null>(null)
   const isMountedRef = React.useRef(true)
+
+  React.useLayoutEffect(() => {
+    const menu = navigationMenuRef.current
+    const activeItem = menu?.querySelector<HTMLElement>('[data-slot="sidebar-menu-button"][data-active="true"]')
+
+    if (!menu || !activeItem) {
+      setActiveIndicatorTop(null)
+      return
+    }
+
+    const menuBounds = menu.getBoundingClientRect()
+    const activeBounds = activeItem.getBoundingClientRect()
+    setActiveIndicatorTop(activeBounds.top - menuBounds.top + activeBounds.height / 2)
+  }, [location.pathname, canViewReportsModule])
 
   const refreshOnlineUsers = React.useCallback(() => {
     setOnlineUsers(prevUsers => {
@@ -312,7 +328,7 @@ export default function AppSidebar() {
             Principal
           </SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu>
+            <SidebarMenu ref={navigationMenuRef} className="relative">
               {navItems.map(({ to, label, icon: Icon }) => {
                 if ((to === '/informes' || to === '/servicios-medicos' || to === '/asistencia-hogar') && !canViewReportsModule) {
                   return null
@@ -334,6 +350,15 @@ export default function AppSidebar() {
                   </SidebarMenuItem>
                 )
               })}
+              <SidebarMenuItem aria-hidden="true" className="pointer-events-none absolute inset-0 z-10">
+                <span
+                  className="sidebar-nav-indicator"
+                  style={{
+                    top: activeIndicatorTop ?? 0,
+                    opacity: activeIndicatorTop === null ? 0 : 1,
+                  }}
+                />
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
