@@ -618,19 +618,6 @@ export default function Dashboard() {
             </Card>
           </div>
 
-          <Card className="dashboard-soft-surface rounded-[1.6rem] border border-border/60 bg-card/70 shadow-[0_22px_60px_-30px_rgba(15,23,42,0.32)]">
-            <CardHeader className="px-5 pb-3 pt-5">
-              <CardTitle className="text-lg font-semibold">Resumen del día</CardTitle>
-              <CardDescription>{currentDay.toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' })}</CardDescription>
-            </CardHeader>
-            <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
-              <StatCard label="Total Informes" value={totalReports} delta={deltaTotal} icon={FileText} accent="slate" sparkline={sparklineByStatus.total} />
-              <StatCard label="Finalizados" value={totalFinalized} delta={deltaFinalized} icon={CheckCircle2} accent="emerald" sparkline={sparklineByStatus.finalized} />
-              <StatCard label="En Seguimiento" value={totalPending} delta={deltaPending} icon={Clock} accent="amber" sparkline={sparklineByStatus.pending} />
-              <StatCard label="Validacion" value={totalValidacion} delta={deltaValidacion} icon={ShieldCheck} accent="violet" sparkline={sparklineByStatus.validacion} />
-              <StatCard label="Informativo" value={totalInformativo} delta={deltaInformativo} icon={Info} accent="sky" sparkline={sparklineByStatus.informativo} />
-            </CardContent>
-          </Card>
         </div>
       </div>
     </div>
