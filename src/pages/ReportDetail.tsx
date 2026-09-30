@@ -361,11 +361,9 @@ export default function ReportDetail() {
   }
 
   return (
-    <div className="w-full space-y-5 p-4 sm:p-6 xl:p-8">
-      <div className="glass-panel relative overflow-hidden rounded-[1.5rem] p-5 sm:p-6">
-        <span className="brand-gradient-bg pointer-events-none absolute inset-x-0 top-0 h-1 opacity-80" aria-hidden="true" />
-
-        <div className="flex items-start justify-between gap-3">
+    <div className="mx-auto w-full max-w-4xl space-y-4 p-3 sm:p-4">
+      <div className="border-b border-border/70 pb-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="flex items-start gap-3 min-w-0 flex-1">
             <Button variant="ghost" size="icon-sm" onClick={() => navigate(-1)} className="mt-0.5 shrink-0">
               <ArrowLeft className="size-4" />
@@ -378,7 +376,7 @@ export default function ReportDetail() {
               </p>
 
               <div className="flex flex-wrap items-center gap-3">
-                <h1 className="truncate text-2xl font-black tracking-[-0.04em] text-foreground">{report.insured_name}</h1>
+                <h1 className="truncate text-xl font-semibold text-foreground">{report.insured_name}</h1>
                 {report.status ? (
                   <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide ${STATUS_BADGE[report.status] ?? 'bg-secondary text-secondary-foreground border-border'}`}>
                     {report.status}
@@ -407,86 +405,86 @@ export default function ReportDetail() {
         </div>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[1.7fr_1fr]">
-        <div className="space-y-4">
-          <Card className="rounded-[1.5rem] border border-slate-200 bg-slate-50/30">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xl font-black tracking-tight">Información del Asegurado</CardTitle>
+      <div className="grid gap-3 lg:grid-cols-[minmax(0,1.4fr)_minmax(260px,0.9fr)]">
+        <div className="space-y-3">
+          <Card className="rounded-lg border-border/70 shadow-none">
+            <CardHeader className="px-4 py-3">
+              <CardTitle className="text-base font-semibold">Información del Asegurado</CardTitle>
             </CardHeader>
-            <CardContent className="grid gap-x-6 gap-y-4 sm:grid-cols-2 text-sm">
-              <div className="space-y-1 rounded-xl border border-slate-200/80 bg-white/70 p-3 shadow-sm dark:border-slate-700/70 dark:bg-slate-900/30">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Nombre</p>
-                <p className="text-base font-black tracking-tight text-foreground">{report.insured_name}</p>
+            <CardContent className="grid gap-x-5 gap-y-3 px-4 pb-4 pt-0 sm:grid-cols-2 text-sm">
+              <div className="space-y-0.5 border-b border-border/60 pb-2">
+                <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Nombre</p>
+                <p className="text-sm font-medium text-foreground">{report.insured_name}</p>
               </div>
 
-              <div className="space-y-1 rounded-xl border border-slate-200/80 bg-white/70 p-3 shadow-sm dark:border-slate-700/70 dark:bg-slate-900/30">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Placa</p>
-                <p className="text-base font-black tracking-tight text-foreground">{report.plate}</p>
+              <div className="space-y-0.5 border-b border-border/60 pb-2">
+                <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Placa</p>
+                <p className="text-sm font-medium text-foreground">{report.plate}</p>
               </div>
 
-              <div className="space-y-1 rounded-xl border border-slate-200/80 bg-white/70 p-3 shadow-sm dark:border-slate-700/70 dark:bg-slate-900/30">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Póliza</p>
-                <p className="text-base font-medium text-foreground">{report.policy || '—'}</p>
+              <div className="space-y-0.5 border-b border-border/60 pb-2">
+                <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Póliza</p>
+                <p className="text-sm font-medium text-foreground">{report.policy || '—'}</p>
               </div>
 
-              <div className="space-y-1 rounded-xl border border-slate-200/80 bg-white/70 p-3 shadow-sm dark:border-slate-700/70 dark:bg-slate-900/30">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Servicio</p>
-                <div className="inline-flex items-center rounded-full border border-slate-300 bg-slate-100/80 px-2.5 py-1 text-xs font-medium text-foreground">
+              <div className="space-y-0.5 border-b border-border/60 pb-2">
+                <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Servicio</p>
+                <div className="inline-flex items-center rounded-md border border-border bg-muted/50 px-2 py-0.5 text-xs font-medium text-foreground">
                   {report.service_type}
                 </div>
               </div>
 
-              <div className="space-y-1 rounded-xl border border-slate-200/80 bg-white/70 p-3 shadow-sm dark:border-slate-700/70 dark:bg-slate-900/30">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Estado</p>
-                <p className="text-base font-medium text-foreground">{report.status}</p>
+              <div className="space-y-0.5 border-b border-border/60 pb-2">
+                <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Estado</p>
+                <p className="text-sm font-medium text-foreground">{report.status}</p>
               </div>
 
-              <div className="space-y-1 rounded-xl border border-slate-200/80 bg-white/70 p-3 shadow-sm dark:border-slate-700/70 dark:bg-slate-900/30">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Mes</p>
-                <p className="text-base font-medium text-foreground">{report.month} {report.year}</p>
+              <div className="space-y-0.5 border-b border-border/60 pb-2">
+                <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Mes</p>
+                <p className="text-sm font-medium text-foreground">{report.month} {report.year}</p>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="rounded-[1.5rem] border border-violet-200 bg-violet-50/30">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xl font-black tracking-tight">Datos del Vehículo</CardTitle>
+          <Card className="rounded-lg border-border/70 shadow-none">
+            <CardHeader className="px-4 py-3">
+              <CardTitle className="text-base font-semibold">Datos del Vehículo</CardTitle>
             </CardHeader>
-            <CardContent className="grid gap-x-6 gap-y-4 sm:grid-cols-2 text-sm">
-              <div className="space-y-1 rounded-xl border border-violet-200/80 bg-white/70 p-3 shadow-sm dark:border-violet-900/60 dark:bg-slate-900/30">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Marca</p>
-                <p className="text-base font-black tracking-tight text-foreground">{report.brand || '—'}</p>
+            <CardContent className="grid gap-x-5 gap-y-3 px-4 pb-4 pt-0 sm:grid-cols-2 text-sm">
+              <div className="space-y-0.5 border-b border-border/60 pb-2">
+                <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Marca</p>
+                <p className="text-sm font-medium text-foreground">{report.brand || '—'}</p>
               </div>
 
-              <div className="space-y-1 rounded-xl border border-violet-200/80 bg-white/70 p-3 shadow-sm dark:border-violet-900/60 dark:bg-slate-900/30">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Modelo</p>
-                <p className="text-base font-black tracking-tight text-foreground">{report.model || '—'}</p>
+              <div className="space-y-0.5 border-b border-border/60 pb-2">
+                <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Modelo</p>
+                <p className="text-sm font-medium text-foreground">{report.model || '—'}</p>
               </div>
 
-              <div className="space-y-1 rounded-xl border border-violet-200/80 bg-white/70 p-3 shadow-sm dark:border-violet-900/60 dark:bg-slate-900/30">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Color</p>
-                <p className="text-base font-medium text-foreground">{report.color || '—'}</p>
+              <div className="space-y-0.5 border-b border-border/60 pb-2">
+                <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Color</p>
+                <p className="text-sm font-medium text-foreground">{report.color || '—'}</p>
               </div>
 
-              <div className="space-y-1 rounded-xl border border-violet-200/80 bg-white/70 p-3 shadow-sm dark:border-violet-900/60 dark:bg-slate-900/30">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Año</p>
-                <p className="text-base font-medium text-foreground">{report.year_vehicle || '—'}</p>
+              <div className="space-y-0.5 border-b border-border/60 pb-2">
+                <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Año</p>
+                <p className="text-sm font-medium text-foreground">{report.year_vehicle || '—'}</p>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="rounded-[1.5rem] border border-amber-200 bg-amber-50/30">
-            <CardHeader className="pb-2">
+          <Card className="rounded-lg border-border/70 shadow-none">
+            <CardHeader className="px-4 py-3">
               <div className="flex items-center justify-between gap-3">
-                <CardTitle className="text-xl font-black tracking-tight">Observación Inicial</CardTitle>
+                <CardTitle className="text-base font-semibold">Observación Inicial</CardTitle>
                 <Button variant="ghost" size="icon-sm" onClick={() => copyObservationToClipboard(observationCopyText)} disabled={!observationCopyText} title="Copiar observación">
                   <Copy className="size-4" />
                 </Button>
               </div>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent className="space-y-2 px-4 pb-4 pt-0">
               {observation.reason ? (
-                <div className="inline-flex items-center rounded-full bg-slate-200/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-700">
+                <div className="inline-flex items-center rounded-md bg-muted px-2 py-1 text-[10px] font-medium text-muted-foreground">
                   Motivo: {observation.reason}
                 </div>
               ) : null}
@@ -502,37 +500,37 @@ export default function ReportDetail() {
           </Card>
         </div>
 
-        <div className="space-y-4">
-          <Card className="rounded-[1.5rem] border border-slate-200 bg-slate-50/30">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xl font-black tracking-tight">Detalles</CardTitle>
+        <div className="space-y-3">
+          <Card className="rounded-lg border-border/70 shadow-none">
+            <CardHeader className="px-4 py-3">
+              <CardTitle className="text-base font-semibold">Detalles</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4 text-sm">
-              <div className="space-y-1 rounded-xl border border-sky-200/80 bg-white/70 p-3 shadow-sm dark:border-sky-900/60 dark:bg-slate-900/30">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Periodo</p>
-                <p className="text-base font-medium text-foreground">{report.month} {report.year}</p>
+            <CardContent className="space-y-3 px-4 pb-4 pt-0 text-sm">
+              <div className="space-y-0.5 border-b border-border/60 pb-2">
+                <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Periodo</p>
+                <p className="text-sm font-medium text-foreground">{report.month} {report.year}</p>
               </div>
 
-              <div className="space-y-1 rounded-xl border border-sky-200/80 bg-white/70 p-3 shadow-sm dark:border-sky-900/60 dark:bg-slate-900/30">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Creado por</p>
-                <p className="text-base font-medium text-foreground">{report.created_by_name || report.created_by_email || '—'}</p>
+              <div className="space-y-0.5 border-b border-border/60 pb-2">
+                <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Creado por</p>
+                <p className="text-sm font-medium text-foreground">{report.created_by_name || report.created_by_email || '—'}</p>
                 {report.created_by_email ? (
                   <p className="text-xs text-muted-foreground">{report.created_by_email}</p>
                 ) : null}
               </div>
 
-              <div className="space-y-1 rounded-xl border border-sky-200/80 bg-white/70 p-3 shadow-sm dark:border-sky-900/60 dark:bg-slate-900/30">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Fecha</p>
-                <p className="text-base font-medium text-foreground">{formatDateTimeWithMeridiem(report.created_at)}</p>
+              <div className="space-y-0.5">
+                <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Fecha</p>
+                <p className="text-sm font-medium text-foreground">{formatDateTimeWithMeridiem(report.created_at)}</p>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="rounded-[1.5rem] border border-slate-200 bg-slate-50/30">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xl font-black tracking-tight">Agregar Actualización</CardTitle>
+          <Card className="rounded-lg border-border/70 shadow-none">
+            <CardHeader className="px-4 py-3">
+              <CardTitle className="text-base font-semibold">Agregar Actualización</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-3 px-4 pb-4 pt-0">
               <div className="space-y-2">
                 <Label className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Estado</Label>
                 <Select value={newStatus} onValueChange={handleNewStatusChange}>
@@ -554,7 +552,7 @@ export default function ReportDetail() {
                   value={newComment}
                   onChange={e => setNewComment(e.target.value)}
                   placeholder="Describe la actualización del caso..."
-                  className="min-h-[120px] resize-none"
+                  className="min-h-[96px] resize-y text-sm"
                 />
               </div>
 
@@ -572,25 +570,25 @@ export default function ReportDetail() {
       </div>
 
       {evidenceImages.length > 0 ? (
-        <Card className="rounded-[1.5rem] border border-emerald-200 bg-emerald-50/30">
-          <CardHeader className="pb-2">
+        <Card className="rounded-lg border-border/70 shadow-none">
+          <CardHeader className="px-4 py-3">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-3">
-                <span className="flex size-10 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 ring-1 ring-emerald-500/20" aria-hidden="true">
-                  <ImageIcon className="size-5" />
+                <span className="flex size-8 items-center justify-center rounded-md bg-muted text-muted-foreground" aria-hidden="true">
+                  <ImageIcon className="size-4" />
                 </span>
-                <CardTitle className="text-xl font-black tracking-tight">Evidencia subida</CardTitle>
+                <CardTitle className="text-base font-semibold">Evidencia subida</CardTitle>
               </div>
             </div>
           </CardHeader>
-          <CardContent>
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          <CardContent className="px-4 pb-4 pt-0">
+            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
               {evidenceImages.map((image, index) => (
-                <div key={`${image.url}-${index}`} className="group relative overflow-hidden rounded-xl border border-emerald-200 bg-white shadow-sm">
+                <div key={`${image.url}-${index}`} className="group relative overflow-hidden rounded-lg border border-border bg-background">
                   <img
                     src={image.url}
                     alt={image.filename || `Evidencia ${index + 1}`}
-                    className="h-40 w-full object-cover transition-transform duration-200 group-hover:scale-[1.02]"
+                    className="h-32 w-full object-cover transition-transform duration-200 group-hover:scale-[1.02]"
                   />
                   <button
                     type="button"
@@ -614,16 +612,16 @@ export default function ReportDetail() {
       ) : null}
 
       {showAuditPanel ? (
-        <Card className="rounded-[1.5rem] border border-slate-200">
-          <CardHeader>
-            <CardTitle className="text-xl font-black tracking-tight">Historial</CardTitle>
+        <Card className="rounded-lg border-border/70 shadow-none">
+          <CardHeader className="px-4 py-3">
+            <CardTitle className="text-base font-semibold">Historial</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="space-y-2 px-4 pb-4 pt-0">
             {auditEvents.length === 0 ? (
               <p className="text-sm text-muted-foreground">No hay historial para este informe.</p>
             ) : (
               auditEvents.map((event, index) => (
-                <div key={`${event.id ?? index}`} className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm">
+                <div key={`${event.id ?? index}`} className="rounded-lg border border-border/70 bg-muted/30 p-2.5 text-sm">
                   <div className="flex items-center justify-between gap-3">
                     <span className="font-medium text-foreground">{event.action ?? 'Evento'}</span>
                     <span className="text-xs text-muted-foreground">{event.created_at ? TimeAgo({ date: event.created_at }) : '—'}</span>
@@ -638,21 +636,21 @@ export default function ReportDetail() {
         </Card>
       ) : null}
 
-      <Card className="rounded-[1.5rem] border border-slate-200">
-        <CardHeader>
-          <CardTitle className="text-xl font-black tracking-tight">Actualizaciones del informe</CardTitle>
+      <Card className="rounded-lg border-border/70 shadow-none">
+        <CardHeader className="px-4 py-3">
+          <CardTitle className="text-base font-semibold">Actualizaciones del informe</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3">
+        <CardContent className="space-y-2 px-4 pb-4 pt-0">
           {updates.length === 0 ? (
             <p className="text-sm text-muted-foreground">No hay actualizaciones para este informe.</p>
           ) : (
             updates.map(update => (
-              <div key={update.id} className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm">
+              <div key={update.id} className="rounded-lg border border-border/70 bg-muted/30 p-2.5 text-sm">
                 <div className="flex items-center justify-between gap-3">
                   <Badge className={STATUS_BADGE[update.status] ?? ''}>{update.status}</Badge>
                   <TimeAgo date={update.created_at} />
                 </div>
-                <p className="mt-2 whitespace-pre-line text-sm text-foreground">{update.comment}</p>
+                <p className="mt-1.5 whitespace-pre-line text-sm text-foreground">{update.comment}</p>
                 <p className="mt-2 text-xs text-muted-foreground">
                   {update.added_by_name || update.added_by_email || 'Usuario'}
                 </p>
