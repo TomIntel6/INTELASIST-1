@@ -79,17 +79,34 @@ export default function AppSidebar() {
   const isMountedRef = React.useRef(true)
 
   React.useLayoutEffect(() => {
-    const menu = navigationMenuRef.current
-    const activeItem = menu?.querySelector<HTMLElement>('[data-slot="sidebar-menu-button"][data-active="true"]')
+    let frameId = 0
 
-    if (!menu || !activeItem) {
-      setActiveIndicatorTop(null)
-      return
+    const updateActiveIndicator = () => {
+      const menu = navigationMenuRef.current
+      const activeItem = menu?.querySelector<HTMLElement>('[data-slot="sidebar-menu-button"][data-active="true"]')
+
+      if (!menu || !activeItem) {
+        setActiveIndicatorTop(null)
+        return
+      }
+
+      const menuBounds = menu.getBoundingClientRect()
+      const activeBounds = activeItem.getBoundingClientRect()
+      setActiveIndicatorTop(activeBounds.top - menuBounds.top + activeBounds.height / 2)
     }
 
-    const menuBounds = menu.getBoundingClientRect()
-    const activeBounds = activeItem.getBoundingClientRect()
-    setActiveIndicatorTop(activeBounds.top - menuBounds.top + activeBounds.height / 2)
+    updateActiveIndicator()
+    frameId = window.requestAnimationFrame(updateActiveIndicator)
+
+    const resizeObserver = new ResizeObserver(updateActiveIndicator)
+    if (navigationMenuRef.current) {
+      resizeObserver.observe(navigationMenuRef.current)
+    }
+
+    return () => {
+      window.cancelAnimationFrame(frameId)
+      resizeObserver.disconnect()
+    }
   }, [location.pathname, canViewReportsModule])
 
   const refreshOnlineUsers = React.useCallback(() => {
