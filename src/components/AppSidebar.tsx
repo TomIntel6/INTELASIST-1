@@ -364,7 +364,7 @@ export default function AppSidebar() {
         </SidebarGroup>
 
         <SidebarGroup className="mt-3 px-2 group-data-[collapsible=icon]:hidden">
-          <div className="rounded-lg border border-sidebar-border bg-sidebar-accent/50 p-1.5 backdrop-blur-sm">
+          <div className="rounded-lg border border-white/15 bg-white/[0.08] p-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_8px_20px_-16px_rgba(0,0,0,0.9)] backdrop-blur-sm">
             <div className="mb-1.5">
               <p className="text-[9px] font-semibold uppercase tracking-wide text-sidebar-foreground/60">
                 Conectados
@@ -376,7 +376,7 @@ export default function AppSidebar() {
               <div className="space-y-1">
                 {visibleUsers.map(user => {
                   return (
-                    <div key={user.email} className={`flex items-center justify-between gap-1.5 rounded-md border border-transparent bg-sidebar/80 px-1.5 py-1 shadow-[0_4px_12px_-12px_rgba(15,23,42,0.25)] transition-all duration-300 ${getPresenceStyleClasses(user.presenceStyle)}`}>
+                    <div key={user.email} className={`flex items-center justify-between gap-1.5 rounded-md border border-white/10 bg-white/[0.07] px-1.5 py-1 shadow-[0_4px_12px_-12px_rgba(15,23,42,0.25)] transition-all duration-300 hover:border-white/20 hover:bg-white/[0.12] ${getPresenceStyleClasses(user.presenceStyle)}`}>
                       <div className="flex items-center gap-1.5 min-w-0">
                         <div className="relative shrink-0">
                           <UserAvatar
@@ -398,7 +398,7 @@ export default function AppSidebar() {
                           <Badge
                             key={role}
                             title={`Rol: ${role.toUpperCase()}`}
-                            className={`connected-role-badge px-1 py-0 h-[13px] flex items-center whitespace-nowrap ${getRoleColorClasses(role, user.fullName)}`}
+                            className={`connected-role-badge rounded-sm bg-black/20 px-1 py-0 h-[13px] flex items-center whitespace-nowrap ${getRoleColorClasses(role, user.fullName)}`}
                           >
                             {role.toUpperCase()}
                           </Badge>
