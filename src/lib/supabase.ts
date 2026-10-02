@@ -75,12 +75,16 @@ export type ReportCategory = typeof REPORT_CATEGORIES[number]
 
 export const MEDICAL_DOCUMENT_TYPES = ['Cedula', 'Pasaporte', 'Otro'] as const
 export type MedicalDocumentType = typeof MEDICAL_DOCUMENT_TYPES[number]
+export const AMBULANCE_TYPES = ['VIVE', 'INTEGRAL'] as const
+export type AmbulanceType = typeof AMBULANCE_TYPES[number]
 
 export interface Report {
   id: string
   report_category: ReportCategory
   document_type?: MedicalDocumentType | null
   document_other?: string | null
+  ambulance_type?: AmbulanceType | null
+  paramedic_name?: string | null
   month: string
   year: number
   insured_name: string
@@ -194,6 +198,10 @@ function normalizeReport(raw: Record<string, unknown>): Report {
       ? raw.document_type as MedicalDocumentType
       : null,
     document_other: raw.document_other === null || raw.document_other === undefined ? null : String(raw.document_other),
+    ambulance_type: AMBULANCE_TYPES.includes(raw.ambulance_type as AmbulanceType)
+      ? raw.ambulance_type as AmbulanceType
+      : null,
+    paramedic_name: raw.paramedic_name === null || raw.paramedic_name === undefined ? null : String(raw.paramedic_name),
     month: String(raw.month ?? ''),
     year: Number(raw.year ?? 0),
     insured_name: String(raw.insured_name ?? ''),
