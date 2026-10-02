@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/select'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Spinner } from '@/components/ui/spinner'
-import { SERVICE_TYPES, REPORT_STATUSES, MONTHS, REPORT_CATEGORIES, MEDICAL_DOCUMENT_TYPES, type ReportCategory, type ReportStatus, type Report, createReport, updateReport, loadReportWithUpdates, uploadEvidenceFile } from '@/lib/supabase'
+import { SERVICE_TYPES, REPORT_STATUSES, MONTHS, REPORT_CATEGORIES, MEDICAL_DOCUMENT_TYPES, AMBULANCE_TYPES, type AmbulanceType, type ReportCategory, type ReportStatus, type Report, createReport, updateReport, loadReportWithUpdates, uploadEvidenceFile } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth'
 import { usePermissions } from '@/lib/permissions-context'
 import { AuditService } from '@/lib/audit-service'
@@ -71,6 +71,8 @@ type NewReportForm = {
     report_category: ReportCategory
     document_type: typeof MEDICAL_DOCUMENT_TYPES[number] | ''
     document_other: string
+    ambulance_type: AmbulanceType | ''
+    paramedic_name: string
   month: string
   year: number
   insured_name: string
@@ -91,6 +93,8 @@ const [form, setForm] = React.useState<NewReportForm>({
       report_category: initialCategory,
     document_type: '',
     document_other: '',
+    ambulance_type: '',
+    paramedic_name: '',
     month: MONTHS[currentMonthIdx],
     year: currentYear,
     insured_name: '',
@@ -151,6 +155,8 @@ const [form, setForm] = React.useState<NewReportForm>({
         report_category: report.report_category,
         document_type: report.document_type ?? '',
         document_other: report.document_other ?? '',
+        ambulance_type: report.ambulance_type ?? '',
+        paramedic_name: report.paramedic_name ?? '',
         insured_name: report.insured_name ?? '',
         plate: report.plate ?? '',
         policy: report.policy ?? '',
@@ -421,7 +427,10 @@ const [form, setForm] = React.useState<NewReportForm>({
     if (!isDocumentReport && form.document_type) {
       setForm(prev => ({ ...prev, document_type: '', document_other: '' }))
     }
-  }, [isMedicalReport, isHomeReport, isDocumentReport, form.service_type, form.document_type])
+    if (!isMedicalReport && (form.ambulance_type || form.paramedic_name)) {
+      setForm(prev => ({ ...prev, ambulance_type: '', paramedic_name: '' }))
+    }
+  }, [isMedicalReport, isHomeReport, isDocumentReport, form.service_type, form.document_type, form.ambulance_type, form.paramedic_name])
 
   const handleEvidenceChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (!canUploadEvidence) {
@@ -576,6 +585,8 @@ const [form, setForm] = React.useState<NewReportForm>({
       report_category: form.report_category,
       document_type: isDocumentReport ? form.document_type || null : null,
       document_other: isDocumentReport && form.document_type === 'Otro' ? form.document_other.trim() : null,
+      ambulance_type: isMedicalReport ? form.ambulance_type || null : null,
+      paramedic_name: isMedicalReport ? form.paramedic_name.trim() || null : null,
       month: form.month,
       year: form.year,
       insured_name: form.insured_name.trim(),
@@ -883,7 +894,7 @@ const [form, setForm] = React.useState<NewReportForm>({
               </div>
             </div>
           </CardHeader>
-          <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <div className="space-y-1.5">
               <Label>{isDocumentReport ? 'Documento' : 'Estado del Caso'} <span className="text-destructive">*</span></Label>
               {isDocumentReport ? (
@@ -927,6 +938,31 @@ const [form, setForm] = React.useState<NewReportForm>({
                 />
               </div>
             )}
+            {isMedicalReport && (
+              <>
+                <div className="space-y-1.5">
+                  <Label>Tipo de Ambulancia</Label>
+                  <Select value={form.ambulance_type} onValueChange={v => set('ambulance_type', v)}>
+                    <SelectTrigger className="bg-muted/50 border-border/70">
+                      <SelectValue placeholder="Seleccionar tipo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {AMBULANCE_TYPES.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="paramedic_name">Nombre Paramédico o Agente</Label>
+                  <Input
+                    id="paramedic_name"
+                    value={form.paramedic_name}
+                    onChange={e => set('paramedic_name', e.target.value)}
+                    placeholder="Nombre completo"
+                    className="bg-muted/50 border-border/70"
+                  />
+                </div>
+              </>
+            )}
             {!isMedicalReport && (form.status === 'Validacion' || form.status === 'Informativo') && (
               <div className="space-y-1.5">
                 <Label>Motivo</Label>
@@ -956,7 +992,7 @@ const [form, setForm] = React.useState<NewReportForm>({
           </CardContent>
         </Card>
 
-        <Card className="rounded-xl border shadow-sm">
+        {!isMedicalReport && <Card className="rounded-xl border shadow-sm">
           <CardHeader className="pb-3">
             <div className="flex items-center gap-3">
               <span className="flex size-10 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 ring-1 ring-emerald-500/20 dark:text-emerald-400" aria-hidden="true">
@@ -1024,7 +1060,7 @@ const [form, setForm] = React.useState<NewReportForm>({
               </div>
             )}
           </CardContent>
-        </Card>
+        </Card>}
 
         {error && (
           <p className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-sm font-medium text-destructive">{error}</p>
