@@ -359,7 +359,7 @@ export default function AppSidebar() {
                         : location.pathname.startsWith(to)}
                       tooltip={label}
                       onClick={() => navigate(to)}
-                      className="group relative rounded-md px-2.5 py-2.5 text-sm font-medium transition-all duration-200 hover:bg-white/5 hover:text-white data-[active=true]:bg-[#43271f] data-[active=true]:text-white data-[active=true]:shadow-none"
+                      className="group relative rounded-md px-2.5 py-2.5 text-sm font-medium transition-all duration-200 hover:bg-white/5 hover:text-white data-[active=true]:bg-[#1f63e6]/20 data-[active=true]:text-white data-[active=true]:shadow-none"
                     >
                       <Icon className="size-4 shrink-0 transition-transform duration-200 group-hover:scale-105" />
                       <span>{label}</span>
