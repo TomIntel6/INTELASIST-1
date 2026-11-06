@@ -8,7 +8,7 @@ import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken'
 import multer from 'multer'
 import { createClient } from '@supabase/supabase-js'
-import pool from './db.js'
+import pool, { getDatabaseEndpoint } from './db.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
@@ -96,6 +96,18 @@ const SUPABASE_SERVICE_KEY_SOURCE = process.env.SUPABASE_SERVICE_KEY
 const PLACEHOLDER_SERVICE_KEY = 'TU_SECRET_KEY'
 const JWT_SECRET = String(process.env.JWT_SECRET || 'TU_SECRETO_JWT').trim()
 const JWT_EXPIRES_IN = '8h'
+
+function logServerError(context, error) {
+  const details = {
+    name: error instanceof Error ? error.name : 'UnknownError',
+  }
+
+  if (typeof error === 'object' && error !== null && 'code' in error && typeof error.code === 'string') {
+    details.code = error.code
+  }
+
+  console.error(context, details)
+}
 
 const supabase = SUPABASE_URL && SUPABASE_SERVICE_KEY && SUPABASE_SERVICE_KEY !== PLACEHOLDER_SERVICE_KEY
   ? createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY)
@@ -1357,7 +1369,7 @@ authRoutes.post('/login', async (req, res) => {
       must_change_password: false,
     })
   } catch (err) {
-    console.error(err)
+    logServerError('[Auth] Login failed', err)
     res.status(500).json({ error: 'Error al iniciar sesión.' })
   }
 })
@@ -3736,11 +3748,11 @@ app.get('/api/health/auth', async (req, res) => {
       timestamp: new Date().toISOString(),
     })
   } catch (err) {
-    console.error('Error checking auth health:', err)
+    logServerError('[Auth] Health check failed', err)
     res.status(500).json({
       status: 'error',
       message: 'Servicio de autenticación no disponible',
-      error: err instanceof Error ? err.message : 'Error desconocido',
+      error: 'Error al comprobar el servicio',
     })
   }
 })
@@ -4584,7 +4596,22 @@ async function ensureReportsRealtime() {
 }
 
 async function start() {
+  const databaseEndpoint = getDatabaseEndpoint()
+  let databaseStatus = 'connecting'
+
+  console.info('[Database] Connection diagnostic', {
+    ...databaseEndpoint,
+    status: databaseStatus,
+  })
+
   try {
+    await pool.query('SELECT 1')
+    databaseStatus = 'connected'
+    console.info('[Database] Connection diagnostic', {
+      ...databaseEndpoint,
+      status: databaseStatus,
+    })
+
     console.log('Inicializando base de datos...')
     await ensurePgcryptoExtension()
     await ensureOnlinePresenceTable()
@@ -4604,8 +4631,12 @@ async function start() {
     await ensureDeletedReportsTable()
     console.log('Base de datos inicializada correctamente')
   } catch (err) {
-    console.error('Error inicializando base de datos:', err instanceof Error ? err.message : err)
-    console.warn('Continuando sin BD - usando fallback en memoria')
+    logServerError('[Database] Required initialization failed', err)
+    console.error('[Database] Connection diagnostic', {
+      ...databaseEndpoint,
+      status: databaseStatus === 'connecting' ? 'failed' : 'connected_initialization_failed',
+    })
+    process.exit(1)
   }
 
   // Inicia la tarea de limpieza de presencia expirada
