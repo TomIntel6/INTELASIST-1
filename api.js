@@ -110,6 +110,7 @@ function getSupabaseAdminClient() {
 }
 
 const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || 'https://intelasist-ai.vercel.app'
+const RENDER_ORIGIN = String(process.env.RENDER_EXTERNAL_URL || 'https://intelasist.onrender.com').replace(/\/+$/, '')
 const SUPABASE_STORAGE_BUCKET = String(process.env.SUPABASE_STORAGE_BUCKET || 'uploads').trim()
 console.log('[Supabase] ENV vars:', {
   SUPABASE_URL: SUPABASE_URL ? 'set' : 'missing',
@@ -120,6 +121,7 @@ console.log('[Supabase] ENV vars:', {
 console.log('[Supabase] cliente administrativo inicializado:', supabase ? 'sí' : 'no')
 const allowedOrigins = [
   FRONTEND_ORIGIN,
+  RENDER_ORIGIN,
   'https://intelasist-ai.vercel.app',
   'https://intelasist-yps2-64ysydqqy-jose-rodriguez-s-projects1.vercel.app',
 ].filter(Boolean)
