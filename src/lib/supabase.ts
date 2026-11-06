@@ -1,10 +1,16 @@
 import { createClient } from '@supabase/supabase-js'
 
 // Supabase client instance
-export const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL || '',
-  import.meta.env.VITE_SUPABASE_ANON_KEY || ''
-)
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://ceowmvfxjgrgwrespcrb.supabase.co'
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
+
+export const supabase = SUPABASE_ANON_KEY
+  ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+  : null
+
+if (!supabase) {
+  console.warn('Supabase Realtime está deshabilitado: configura VITE_SUPABASE_ANON_KEY para activarlo.')
+}
 
 export type ServiceType =
   | 'Grua por Averia'

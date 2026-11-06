@@ -150,6 +150,8 @@ export class UserManagementService {
    */
   static async updateLastLogin(userId: string) {
     try {
+      if (!supabase) return false
+
       let { data: activity } = await supabase
         .from('user_activity_log')
         .select('id')
@@ -188,6 +190,8 @@ export class UserManagementService {
    */
   static async updateLastActivity(userId: string) {
     try {
+      if (!supabase) return false
+
       let { data: activity } = await supabase
         .from('user_activity_log')
         .select('id')
@@ -223,6 +227,8 @@ export class UserManagementService {
    */
   static async incrementReportsCreated(userId: string) {
     try {
+      if (!supabase) return false
+
       let { data: activity } = await supabase
         .from('user_activity_log')
         .select('id, reports_created')
@@ -260,6 +266,8 @@ export class UserManagementService {
    */
   static async getUserActivityHistory(userId: string, limit = 50, offset = 0) {
     try {
+      if (!supabase) return { data: [], count: 0 }
+
       const { data, error, count } = await supabase
         .from('audit_logs')
         .select('*', { count: 'exact' })

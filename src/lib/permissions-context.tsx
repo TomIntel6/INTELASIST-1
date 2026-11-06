@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { getDefaultApiBase, supabase } from '@/lib/supabase'
+import { getDefaultApiBase } from '@/lib/supabase'
 import { useAuth, hasAnyRole } from '@/lib/auth'
 import type { UserPermission, PermissionKey, ModuleKey } from '@/lib/permissions'
 import { PERMISSIONS, DEFAULT_MODULE_ACCESS, DEFAULT_ROLE_PERMISSIONS, getAllPermissionKeys, getModuleKeyForPermission } from '@/lib/permissions'

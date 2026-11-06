@@ -1,5 +1,4 @@
 import * as React from 'react'
-import { supabase } from '@/lib/supabase'
 import { AuditService } from '@/lib/audit-service'
 import type { AuditLog } from '@/lib/permissions'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'

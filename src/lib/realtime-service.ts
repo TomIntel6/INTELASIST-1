@@ -40,6 +40,8 @@ export class RealtimeService {
    */
   static subscribeToUserPermissions(userId: string, callback: (event: RealtimeEvent<any>) => void) {
     const channelName = `user_permissions:${userId}`
+    if (!supabase) return channelName
+
     const channel = supabase
       .channel(channelName)
       .on(
@@ -93,6 +95,8 @@ export class RealtimeService {
    */
   private static subscribeToTable(tableName: string, callback: (event: RealtimeEvent<any>) => void) {
     const channelName = `${tableName}:all`
+    if (!supabase) return channelName
+
     const startedAt = performance.now()
 
     // Reuse existing channel if already subscribed
@@ -157,7 +161,7 @@ export class RealtimeService {
     const stillHasListeners = !!listeners && listeners.size > 0
     if (!stillHasListeners) {
       const channel = this.channels.get(channelName)
-      if (channel) {
+      if (supabase && channel) {
         supabase.removeChannel(channel)
       }
       this.channels.delete(channelName)
@@ -170,8 +174,11 @@ export class RealtimeService {
    * Unsubscribe all channels
    */
   static unsubscribeAll() {
+    const client = supabase
+    if (!client) return
+
     this.channels.forEach((channel, name) => {
-      supabase.removeChannel(channel)
+      client.removeChannel(channel)
       console.log(`✓ Unsubscribed from ${name}`)
     })
     this.channels.clear()
