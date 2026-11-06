@@ -61,7 +61,7 @@ export default function NewReport() {
   const currentMonthIdx = periodDate.getMonth()
   const currentYear = periodDate.getFullYear()
 
-  const COVERAGE_OPTIONS = ['No', 'KC', 'K1', 'K8', 'VA', 'FAB', 'FAP', 'FAV', 'FP', 'FAM', 'FAE', 'CB', 'CP', 'CV'] as const
+  const COVERAGE_OPTIONS = ['No', 'KC', 'K1', 'K8', 'VA', 'FAB', 'FAP', 'FAPM', 'FAV', 'FP', 'FAM', 'FAMM', 'FAE', 'CB', 'CP', 'CV'] as const
   const MEDICAL_SERVICE_TYPES = ['Ambulancia', 'Orientacion Medica', 'Telemedicina'] as const
   const HOME_SERVICE_TYPES = ['Cerrajeria Hogar', 'Electricidad', 'Plomeria', 'Vidrieria'] as const
   const INFORMATIVE_MOTIVOS = ['SERVICIO UTILIZADO', 'NO CUBIERTO POR LA POLIZA', 'OTROS'] as const
