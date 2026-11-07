@@ -4,7 +4,7 @@ import { usePermissions } from '@/lib/permissions-context'
 import { PERMISSIONS } from '@/lib/permissions'
 import { useRealtimeAuditLogs } from '@/hooks/useRealtime'
 import { useNotifications } from '@/hooks/useRealtime'
-import { Navigate } from 'react-router-dom'
+import { Navigate, useSearchParams } from 'react-router-dom'
 import ErrorBoundary from '@/components/ErrorBoundary'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -53,6 +53,20 @@ export default function AdminDashboard() {
   const { user } = useAuth()
   const { hasPermission } = usePermissions()
   const { notifications, removeNotification } = useNotifications(user?.id || '')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const requestedTab = searchParams.get('tab')
+  const tabValues = ['overview', 'permissions', 'modules', 'agents', 'audit', 'reports', 'activity', 'trash', 'users', 'health']
+  const selectedTab = requestedTab && tabValues.includes(requestedTab) ? requestedTab : 'overview'
+
+  const handleTabChange = (tab: string) => {
+    const nextParams = new URLSearchParams(searchParams)
+    if (tab === 'overview') {
+      nextParams.delete('tab')
+    } else {
+      nextParams.set('tab', tab)
+    }
+    setSearchParams(nextParams)
+  }
 
   // Subscribe to real-time audit logs
   const handleAuditUpdate = React.useCallback((event: any) => {
@@ -87,7 +101,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* Tabs */}
-        <Tabs defaultValue="overview" orientation="vertical" className="w-full flex-col lg:flex-row lg:items-start">
+        <Tabs value={selectedTab} onValueChange={handleTabChange} orientation="vertical" className="w-full flex-col lg:flex-row lg:items-start">
           <TabsList aria-label="Navegación de Gestión de Permisos" className="order-2 grid w-full min-w-0 grid-cols-2 gap-1 border-t border-border/70 bg-transparent p-2 lg:sticky lg:top-6 lg:order-2 lg:max-h-[calc(100vh-3rem)] lg:w-60 lg:shrink-0 lg:grid-cols-1 lg:gap-1 lg:border-l lg:border-t-0 lg:p-3">
             <TabsTrigger value="overview" className={adminTabTriggerClass}>
               <Zap className="size-4" />

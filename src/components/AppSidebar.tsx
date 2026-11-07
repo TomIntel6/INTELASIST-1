@@ -20,7 +20,7 @@ import { usePermissions } from '@/lib/permissions-context'
 import { UserAvatar } from '@/components/UserAvatar'
 import { normalizeAvatar } from '@/lib/avatar'
 import type { AvatarData } from '@/lib/avatar'
-import { LayoutDashboard, FileText, LogOut, HeartPulse, House, Users } from 'lucide-react'
+import { LayoutDashboard, FileText, LogOut, HeartPulse, House, Users, UsersRound } from 'lucide-react'
 import { PERMISSIONS } from '@/lib/permissions'
 
 const ONLINE_USER_FETCH_INTERVAL_MS = 10 * 60 * 1000
@@ -57,6 +57,7 @@ const navItems = [
   { to: '/servicios-medicos', label: 'Servicios Médicos', icon: HeartPulse },
   { to: '/asistencia-hogar', label: 'Asistencia en el Hogar', icon: House },
   { to: '/usuarios', label: 'Usuarios', icon: Users },
+  { to: '/admin?tab=users', label: 'Usuarios +', icon: UsersRound },
 ]
 
 export default function AppSidebar() {
@@ -75,6 +76,7 @@ export default function AppSidebar() {
   const canViewReportsModule = React.useMemo(() => hasModuleAccess('reports'), [hasModuleAccess])
   const canViewUsersModule =
     hasModuleAccess('users') || hasPermission(PERMISSIONS.USERS.VIEW)
+  const canManageUsers = hasPermission(PERMISSIONS.SYSTEM.MANAGE_PERMISSIONS)
   const [onlineUsers, setOnlineUsers] = React.useState<ReturnType<typeof getOnlineUsers>>(() => getOnlineUsers())
   const [presenceStyles, setPresenceStyles] = React.useState<Record<string, string>>({})
   const [avatarsByEmail, setAvatarsByEmail] = React.useState<Record<string, AvatarData | null>>({})
@@ -111,7 +113,7 @@ export default function AppSidebar() {
       window.cancelAnimationFrame(frameId)
       resizeObserver.disconnect()
     }
-  }, [location.pathname, canViewReportsModule, canViewUsersModule])
+  }, [location.pathname, location.search, canViewReportsModule, canViewUsersModule, canManageUsers])
 
   const refreshOnlineUsers = React.useCallback(() => {
     setOnlineUsers(prevUsers => {
@@ -357,13 +359,18 @@ export default function AppSidebar() {
                 if (to === '/usuarios' && !canViewUsersModule) {
                   return null
                 }
+                if (to === '/admin?tab=users' && !canManageUsers) {
+                  return null
+                }
 
                 return (
                   <SidebarMenuItem key={to}>
                     <SidebarMenuButton
                       isActive={to === '/informes'
                         ? location.pathname === '/informes'
-                        : location.pathname.startsWith(to)}
+                        : to === '/admin?tab=users'
+                          ? location.pathname.startsWith('/admin') && new URLSearchParams(location.search).get('tab') === 'users'
+                          : location.pathname.startsWith(to)}
                       tooltip={label}
                       onClick={() => navigate(to)}
                       className="group relative rounded-md px-2.5 py-2.5 text-sm font-medium transition-all duration-200 hover:bg-white/5 hover:text-white data-[active=true]:bg-[#1f63e6]/20 data-[active=true]:text-white data-[active=true]:shadow-none"
