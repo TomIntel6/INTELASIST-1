@@ -55,8 +55,21 @@ export default function AdminDashboard() {
   const { notifications, removeNotification } = useNotifications(user?.id || '')
   const [searchParams, setSearchParams] = useSearchParams()
   const requestedTab = searchParams.get('tab')
+  const canViewUsers = hasPermission(PERMISSIONS.USERS.VIEW)
   const tabValues = ['overview', 'permissions', 'modules', 'agents', 'audit', 'reports', 'activity', 'trash', 'users', 'health']
-  const selectedTab = requestedTab && tabValues.includes(requestedTab) ? requestedTab : 'overview'
+  const selectedTab = requestedTab &&
+    tabValues.includes(requestedTab) &&
+    (requestedTab !== 'users' || canViewUsers)
+    ? requestedTab
+    : 'overview'
+
+  React.useEffect(() => {
+    if (requestedTab !== 'users' || canViewUsers) return
+
+    const nextParams = new URLSearchParams(searchParams)
+    nextParams.delete('tab')
+    setSearchParams(nextParams, { replace: true })
+  }, [canViewUsers, requestedTab, searchParams, setSearchParams])
 
   const handleTabChange = (tab: string) => {
     const nextParams = new URLSearchParams(searchParams)
@@ -135,10 +148,12 @@ export default function AdminDashboard() {
               <Trash2 className="size-4" />
               <span className="hidden sm:inline">Papelera</span>
             </TabsTrigger>
-            <TabsTrigger value="users" className={adminTabTriggerClass}>
-              <UsersIcon className="size-4" />
-              <span className="hidden sm:inline">Usuarios</span>
-            </TabsTrigger>
+            {canViewUsers ? (
+              <TabsTrigger value="users" className={adminTabTriggerClass}>
+                <UsersIcon className="size-4" />
+                <span className="hidden sm:inline">Usuarios</span>
+              </TabsTrigger>
+            ) : null}
             <TabsTrigger value="health" className={adminTabTriggerClass}>
               <Activity className="size-4" />
               <span className="hidden sm:inline">Salud</span>
@@ -206,11 +221,13 @@ export default function AdminDashboard() {
           </TabsContent>
 
           {/* Users Tab */}
-          <TabsContent value="users" className="order-1 min-w-0 w-full transition-[opacity,transform] duration-300 data-[state=active]:translate-y-0 data-[state=active]:opacity-100 data-[state=inactive]:translate-y-1 data-[state=inactive]:opacity-0 lg:order-1">
-            <React.Suspense fallback={<LoadingFallback />}>
-              <AdvancedUserManagement />
-            </React.Suspense>
-          </TabsContent>
+          {canViewUsers ? (
+            <TabsContent value="users" className="order-1 min-w-0 w-full transition-[opacity,transform] duration-300 data-[state=active]:translate-y-0 data-[state=active]:opacity-100 data-[state=inactive]:translate-y-1 data-[state=inactive]:opacity-0 lg:order-1">
+              <React.Suspense fallback={<LoadingFallback />}>
+                <AdvancedUserManagement />
+              </React.Suspense>
+            </TabsContent>
+          ) : null}
 
           {/* Health Tab */}
           <TabsContent value="health" className="order-1 min-w-0 w-full transition-[opacity,transform] duration-300 data-[state=active]:translate-y-0 data-[state=active]:opacity-100 data-[state=inactive]:translate-y-1 data-[state=inactive]:opacity-0 lg:order-1">
