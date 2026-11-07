@@ -286,7 +286,7 @@ export default function ReportsList() {
   const [total, setTotal] = React.useState(0)
   const [stats, setStats] = React.useState<ReportCategoryStats>(EMPTY_STATS)
   const [page, setPage] = React.useState(1)
-  const [search, setSearch] = React.useState('')
+  const [search, setSearch] = React.useState(() => searchParams.get('search') ?? '')
   const [debouncedSearch, setDebouncedSearch] = React.useState('')
   const [loading, setLoading] = React.useState(true)
   const [reloadKey, setReloadKey] = React.useState(0)
@@ -302,6 +302,11 @@ export default function ReportsList() {
 
   const isMountedRef = React.useRef(true)
   const refreshTimerRef = React.useRef<number | null>(null)
+
+  React.useEffect(() => {
+    const urlSearch = searchParams.get('search') ?? ''
+    setSearch(current => current === urlSearch ? current : urlSearch)
+  }, [searchParams])
 
   React.useEffect(() => {
     return () => {
@@ -568,47 +573,57 @@ export default function ReportsList() {
   })
 
   return (
-    <div className="mx-auto max-w-7xl space-y-5 p-6">
+    <div className="reports-page mx-auto max-w-[1440px] space-y-6 p-4 sm:p-6 lg:p-8">
       {/* Header */}
-      <div className="glass-panel relative overflow-hidden rounded-[1.5rem] p-5 sm:p-6">
+      <div className="reports-hero relative overflow-hidden rounded-[1.5rem] p-5 sm:p-7">
         <span className="brand-gradient-bg pointer-events-none absolute inset-x-0 top-0 h-1 opacity-80" aria-hidden="true" />
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-start gap-3">
             <span className="brand-monogram flex size-12 shrink-0 items-center justify-center rounded-2xl" aria-hidden="true">
               <FileText className="size-5" />
             </span>
-            <div>
+            <div className="min-w-0">
               <p className="mb-1.5 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                 <span className="brand-gradient-bg size-1.5 rounded-full" aria-hidden="true" />
                 {reportCategory}
               </p>
-              <h1 className="text-2xl font-bold tracking-tight text-foreground">{reportCategory}</h1>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {total} informe{total !== 1 ? 's' : ''} en {selectedMonth} {selectedYear}
+              <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-[1.75rem]">
+                Informes de {reportCategory.toLocaleLowerCase('es-PA')}
+              </h1>
+              <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">
+                Consulta, administra y exporta los registros de asistencia de tu equipo.
               </p>
             </div>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex shrink-0 flex-wrap gap-2 sm:justify-end">
+            <div className="reports-total mr-auto flex min-w-[132px] flex-col justify-center rounded-xl px-3.5 py-2 sm:mr-2">
+              <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">En el período</span>
+              <span className="mt-0.5 text-lg font-bold tabular-nums text-foreground">
+                {total.toLocaleString('es-PA')} <span className="text-xs font-medium text-muted-foreground">informes</span>
+              </span>
+            </div>
             {canExportReports && (
               <Button
                 variant="outline"
-                size="sm"
+                size="default"
                 onClick={() => setShowExportModal(true)}
                 disabled={stats.total === 0}
-                className="gap-2"
+                className="gap-2 rounded-xl bg-background"
               >
                 <Download className="size-4" />
-                Exportar Excel
+                <span className="hidden sm:inline">Exportar Excel</span>
+                <span className="sm:hidden">Excel</span>
               </Button>
             )}
             {hasPermission(PERMISSIONS.REPORTS.CREATE as PermissionKey) && (
               <Button
-                size="sm"
+                size="default"
                 onClick={() => navigate(`/informes/nuevo?category=${encodeURIComponent(reportCategory)}`)}
-                className="gap-2 bg-destructive hover:bg-destructive/90 text-white"
+                className="gap-2 rounded-xl shadow-[0_8px_18px_-10px_rgba(31,99,230,0.65)]"
               >
                 <FilePlus className="size-4" />
-                Nuevo Informe
+                <span className="hidden sm:inline">Nuevo informe</span>
+                <span className="sm:hidden">Nuevo</span>
               </Button>
             )}
           </div>
@@ -616,21 +631,22 @@ export default function ReportsList() {
       </div>
 
       {/* Filters */}
-      <div className="glass-panel flex flex-wrap gap-3 rounded-[1.35rem] p-3">
-        <div className="relative flex-1 min-w-[200px]">
+      <div className="reports-toolbar flex flex-col gap-3 rounded-[1.35rem] p-3 sm:flex-row sm:flex-wrap sm:items-center">
+        <div className="relative min-w-0 flex-1 sm:min-w-[240px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
           <Input
+            aria-label="Buscar informes"
             placeholder="Buscar por asegurado, placa, póliza..."
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="pl-9"
+            className="h-11 rounded-xl bg-background pl-9"
           />
         </div>
         <Select
           value={selectedMonth}
-          onValueChange={v => { setPage(1); setSearchParams({ month: v, year: String(selectedYear), category: reportCategory }) }}
+          onValueChange={v => { setPage(1); setSearchParams({ month: v, year: String(selectedYear), category: reportCategory, ...(search.trim() ? { search: search.trim() } : {}) }) }}
         >
-          <SelectTrigger className="w-40">
+          <SelectTrigger aria-label="Filtrar por mes" className="h-11 w-full rounded-xl bg-background sm:w-40">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -641,9 +657,9 @@ export default function ReportsList() {
         </Select>
         <Select
           value={String(selectedYear)}
-          onValueChange={v => { setPage(1); setSearchParams({ month: selectedMonth, year: v, category: reportCategory }) }}
+          onValueChange={v => { setPage(1); setSearchParams({ month: selectedMonth, year: v, category: reportCategory, ...(search.trim() ? { search: search.trim() } : {}) }) }}
         >
-          <SelectTrigger className="w-28">
+          <SelectTrigger aria-label="Filtrar por año" className="h-11 w-full rounded-xl bg-background sm:w-28">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -655,12 +671,15 @@ export default function ReportsList() {
       </div>
 
       {/* Table */}
-      <Card className="glass-panel overflow-hidden rounded-[1.35rem] border">
-        <CardHeader className="pb-3">
+      <Card className="reports-table-card overflow-hidden rounded-[1.35rem] border p-0">
+        <CardHeader className="flex flex-row items-center justify-between border-b border-border/70 px-5 py-4">
           <CardTitle className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
             <span className="brand-gradient-bg size-1.5 rounded-full" aria-hidden="true" />
             {selectedMonth} {selectedYear}
           </CardTitle>
+          <span className="text-xs font-medium tabular-nums text-muted-foreground">
+            {total.toLocaleString('es-PA')} registros
+          </span>
         </CardHeader>
         <CardContent className="p-0 overflow-x-hidden">
           {deleteError ? (
@@ -700,8 +719,8 @@ export default function ReportsList() {
           ) : (
             <>
               {/* DESKTOP / TABLET (>=768px): tabla compacta de ancho fijo */}
-              <div className="hidden md:block">
-                <Table className="w-full table-fixed text-[13px]">
+              <div className="hidden lg:block">
+                <Table className="reports-table w-full table-fixed text-[13px]">
                   <colgroup>
                     <col className="w-[17%]" /> {/* Asegurado */}
                     <col className="w-[9%]" />  {/* Placa */}
@@ -735,7 +754,7 @@ export default function ReportsList() {
               </div>
 
               {/* MÓVIL (<768px): tarjetas apiladas */}
-              <div className="block md:hidden divide-y divide-border">
+              <div className="block divide-y divide-border lg:hidden">
                 {reports.map(report => (
                   <ReportMobileCard key={report.id} {...rowProps(report)} />
                 ))}

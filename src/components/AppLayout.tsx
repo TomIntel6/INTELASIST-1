@@ -1,6 +1,6 @@
 import * as React from 'react'
-import { Outlet, useNavigate } from 'react-router-dom'
-import { AlertCircle, Bell, Clock3, Mail, Phone, Settings, ShieldCheck, Sparkles, UserCircle2 } from 'lucide-react'
+import { Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { AlertCircle, Bell, CalendarDays, Clock3, Mail, Phone, Search, Settings, ShieldCheck, Sparkles } from 'lucide-react'
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -21,11 +21,15 @@ import FailedAttemptsAlert from '@/components/FailedAttemptsAlert'
 export default function AppLayout() {
   const { user, updateCurrentUserProfile, updateCurrentUserAvatar } = useAuth()
   const { hasPermission } = usePermissions()
+  const location = useLocation()
   const [notificationsOpen, setNotificationsOpen] = React.useState(false)
   const [profileOpen, setProfileOpen] = React.useState(false)
   const [profileName, setProfileName] = React.useState('')
   const [profileSaving, setProfileSaving] = React.useState(false)
   const [profileMessage, setProfileMessage] = React.useState<string | null>(null)
+  const [globalSearch, setGlobalSearch] = React.useState('')
+  const [globalSearchOpen, setGlobalSearchOpen] = React.useState(false)
+  const [currentDateTime, setCurrentDateTime] = React.useState(() => new Date())
 
   const rawDisplayName = (user?.user_metadata?.full_name as string) ?? user?.email ?? 'Usuario'
   const displayName = profileName || rawDisplayName
@@ -33,6 +37,9 @@ export default function AppLayout() {
   const userRoles = React.useMemo(() => getUserRoles(user), [user])
   const canViewShifts = userRoles.some(role => ['Admin', 'Support', 'Gerente'].includes(role))
   const canViewAdmin = hasPermission(PERMISSIONS.SYSTEM.MANAGE_PERMISSIONS)
+  const canSearchReports =
+    hasPermission(PERMISSIONS.REPORTS.VIEW) ||
+    hasPermission(PERMISSIONS.REPORTS.VIEW_ALL)
   const metadata = (user?.user_metadata ?? {}) as Record<string, unknown>
   const phoneNumber = typeof metadata.phone === 'string'
     ? metadata.phone
@@ -69,6 +76,11 @@ export default function AppLayout() {
   React.useEffect(() => {
     setProfileName(rawDisplayName)
   }, [rawDisplayName])
+
+  React.useEffect(() => {
+    const timer = window.setInterval(() => setCurrentDateTime(new Date()), 60_000)
+    return () => window.clearInterval(timer)
+  }, [])
 
   React.useEffect(() => {
     const handleSecurityAlert = (event: Event) => {
@@ -121,24 +133,77 @@ export default function AppLayout() {
     return 'Buenas noches'
   }
 
+  const handleGlobalSearch = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    const query = globalSearch.trim()
+    setGlobalSearchOpen(false)
+    navigate(query ? `/informes?search=${encodeURIComponent(query)}` : '/informes')
+  }
+
   return (
     <SidebarProvider>
       <AppSidebar />
       <SidebarInset>
-        <header className="app-header sticky top-0 z-30 flex h-16 shrink-0 items-center gap-3 px-4">
+        <header className="app-header sticky top-0 z-30 flex h-[72px] shrink-0 items-center gap-3 px-4 sm:px-6">
           <SidebarTrigger className="-ml-1" />
           <Separator orientation="vertical" className="h-5" />
-          <div className="flex flex-1 items-center justify-between gap-3">
+          <div className="flex min-w-0 flex-1 items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <span className="app-header-monogram flex size-8 shrink-0 items-center justify-center rounded-lg text-xs font-bold tracking-tight">
                 IA
               </span>
-              <div className="leading-tight">
+              <div className="min-w-0 leading-tight">
                 <p className="app-greeting-name">{getHeaderGreeting()}, {displayName}</p>
+                <p className="app-greeting-date mt-1 hidden sm:block">
+                  {currentDateTime.toLocaleDateString('es-PA', {
+                    weekday: 'long',
+                    day: 'numeric',
+                    month: 'long',
+                    year: 'numeric',
+                  })}
+                </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-2 lg:gap-3">
+            {canSearchReports ? (
+              <form
+                role="search"
+                onSubmit={handleGlobalSearch}
+                className="app-global-search relative mx-3 hidden w-full max-w-[360px] flex-1 md:block"
+              >
+                <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  aria-label="Buscar informes"
+                  placeholder="Buscar informes..."
+                  value={globalSearch}
+                  onChange={event => setGlobalSearch(event.target.value)}
+                  className="h-10 rounded-xl border-border/70 bg-muted/40 pl-9 pr-16 text-sm shadow-none focus-visible:bg-background"
+                />
+                <kbd className="pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 rounded-md border border-border bg-background px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground lg:block">
+                  ENTER
+                </kbd>
+              </form>
+            ) : null}
+
+            <div className="flex shrink-0 items-center gap-1.5 sm:gap-2 lg:gap-3">
+              {canSearchReports ? (
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={() => setGlobalSearchOpen(open => !open)}
+                  className="rounded-xl border border-border/70 bg-background/70 text-muted-foreground shadow-sm md:hidden"
+                  aria-label="Buscar informes"
+                  aria-expanded={globalSearchOpen}
+                >
+                  <Search className="size-4" />
+                </Button>
+              ) : null}
+              <div className="mr-1 hidden items-center gap-2 border-r border-border/70 pr-3 text-right xl:flex">
+                <CalendarDays className="size-4 text-muted-foreground" />
+                <span className="text-xs font-medium tabular-nums text-muted-foreground">
+                  {currentDateTime.toLocaleTimeString('es-PA', { hour: '2-digit', minute: '2-digit' })}
+                </span>
+              </div>
               {canViewShifts ? (
                 <Button
                   variant="ghost"
@@ -220,13 +285,36 @@ export default function AppLayout() {
                 variant="ghost"
                 size="icon-sm"
                 onClick={() => setProfileOpen(true)}
-                className="rounded-xl border border-border/70 bg-background/70 text-muted-foreground shadow-sm transition-all hover:scale-[1.02] hover:bg-accent hover:text-foreground"
+                className="rounded-xl border border-border/70 bg-background/70 p-0.5 text-muted-foreground shadow-sm transition-all hover:scale-[1.02] hover:bg-accent hover:text-foreground"
                 aria-label="Perfil"
               >
-                <UserCircle2 className="size-4" />
+                <UserAvatar
+                  avatar={avatarData}
+                  name={displayName}
+                  fallbackImageUrl={user?.user_metadata?.avatar_url as string | undefined}
+                  size={28}
+                />
               </Button>
             </div>
           </div>
+          {canSearchReports && globalSearchOpen ? (
+            <form
+              role="search"
+              onSubmit={handleGlobalSearch}
+              className="app-mobile-search absolute left-4 right-4 top-[calc(100%+0.5rem)] z-40 flex items-center gap-2 rounded-xl border border-border bg-card p-2 shadow-xl md:hidden"
+            >
+              <Search className="ml-1 size-4 shrink-0 text-muted-foreground" />
+              <Input
+                autoFocus
+                aria-label="Buscar informes"
+                placeholder="Buscar informes..."
+                value={globalSearch}
+                onChange={event => setGlobalSearch(event.target.value)}
+                className="h-10 border-0 bg-transparent shadow-none focus-visible:ring-0"
+              />
+              <Button type="submit" size="sm" className="rounded-lg">Buscar</Button>
+            </form>
+          ) : null}
         </header>
         <UpdateNotice />
 
@@ -347,8 +435,10 @@ export default function AppLayout() {
           </SheetContent>
         </Sheet>
 
-        <main className="flex-1 min-w-0 overflow-auto">
-          <Outlet />
+        <main className="app-workspace min-h-0 min-w-0 flex-1 overflow-auto">
+          <div key={location.pathname} className="app-route-content">
+            <Outlet />
+          </div>
         </main>
       </SidebarInset>
     </SidebarProvider>
