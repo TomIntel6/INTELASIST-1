@@ -20,7 +20,8 @@ import { usePermissions } from '@/lib/permissions-context'
 import { UserAvatar } from '@/components/UserAvatar'
 import { normalizeAvatar } from '@/lib/avatar'
 import type { AvatarData } from '@/lib/avatar'
-import { LayoutDashboard, FileText, LogOut, HeartPulse, House } from 'lucide-react'
+import { LayoutDashboard, FileText, LogOut, HeartPulse, House, Users } from 'lucide-react'
+import { PERMISSIONS } from '@/lib/permissions'
 
 const ONLINE_USER_FETCH_INTERVAL_MS = 10 * 60 * 1000
 
@@ -55,10 +56,11 @@ const navItems = [
   { to: '/informes', label: 'Informes', icon: FileText },
   { to: '/servicios-medicos', label: 'Servicios Médicos', icon: HeartPulse },
   { to: '/asistencia-hogar', label: 'Asistencia en el Hogar', icon: House },
+  { to: '/usuarios', label: 'Usuarios', icon: Users },
 ]
 
 export default function AppSidebar() {
-  const { hasModuleAccess } = usePermissions()
+  const { hasModuleAccess, hasPermission } = usePermissions()
   const { user, signOut } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
@@ -71,6 +73,8 @@ export default function AppSidebar() {
   const avatarData = React.useMemo(() => normalizeAvatar(user?.user_metadata?.avatar), [user])
   const userRoles = React.useMemo(() => getUserRoles(user), [user])
   const canViewReportsModule = React.useMemo(() => hasModuleAccess('reports'), [hasModuleAccess])
+  const canViewUsersModule =
+    hasModuleAccess('users') || hasPermission(PERMISSIONS.USERS.VIEW)
   const [onlineUsers, setOnlineUsers] = React.useState<ReturnType<typeof getOnlineUsers>>(() => getOnlineUsers())
   const [presenceStyles, setPresenceStyles] = React.useState<Record<string, string>>({})
   const [avatarsByEmail, setAvatarsByEmail] = React.useState<Record<string, AvatarData | null>>({})
@@ -107,7 +111,7 @@ export default function AppSidebar() {
       window.cancelAnimationFrame(frameId)
       resizeObserver.disconnect()
     }
-  }, [location.pathname, canViewReportsModule])
+  }, [location.pathname, canViewReportsModule, canViewUsersModule])
 
   const refreshOnlineUsers = React.useCallback(() => {
     setOnlineUsers(prevUsers => {
@@ -348,6 +352,9 @@ export default function AppSidebar() {
             <SidebarMenu ref={navigationMenuRef} className="relative">
               {navItems.map(({ to, label, icon: Icon }) => {
                 if ((to === '/informes' || to === '/servicios-medicos' || to === '/asistencia-hogar') && !canViewReportsModule) {
+                  return null
+                }
+                if (to === '/usuarios' && !canViewUsersModule) {
                   return null
                 }
 
