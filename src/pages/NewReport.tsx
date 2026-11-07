@@ -52,11 +52,9 @@ export default function NewReport() {
   const existingReportRef = React.useRef<Report | null>(null)
   const [error, setError] = React.useState<string | null>(null)
   const [periodDate, setPeriodDate] = React.useState(() => new Date())
-  const initialCategory = searchParams.get('category') === 'Servicios Médicos'
-    ? 'Servicios Médicos'
-    : searchParams.get('category') === 'Asistencia en el Hogar'
-      ? 'Asistencia en el Hogar'
-      : 'Asistencia Vial'
+  const requestedCategory = REPORT_CATEGORIES.find(category => category === searchParams.get('category'))
+  const initialCategory = requestedCategory ?? 'Asistencia Vial'
+  const isCategoryLocked = !isEditMode && requestedCategory !== undefined
 
   const currentMonthIdx = periodDate.getMonth()
   const currentYear = periodDate.getFullYear()
@@ -527,7 +525,7 @@ const [form, setForm] = React.useState<NewReportForm>({
       return
     }
 
-    if ((form.status === 'Validacion' || form.status === 'Informativo') && !form.motivo) {
+    if (!isDocumentReport && (form.status === 'Validacion' || form.status === 'Informativo') && !form.motivo) {
       setError('Por favor selecciona un motivo.')
       setSaving(false)
       return
@@ -774,12 +772,18 @@ const [form, setForm] = React.useState<NewReportForm>({
           <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                         <div className="space-y-1.5 sm:col-span-2 lg:col-span-3">
                           <Label>Tipo de informe <span className="text-destructive">*</span></Label>
-                          <Select value={form.report_category} onValueChange={v => set('report_category', v)}>
+                          <Select
+                            value={form.report_category}
+                            onValueChange={v => set('report_category', v)}
+                            disabled={isCategoryLocked}
+                          >
                             <SelectTrigger className="bg-muted/50 border-border/70">
                               <SelectValue placeholder="Seleccionar tipo de informe" />
                             </SelectTrigger>
                             <SelectContent>
-                              {REPORT_CATEGORIES.map(category => <SelectItem key={category} value={category}>{category}</SelectItem>)}
+                              {REPORT_CATEGORIES
+                                .filter(category => !isCategoryLocked || category === requestedCategory)
+                                .map(category => <SelectItem key={category} value={category}>{category}</SelectItem>)}
                             </SelectContent>
                           </Select>
                         </div>

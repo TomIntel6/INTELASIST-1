@@ -66,8 +66,10 @@ function formatFieldValue(value: unknown) {
 export function buildIncompleteReportSummary(formValues: Record<string, unknown>) {
   const status = String(formValues.status ?? '')
   const requiredFields: ReportAlertFieldKey[] = [...REPORT_REQUIRED_FIELDS]
+  const isDocumentReport = formValues.report_category === 'Servicios Médicos'
+    || formValues.report_category === 'Asistencia en el Hogar'
 
-  if (status === 'Validacion' || status === 'Informativo') {
+  if (!isDocumentReport && (status === 'Validacion' || status === 'Informativo')) {
     requiredFields.push('motivo')
   }
 
