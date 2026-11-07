@@ -30,6 +30,8 @@ export default function AppLayout() {
   const [globalSearch, setGlobalSearch] = React.useState('')
   const [globalSearchOpen, setGlobalSearchOpen] = React.useState(false)
   const [currentDateTime, setCurrentDateTime] = React.useState(() => new Date())
+  const workspaceRef = React.useRef<HTMLElement | null>(null)
+  const scrollEndTimerRef = React.useRef<number | null>(null)
 
   const rawDisplayName = (user?.user_metadata?.full_name as string) ?? user?.email ?? 'Usuario'
   const displayName = profileName || rawDisplayName
@@ -80,6 +82,27 @@ export default function AppLayout() {
   React.useEffect(() => {
     const timer = window.setInterval(() => setCurrentDateTime(new Date()), 60_000)
     return () => window.clearInterval(timer)
+  }, [])
+
+  const handleWorkspaceScroll = React.useCallback(() => {
+    const workspace = workspaceRef.current
+    if (!workspace) return
+
+    workspace.dataset.scrolling = 'true'
+    if (scrollEndTimerRef.current !== null) {
+      window.clearTimeout(scrollEndTimerRef.current)
+    }
+
+    scrollEndTimerRef.current = window.setTimeout(() => {
+      delete workspace.dataset.scrolling
+      scrollEndTimerRef.current = null
+    }, 140)
+  }, [])
+
+  React.useEffect(() => () => {
+    if (scrollEndTimerRef.current !== null) {
+      window.clearTimeout(scrollEndTimerRef.current)
+    }
   }, [])
 
   React.useEffect(() => {
@@ -435,7 +458,11 @@ export default function AppLayout() {
           </SheetContent>
         </Sheet>
 
-        <main className="app-workspace min-h-0 min-w-0 flex-1 overflow-auto">
+        <main
+          ref={workspaceRef}
+          onScroll={handleWorkspaceScroll}
+          className="app-workspace min-h-0 min-w-0 flex-1 overflow-auto"
+        >
           <div key={location.pathname} className="app-route-content">
             <Outlet />
           </div>

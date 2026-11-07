@@ -754,7 +754,7 @@ export default function ReportsList() {
               </div>
 
               {/* MÓVIL (<768px): tarjetas apiladas */}
-              <div className="block divide-y divide-border lg:hidden">
+              <div className="reports-mobile-list block divide-y divide-border lg:hidden">
                 {reports.map(report => (
                   <ReportMobileCard key={report.id} {...rowProps(report)} />
                 ))}

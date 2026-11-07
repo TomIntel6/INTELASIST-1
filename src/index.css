@@ -1027,3 +1027,16 @@
     transform: none;
   }
 }
+
+.app-workspace[data-scrolling="true"] .reports-table tbody tr:hover,
+.app-workspace[data-scrolling="true"] .reports-mobile-list > div:hover {
+  background-color: transparent !important;
+  transition: none !important;
+}
+
+.app-workspace[data-scrolling="true"] [data-slot="button"]:hover {
+  background-color: transparent !important;
+  box-shadow: none !important;
+  transform: none !important;
+  transition: none !important;
+}
