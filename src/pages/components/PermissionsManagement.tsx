@@ -54,6 +54,7 @@ const presenceStyleOptions = [
   { value: 'haze', label: 'Haze' },
   { value: 'prism', label: 'Prisma' },
   { value: 'loopwave', label: 'Ola de borde' },
+  { value: 'flores', label: 'Flores (GIF)' },
 ]
 
 function getInitials(name: string, email: string): string {

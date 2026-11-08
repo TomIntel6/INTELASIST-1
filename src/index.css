@@ -694,7 +694,8 @@
 .presence-badge-neon,
 .presence-badge-haze,
 .presence-badge-prism,
-.presence-badge-loopwave {
+.presence-badge-loopwave,
+.presence-badge-flores {
   --glow-color: rgba(255, 255, 255, 0.24);
   --glow-soft: rgba(255, 255, 255, 0.12);
   animation: presence-soft-glow 3s ease-in-out infinite;
@@ -801,6 +802,26 @@
   mask-composite: exclude;
   animation: presence-soft-loopwave 3.2s ease-in-out infinite;
   pointer-events: none;
+}
+
+.presence-badge-flores {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border-color: rgba(255, 255, 255, 0.42);
+  background-image:
+    linear-gradient(rgba(8, 12, 20, 0.62), rgba(8, 12, 20, 0.5)),
+    url('/animations/flores.gif');
+  background-position: center, center 56%;
+  background-size: cover;
+  background-repeat: no-repeat;
+  --glow-color: rgba(244, 191, 220, 0.58);
+  --glow-soft: rgba(244, 191, 220, 0.2);
+}
+
+.presence-badge-flores > * {
+  position: relative;
+  z-index: 1;
 }
 
 /*

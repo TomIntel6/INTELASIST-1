@@ -755,7 +755,7 @@ export function getRoleColorClasses(role: UserRole, fullName?: string | null) {
   }
 }
 
-export type PresenceStyleKey = 'none' | 'glow' | 'pulse' | 'rainbow' | 'orbit' | 'wave' | 'aurora' | 'spectrum' | 'neon' | 'haze' | 'prism' | 'loopwave'
+export type PresenceStyleKey = 'none' | 'glow' | 'pulse' | 'rainbow' | 'orbit' | 'wave' | 'aurora' | 'spectrum' | 'neon' | 'haze' | 'prism' | 'loopwave' | 'flores'
 
 export function normalizePresenceStyle(style: unknown): PresenceStyleKey {
   const normalized = typeof style === 'string' ? style.trim().toLowerCase() : 'none'
@@ -772,6 +772,7 @@ export function normalizePresenceStyle(style: unknown): PresenceStyleKey {
     case 'haze':
     case 'prism':
     case 'loopwave':
+    case 'flores':
       return normalized
     default:
       return 'none'
@@ -802,6 +803,8 @@ export function getPresenceStyleLabel(style: unknown): string {
       return 'Prisma'
     case 'loopwave':
       return 'Ola de borde'
+    case 'flores':
+      return 'Flores (GIF)'
     case 'none':
     default:
       return 'Sin animación'
@@ -832,6 +835,8 @@ export function getPresenceStyleClasses(style: unknown): string {
       return 'presence-badge-prism'
     case 'loopwave':
       return 'presence-badge-loopwave'
+    case 'flores':
+      return 'presence-badge-flores'
     case 'none':
     default:
       return 'presence-badge-none'
