@@ -819,7 +819,27 @@
   --glow-soft: rgba(244, 191, 220, 0.2);
 }
 
+.presence-badge-otono {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border-color: rgba(255, 255, 255, 0.42);
+  background-image:
+    linear-gradient(rgba(8, 12, 20, 0.62), rgba(8, 12, 20, 0.5)),
+    url('/animations/autumn-anime.gif');
+  background-position: center, center;
+  background-size: 100% 100%, cover;
+  background-repeat: no-repeat;
+  --glow-color: rgba(251, 146, 60, 0.58);
+  --glow-soft: rgba(251, 146, 60, 0.2);
+}
+
 .presence-badge-flores > * {
+  position: relative;
+  z-index: 1;
+}
+
+.presence-badge-otono > * {
   position: relative;
   z-index: 1;
 }

@@ -55,6 +55,7 @@ const presenceStyleOptions = [
   { value: 'prism', label: 'Prisma' },
   { value: 'loopwave', label: 'Ola de borde' },
   { value: 'flores', label: 'Flores (GIF)' },
+  { value: 'otono', label: 'Otoño (GIF)' },
 ]
 
 function getInitials(name: string, email: string): string {
