@@ -14,7 +14,9 @@ import { Spinner } from '@/components/ui/spinner'
 import { toast } from 'sonner'
 import { ChevronDown, Save, Search, Undo2, RotateCcw } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { getUserRoles, useAuth } from '@/lib/auth'
+import { getPresenceStyleClasses, getUserRoles, useAuth } from '@/lib/auth'
+import { UserAvatar } from '@/components/UserAvatar'
+import type { AvatarData } from '@/lib/avatar'
 
 interface UserWithPermissions {
   id: string
@@ -23,6 +25,7 @@ interface UserWithPermissions {
   role: string
   presenceStyle: string
   permissions: Record<PermissionKey, boolean>
+  avatar: AvatarData | null
 }
 
 interface UserWithPermissionsPayload {
@@ -31,6 +34,7 @@ interface UserWithPermissionsPayload {
   fullName?: string
   role?: string
   presenceStyle?: string
+  avatar?: AvatarData | null
   permissions?: Record<string, unknown>
 }
 
@@ -48,6 +52,11 @@ const presenceStyleOptions = [
   { value: 'piekary', label: 'Piekary Śląskie (GIF)' },
   { value: 'sakura', label: 'Sakura (GIF)' },
   { value: 'clannad', label: 'Clannad (GIF)' },
+  { value: 'anime-raining', label: 'Anime bajo la lluvia (GIF)' },
+  { value: 'banner-discord', label: 'Banner Discord (GIF)' },
+  { value: 'card', label: 'Card (GIF)' },
+  { value: 'sakura-anime', label: 'Sakura anime (GIF)' },
+  { value: 'yhhh', label: 'Yhhh (GIF)' },
 ]
 
 function getInitials(name: string, email: string): string {
@@ -84,6 +93,7 @@ export default function PermissionsManagement() {
         fullName: u.fullName || '',
         role: u.role || '',
         presenceStyle: u.presenceStyle || 'none',
+        avatar: u.avatar ?? null,
         permissions: (u.permissions || {}) as Record<PermissionKey, boolean>,
       }))
       setUsers(mapped)
@@ -413,9 +423,33 @@ export default function PermissionsManagement() {
                                     </NativeSelectOption>
                                   ))}
                                 </NativeSelect>
-                                <p className="text-xs text-muted-foreground">
-                                  Se mostrará en el panel “Conectados”.
-                                </p>
+                                <div className="space-y-2">
+                                  <p className="text-xs text-muted-foreground">
+                                    Vista previa · se actualiza al cambiar la plantilla
+                                  </p>
+                                  <div className="w-fit rounded-lg bg-slate-950 p-1.5">
+                                    <div className={`flex h-[34px] w-[226px] items-center justify-between gap-1.5 rounded-md border border-white/10 bg-white/[0.07] px-1.5 py-1 shadow-[0_4px_12px_-12px_rgba(15,23,42,0.25)] ${getPresenceStyleClasses(u.presenceStyle)}`}>
+                                      <div className="flex min-w-0 items-center gap-1.5">
+                                        <div className="relative shrink-0">
+                                          <UserAvatar
+                                            avatar={u.avatar}
+                                            name={u.fullName || u.email}
+                                            size={24}
+                                            characterWithBackground={false}
+                                            className="border border-white/70 bg-white shadow-sm"
+                                          />
+                                          <span className="absolute -bottom-0.5 -right-0.5 inline-flex size-2 rounded-full border border-slate-950 bg-emerald-500" />
+                                        </div>
+                                        <span className="truncate text-[10px] font-medium text-white">
+                                          {u.fullName || u.email || 'Usuario'}
+                                        </span>
+                                      </div>
+                                      <span className="shrink-0 rounded-sm bg-black/30 px-1 text-[9px] font-semibold text-white">
+                                        {u.role || 'Agente'}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
                               </>
                             ) : (
                               <div className="flex h-9 items-center rounded-md border border-dashed px-3 text-xs text-muted-foreground">

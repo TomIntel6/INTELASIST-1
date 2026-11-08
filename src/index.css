@@ -719,6 +719,31 @@
   --glow-color: rgba(250, 204, 21, 0.4);
 }
 
+.presence-badge-anime-raining {
+  --presence-gif-image: url('/animations/anime-raining.gif');
+  --glow-color: rgba(96, 165, 250, 0.4);
+}
+
+.presence-badge-banner-discord {
+  --presence-gif-image: url('/animations/banner-discord.gif');
+  --glow-color: rgba(192, 132, 252, 0.4);
+}
+
+.presence-badge-card {
+  --presence-gif-image: url('/animations/card.gif');
+  --glow-color: rgba(251, 191, 36, 0.4);
+}
+
+.presence-badge-sakura-anime {
+  --presence-gif-image: url('/animations/sakura-anime.gif');
+  --glow-color: rgba(244, 114, 182, 0.4);
+}
+
+.presence-badge-yhhh {
+  --presence-gif-image: url('/animations/yhhh.gif');
+  --glow-color: rgba(74, 222, 128, 0.4);
+}
+
 /*
   ============================================================
   SISTEMA DE MARCA "IA" — utilidades reutilizables

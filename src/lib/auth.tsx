@@ -1,6 +1,7 @@
 import * as React from 'react'
 import type { AvatarData } from '@/lib/avatar'
 import { normalizeAvatar } from '@/lib/avatar'
+import { supabase } from '@/lib/supabase'
 
 export type UserRole = 'Agente' | 'Admin' | 'Support' | 'Gerente'
 
@@ -42,13 +43,13 @@ export const PRESENCE_SYNC_STORAGE_KEY = 'intelasist-presence-sync'
 export const ROLE_SYNC_STORAGE_KEY = 'intelasist-role-sync'
 export const USERS_SYNC_STORAGE_KEY = 'intelasist-users-sync'
 export const PRESENCE_STYLE_STORAGE_KEY = 'intelasist-presence-styles'
+let currentPresenceConnectionId = ''
 
 export interface LocalSession {
   user: LocalUser
   token?: string
 }
 const PRESENCE_TTL_MS = 1000 * 60
-const PRESENCE_SYNC_INTERVAL_MS = 1000 * 20
 const getDefaultApiBase = () => {
   if (import.meta.env.VITE_API_BASE_URL) return import.meta.env.VITE_API_BASE_URL
   return 'https://intelasist.onrender.com'
@@ -435,7 +436,10 @@ async function removePresenceFromServer(userId: string) {
     return
   }
 
-  const deleteUrl = `${API_BASE_URL}/online-users/${encodeURIComponent(userId)}`
+  const connectionQuery = currentPresenceConnectionId
+    ? `?connectionId=${encodeURIComponent(currentPresenceConnectionId)}`
+    : ''
+  const deleteUrl = `${API_BASE_URL}/online-users/${encodeURIComponent(userId)}${connectionQuery}`
 
   try {
     const response = await fetch(deleteUrl, { method: 'DELETE' })
@@ -448,7 +452,7 @@ async function removePresenceFromServer(userId: string) {
 
   if (typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function') {
     try {
-      const payloadBlob = new Blob([JSON.stringify({ userId })], {
+      const payloadBlob = new Blob([JSON.stringify({ userId, connectionId: currentPresenceConnectionId })], {
         type: 'application/json',
       })
       const beaconSent = navigator.sendBeacon(`${API_BASE_URL}/online-users/offline`, payloadBlob)
@@ -752,7 +756,7 @@ export function getRoleColorClasses(role: UserRole, fullName?: string | null) {
   }
 }
 
-export type PresenceStyleKey = 'none' | 'autumn' | 'magic-tree' | 'piekary' | 'sakura' | 'clannad'
+export type PresenceStyleKey = 'none' | 'autumn' | 'magic-tree' | 'piekary' | 'sakura' | 'clannad' | 'anime-raining' | 'banner-discord' | 'card' | 'sakura-anime' | 'yhhh'
 
 export function normalizePresenceStyle(style: unknown): PresenceStyleKey {
   const normalized = typeof style === 'string' ? style.trim().toLowerCase() : 'none'
@@ -763,6 +767,11 @@ export function normalizePresenceStyle(style: unknown): PresenceStyleKey {
     case 'piekary':
     case 'sakura':
     case 'clannad':
+    case 'anime-raining':
+    case 'banner-discord':
+    case 'card':
+    case 'sakura-anime':
+    case 'yhhh':
       return normalized
     default:
       return 'none'
@@ -781,6 +790,16 @@ export function getPresenceStyleLabel(style: unknown): string {
       return 'Sakura (GIF)'
     case 'clannad':
       return 'Clannad (GIF)'
+    case 'anime-raining':
+      return 'Anime bajo la lluvia (GIF)'
+    case 'banner-discord':
+      return 'Banner Discord (GIF)'
+    case 'card':
+      return 'Card (GIF)'
+    case 'sakura-anime':
+      return 'Sakura anime (GIF)'
+    case 'yhhh':
+      return 'Yhhh (GIF)'
     case 'none':
     default:
       return 'Sin animación'
@@ -794,6 +813,11 @@ export function getPresenceStyleClasses(style: unknown): string {
     case 'piekary':
     case 'sakura':
     case 'clannad':
+    case 'anime-raining':
+    case 'banner-discord':
+    case 'card':
+    case 'sakura-anime':
+    case 'yhhh':
       return `presence-badge-gif presence-badge-${normalizePresenceStyle(style)}`
     case 'none':
     default:
@@ -981,8 +1005,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Conexión SSE para recibir notificaciones en tiempo real desde el backend
     let evtSource: EventSource | null = null
+    const connectionId = typeof globalThis.crypto?.randomUUID === 'function'
+      ? globalThis.crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2)}`
     try {
-      evtSource = new EventSource(`${API_BASE_URL}/events`)
+      const eventStreamUrl = user?.id
+        ? `${API_BASE_URL}/events?userId=${encodeURIComponent(user.id)}&connectionId=${encodeURIComponent(connectionId)}`
+        : `${API_BASE_URL}/events`
+      if (user?.id) {
+        currentPresenceConnectionId = connectionId
+      }
+      evtSource = new EventSource(eventStreamUrl)
+      evtSource.addEventListener('open', () => {
+        if (user?.id) {
+          upsertOnlineUser(user)
+        }
+      })
 
       evtSource.addEventListener('role-change', (ev: MessageEvent) => {
         try {
@@ -1042,6 +1080,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       })
 
+      evtSource.addEventListener('presence-snapshot', (ev: MessageEvent) => {
+        try {
+          const payload = typeof ev.data === 'string' ? JSON.parse(ev.data) : ev.data
+          window.dispatchEvent(new CustomEvent('presence-snapshot', { detail: payload?.users }))
+        } catch {
+          console.warn('Se recibió una lista de presencia inválida.')
+        }
+      })
+
       // Fallback: mensajes genéricos
       evtSource.addEventListener('message', (ev: MessageEvent) => {
         try {
@@ -1064,52 +1111,101 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => {
       window.removeEventListener('intelasist-role-sync', handleRoleSync)
       window.removeEventListener('storage', handleStorageSync)
+      if (currentPresenceConnectionId === connectionId) {
+        currentPresenceConnectionId = ''
+      }
       if (evtSource) {
         try { evtSource.close() } catch { /* noop */ }
       }
     }
   }, [user])
 
-  const presenceIntervalRef = React.useRef<number | null>(null)
-
   React.useEffect(() => {
     if (!user?.id) {
       return
     }
 
-    const syncPresence = () => {
-      upsertOnlineUser(user)
+    const supabaseClient = supabase
+    if (!supabaseClient) {
+      return
     }
 
-    const startPresenceSync = () => {
-      if (presenceIntervalRef.current !== null) {
-        return
+    const presenceKey = typeof globalThis.crypto?.randomUUID === 'function'
+      ? `${user.id}:${globalThis.crypto.randomUUID()}`
+      : `${user.id}:${Date.now()}-${Math.random().toString(36).slice(2)}`
+    const channel = supabaseClient.channel('intelasist:online-users', {
+      config: { presence: { key: presenceKey } },
+    })
+
+    const onlineUser = {
+      userId: user.id,
+      email: user.email,
+      fullName: user.user_metadata?.full_name || user.email,
+      role: getUserRoles(user)[0] ?? 'Agente',
+      roles: getUserRoles(user),
+      lastSeen: Date.now(),
+    }
+
+    const publishPresenceSnapshot = () => {
+      const usersById = new Map<string, StoredPresenceUser>()
+      for (const connections of Object.values(channel.presenceState())) {
+        for (const connection of connections) {
+          const candidate = connection as Partial<StoredPresenceUser>
+          if (
+            typeof candidate.userId !== 'string' ||
+            typeof candidate.email !== 'string' ||
+            typeof candidate.fullName !== 'string' ||
+            typeof candidate.lastSeen !== 'number'
+          ) {
+            continue
+          }
+
+          const role = USER_ROLE_OPTIONS.includes(candidate.role as UserRole)
+            ? candidate.role as UserRole
+            : 'Agente'
+          const roles = Array.isArray(candidate.roles)
+            ? candidate.roles.filter((item): item is UserRole => USER_ROLE_OPTIONS.includes(item))
+            : [role]
+          const normalized: StoredPresenceUser = {
+            userId: candidate.userId,
+            email: candidate.email.trim().toLowerCase(),
+            fullName: candidate.fullName,
+            role,
+            roles: roles.length > 0 ? roles : [role],
+            lastSeen: candidate.lastSeen,
+          }
+          const current = usersById.get(normalized.userId)
+          if (!current || normalized.lastSeen > current.lastSeen) {
+            usersById.set(normalized.userId, normalized)
+          }
+        }
       }
 
-      presenceIntervalRef.current = window.setInterval(syncPresence, PRESENCE_SYNC_INTERVAL_MS)
+      window.dispatchEvent(new CustomEvent('presence-snapshot', {
+        detail: Array.from(usersById.values()).sort((a, b) => b.lastSeen - a.lastSeen),
+      }))
     }
 
-    const stopPresenceSync = () => {
-      if (presenceIntervalRef.current !== null) {
-        window.clearInterval(presenceIntervalRef.current)
-        presenceIntervalRef.current = null
-      }
-    }
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        syncPresence()
-      }
-    }
-
-    syncPresence()
-    startPresenceSync()
-
-    window.addEventListener('visibilitychange', handleVisibilityChange)
+    channel
+      .on('presence', { event: 'sync' }, publishPresenceSnapshot)
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          void channel.track(onlineUser)
+            .then(result => {
+              if (result !== 'ok') {
+                console.error('No se pudo publicar la presencia en tiempo real:', result)
+              }
+            })
+            .catch((error: unknown) => {
+              console.error('No se pudo publicar la presencia en tiempo real.', error)
+            })
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          console.error('La conexión de presencia en tiempo real no está disponible:', status)
+        }
+      })
 
     return () => {
-      stopPresenceSync()
-      window.removeEventListener('visibilitychange', handleVisibilityChange)
+      void supabaseClient.removeChannel(channel)
     }
   }, [user])
 

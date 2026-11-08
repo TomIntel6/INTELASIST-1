@@ -25,6 +25,10 @@ app.use((req, res, next) => {
 })
 // Conjunto de clientes SSE conectados
 const sseClients = new Set()
+const ssePendingPresenceEvents = new Map()
+const PRESENCE_SERVER_INSTANCE_ID = randomUUID()
+let presenceListenerClient = null
+let presenceListenerRetryTimer = null
 const ROLE_OPTIONS = ['Agente', 'Admin', 'Support', 'Gerente']
 const SALT_ROUNDS = 10
 const SUPPORT_LOCKED_EMAIL = 'jrodriguez@intelasist.com'
@@ -32,11 +36,94 @@ const SUPPORT_LOCKED_EMAIL = 'jrodriguez@intelasist.com'
 function broadcastSseEvent(eventName, payload) {
   const message = `event: ${eventName}\ndata: ${JSON.stringify(payload)}\n\n`
   for (const client of sseClients) {
+    const pendingEvents = ssePendingPresenceEvents.get(client)
+    if (pendingEvents && eventName === 'presence-updated') {
+      pendingEvents.push({ eventName, payload })
+      continue
+    }
+
     try {
       client.write(message)
     } catch {
       sseClients.delete(client)
     }
+  }
+}
+
+function sendSseEvent(client, eventName, payload) {
+  client.write(`event: ${eventName}\ndata: ${JSON.stringify(payload)}\n\n`)
+}
+
+function schedulePresenceListenerReconnect() {
+  if (presenceListenerRetryTimer !== null) {
+    return
+  }
+
+  presenceListenerRetryTimer = setTimeout(() => {
+    presenceListenerRetryTimer = null
+    void startPresenceEventListener()
+  }, 5000)
+}
+
+async function startPresenceEventListener() {
+  let client
+  try {
+    client = await pool.connect()
+    await client.query('LISTEN intelasist_presence')
+    presenceListenerClient = client
+    let disconnected = false
+    const handleDisconnect = (error) => {
+      if (disconnected) {
+        return
+      }
+      disconnected = true
+      if (presenceListenerClient === client) {
+        presenceListenerClient = null
+      }
+      if (error) {
+        console.error('Se perdió el canal PostgreSQL de presencia en tiempo real:', error)
+      }
+      client.release(true)
+      schedulePresenceListenerReconnect()
+    }
+
+    client.on('notification', (message) => {
+      if (message.channel !== 'intelasist_presence' || !message.payload) {
+        return
+      }
+      try {
+        const notification = JSON.parse(message.payload)
+        if (notification.origin !== PRESENCE_SERVER_INSTANCE_ID && notification.payload) {
+          broadcastSseEvent('presence-updated', notification.payload)
+        }
+      } catch (error) {
+        console.error('Notificación PostgreSQL de presencia inválida:', error)
+      }
+    })
+    client.on('error', handleDisconnect)
+    client.on('end', () => handleDisconnect())
+  } catch (error) {
+    if (client) {
+      client.release(true)
+    }
+    console.error('No se pudo iniciar el canal PostgreSQL de presencia:', error)
+    schedulePresenceListenerReconnect()
+  }
+}
+
+async function publishPresenceEvent(payload) {
+  broadcastSseEvent('presence-updated', payload)
+  if (!presenceListenerClient) {
+    return
+  }
+
+  try {
+    await pool.query(
+      'SELECT pg_notify($1, $2)',
+      ['intelasist_presence', JSON.stringify({ origin: PRESENCE_SERVER_INSTANCE_ID, payload })]
+    )
+  } catch (error) {
+    console.error('No se pudo publicar el evento PostgreSQL de presencia:', error)
   }
 }
 
@@ -584,6 +671,17 @@ async function ensureOnlinePresenceTable() {
       role TEXT NOT NULL,
       last_seen BIGINT NOT NULL
     )
+  `)
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS online_presence_sessions (
+      connection_id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      last_seen BIGINT NOT NULL
+    )
+  `)
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_online_presence_sessions_user
+    ON online_presence_sessions (user_id, last_seen DESC)
   `)
 }
 
@@ -1642,15 +1740,105 @@ app.get('/events', (req, res) => {
   // Enviar un comentario inicial para mantener la conexión
   res.write(': connected\n\n')
 
+  const userId = typeof req.query.userId === 'string' ? req.query.userId.trim() : ''
+  const clientConnectionId = typeof req.query.connectionId === 'string' ? req.query.connectionId.trim() : ''
+  const connectionId = userId && clientConnectionId
+    ? `${clientConnectionId}:${randomUUID()}`
+    : ''
+
   sseClients.add(res)
+  ssePendingPresenceEvents.set(res, [])
   const keepAlive = setInterval(() => {
     res.write(': keep-alive\n\n')
+    if (userId && connectionId) {
+      void pool.query(
+        'UPDATE online_presence_sessions SET last_seen = $1 WHERE connection_id = $2 AND user_id = $3',
+        [Date.now(), connectionId, userId]
+      ).catch(error => console.error('Error al mantener activa la sesión SSE:', error))
+    }
   }, 20000)
 
-  req.on('close', () => {
+  let closed = false
+  const handleClose = () => {
+    if (closed) {
+      return
+    }
+    closed = true
     clearInterval(keepAlive)
     sseClients.delete(res)
-  })
+    ssePendingPresenceEvents.delete(res)
+    if (!userId || !connectionId) {
+      return
+    }
+
+    void (async () => {
+      await pool.query(
+        'DELETE FROM online_presence_sessions WHERE connection_id = $1 AND user_id = $2',
+        [connectionId, userId]
+      )
+      const activeSessions = await pool.query(
+        'SELECT 1 FROM online_presence_sessions WHERE user_id = $1 AND last_seen > $2 LIMIT 1',
+        [userId, Date.now() - 60000]
+      )
+      if (activeSessions.rowCount === 0) {
+        const result = await pool.query('DELETE FROM online_presence WHERE user_id = $1', [userId])
+        if (result.rowCount > 0) {
+          void publishPresenceEvent({
+            type: 'presence-updated',
+            action: 'offline',
+            userId,
+          })
+        }
+      }
+    })().catch(error => console.error('Error al limpiar presencia tras cerrar la conexión SSE:', error))
+  }
+  res.on('close', handleClose)
+
+  void (async () => {
+    try {
+      if (userId && connectionId) {
+        await pool.query(
+          `INSERT INTO online_presence_sessions (connection_id, user_id, last_seen)
+           VALUES ($1, $2, $3)
+           ON CONFLICT (connection_id)
+           DO UPDATE SET user_id = EXCLUDED.user_id, last_seen = EXCLUDED.last_seen`,
+          [connectionId, userId, Date.now()]
+        )
+      }
+
+      const result = await pool.query(
+        `SELECT DISTINCT ON (p.user_id)
+           p.user_id, p.email, p.full_name, p.role,
+           GREATEST(p.last_seen, COALESCE(s.last_seen, p.last_seen)) AS last_seen
+         FROM online_presence p
+         LEFT JOIN online_presence_sessions s ON s.user_id = p.user_id
+         WHERE s.last_seen > $1 OR (s.connection_id IS NULL AND p.last_seen > $2)
+         ORDER BY p.user_id, s.last_seen DESC NULLS LAST, p.last_seen DESC`,
+        [Date.now() - 60000, Date.now() - 45000]
+      )
+
+      if (!closed) {
+        sendSseEvent(res, 'presence-snapshot', {
+          users: result.rows.map(row => ({
+            userId: row.user_id,
+            email: row.email,
+            fullName: row.full_name,
+            role: row.role,
+            roles: [row.role],
+            lastSeen: Number(row.last_seen),
+          })),
+        })
+        const pendingEvents = ssePendingPresenceEvents.get(res) || []
+        ssePendingPresenceEvents.delete(res)
+        pendingEvents.forEach(({ eventName, payload }) => sendSseEvent(res, eventName, payload))
+      }
+    } catch (error) {
+      console.error('Error al cargar la lista inicial de presencia SSE:', error)
+      const pendingEvents = ssePendingPresenceEvents.get(res) || []
+      ssePendingPresenceEvents.delete(res)
+      pendingEvents.forEach(({ eventName, payload }) => sendSseEvent(res, eventName, payload))
+    }
+  })()
 })
 
 app.put('/usuarios/:email/password', async (req, res) => {
@@ -2998,11 +3186,15 @@ app.get('/reports/:id/updates', async (req, res) => {
 
 app.get('/online-users', async (req, res) => {
   try {
-    // Cutoff de 45 segundos para dar margen frente a latencia y sincronización ligera.
-    const cutoff = Date.now() - 1000 * 45
     const result = await pool.query(
-      'SELECT user_id, email, full_name, role, last_seen FROM online_presence WHERE last_seen > $1 ORDER BY last_seen DESC',
-      [cutoff]
+      `SELECT DISTINCT ON (p.user_id)
+         p.user_id, p.email, p.full_name, p.role,
+         GREATEST(p.last_seen, COALESCE(s.last_seen, p.last_seen)) AS last_seen
+       FROM online_presence p
+       LEFT JOIN online_presence_sessions s ON s.user_id = p.user_id
+       WHERE s.last_seen > $1 OR (s.connection_id IS NULL AND p.last_seen > $2)
+       ORDER BY p.user_id, s.last_seen DESC NULLS LAST, p.last_seen DESC`,
+      [Date.now() - 60000, Date.now() - 45000]
     )
 
     res.json({
@@ -3039,7 +3231,7 @@ app.post('/online-users', async (req, res) => {
       [userId, email, fullName, role, serverTimestamp]
     )
 
-    broadcastSseEvent('presence-updated', {
+    void publishPresenceEvent({
       type: 'presence-updated',
       action: 'online',
       user: {
@@ -3072,14 +3264,31 @@ app.post('/online-users/offline', async (req, res) => {
     }
 
     const userId = typeof body?.userId === 'string' ? body.userId.trim() : ''
+    const connectionId = typeof body?.connectionId === 'string' ? body.connectionId.trim() : ''
 
     if (!userId) {
       res.status(400).json({ error: 'Falta el identificador del usuario.' })
       return
     }
 
+    if (connectionId) {
+      await pool.query(
+        'DELETE FROM online_presence_sessions WHERE user_id = $1 AND (connection_id = $2 OR connection_id LIKE $3)',
+        [userId, connectionId, `${connectionId}:%`]
+      )
+    }
+
+    const activeSessions = await pool.query(
+      'SELECT 1 FROM online_presence_sessions WHERE user_id = $1 AND last_seen > $2 LIMIT 1',
+      [userId, Date.now() - 60000]
+    )
+    if (activeSessions.rowCount > 0) {
+      res.json({ ok: true, retained: true })
+      return
+    }
+
     await pool.query('DELETE FROM online_presence WHERE user_id = $1', [userId])
-    broadcastSseEvent('presence-updated', {
+    void publishPresenceEvent({
       type: 'presence-updated',
       action: 'offline',
       userId,
@@ -3093,12 +3302,32 @@ app.post('/online-users/offline', async (req, res) => {
 
 app.delete('/online-users/:userId', async (req, res) => {
   try {
-    await pool.query('DELETE FROM online_presence WHERE user_id = $1', [req.params.userId])
-    broadcastSseEvent('presence-updated', {
-      type: 'presence-updated',
-      action: 'offline',
-      userId: req.params.userId,
-    })
+    const userId = req.params.userId
+    const connectionId = typeof req.query.connectionId === 'string' ? req.query.connectionId.trim() : ''
+    if (connectionId) {
+      await pool.query(
+        'DELETE FROM online_presence_sessions WHERE user_id = $1 AND (connection_id = $2 OR connection_id LIKE $3)',
+        [userId, connectionId, `${connectionId}:%`]
+      )
+    }
+
+    const activeSessions = await pool.query(
+      'SELECT 1 FROM online_presence_sessions WHERE user_id = $1 AND last_seen > $2 LIMIT 1',
+      [userId, Date.now() - 60000]
+    )
+    if (activeSessions.rowCount > 0) {
+      res.json({ ok: true, retained: true })
+      return
+    }
+
+    const result = await pool.query('DELETE FROM online_presence WHERE user_id = $1', [userId])
+    if (result.rowCount > 0) {
+      void publishPresenceEvent({
+        type: 'presence-updated',
+        action: 'offline',
+        userId,
+      })
+    }
     res.json({ ok: true })
   } catch (err) {
     console.error(err)
@@ -4583,17 +4812,51 @@ app.use((req, res) => {
 })
 
 async function startCleanupTask() {
-  // Limpieza de respaldo; la lista en vivo usa un cutoff de 45s y heartbeats de 20s.
+  // El cierre SSE marca la salida inmediatamente; esto limpia conexiones perdidas abruptamente.
   setInterval(async () => {
     try {
-      const cutoff = Date.now() - 1000 * 420 // 7 min > heartbeat de 5 min
-      const result = await pool.query(
-        'DELETE FROM online_presence WHERE last_seen < $1',
-        [cutoff]
+      const staleSessions = await pool.query(
+        'DELETE FROM online_presence_sessions WHERE last_seen < $1 RETURNING user_id',
+        [Date.now() - 60000]
       )
 
-      if (result.rowCount > 0) {
-        console.log(`Limpiados ${result.rowCount} usuarios inactivos`)
+      const affectedUserIds = Array.from(new Set(staleSessions.rows.map(row => row.user_id)))
+      for (const userId of affectedUserIds) {
+        const activeSessions = await pool.query(
+          'SELECT 1 FROM online_presence_sessions WHERE user_id = $1 AND last_seen > $2 LIMIT 1',
+          [userId, Date.now() - 60000]
+        )
+        if (activeSessions.rowCount === 0) {
+          const removed = await pool.query(
+            'DELETE FROM online_presence WHERE user_id = $1',
+            [userId]
+          )
+          if (removed.rowCount > 0) {
+            void publishPresenceEvent({
+              type: 'presence-updated',
+              action: 'offline',
+              userId,
+            })
+          }
+        }
+      }
+
+      const staleUsers = await pool.query(
+        `DELETE FROM online_presence p
+         WHERE p.last_seen < $1
+           AND NOT EXISTS (
+             SELECT 1 FROM online_presence_sessions s
+             WHERE s.user_id = p.user_id AND s.last_seen > $2
+           )
+         RETURNING user_id`,
+        [Date.now() - 420000, Date.now() - 60000]
+      )
+      for (const row of staleUsers.rows) {
+        void publishPresenceEvent({
+          type: 'presence-updated',
+          action: 'offline',
+          userId: row.user_id,
+        })
       }
     } catch (err) {
       console.error('Error limpiando presencia expirada:', err)
@@ -4668,6 +4931,7 @@ async function start() {
     await ensureSecurityAlertsTable()
     await ensureDeletedReportsTable()
     console.log('Base de datos inicializada correctamente')
+    await startPresenceEventListener()
   } catch (err) {
     logServerError('[Database] Required initialization failed', err)
     console.error('[Database] Connection diagnostic', {
