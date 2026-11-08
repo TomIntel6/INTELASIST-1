@@ -813,7 +813,7 @@
     linear-gradient(rgba(8, 12, 20, 0.62), rgba(8, 12, 20, 0.5)),
     url('/animations/flores.gif');
   background-position: center, center;
-  background-size: 100% 100%;
+  background-size: 100% 100%, cover;
   background-repeat: no-repeat;
   --glow-color: rgba(244, 191, 220, 0.58);
   --glow-soft: rgba(244, 191, 220, 0.2);
