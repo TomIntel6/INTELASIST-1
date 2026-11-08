@@ -667,181 +667,56 @@
   }
 }
 
-@keyframes presence-soft-loopwave {
-  0%, 100% {
-    opacity: 0.76;
-    transform: scale(1);
-  }
-
-  50% {
-    opacity: 1;
-    transform: scale(1.008);
-  }
-}
-
 .presence-badge-none {
   border-color: transparent;
   box-shadow: none;
 }
 
-.presence-badge-glow,
-.presence-badge-pulse,
-.presence-badge-rainbow,
-.presence-badge-orbit,
-.presence-badge-wave,
-.presence-badge-aurora,
-.presence-badge-spectrum,
-.presence-badge-neon,
-.presence-badge-haze,
-.presence-badge-prism,
-.presence-badge-loopwave,
-.presence-badge-flores {
+.presence-badge-gif {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border-color: rgba(255, 255, 255, 0.42);
+  background-image:
+    linear-gradient(rgba(8, 12, 20, 0.12), rgba(8, 12, 20, 0.12)),
+    var(--presence-gif-image);
+  background-position: center, center;
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
   --glow-color: rgba(255, 255, 255, 0.24);
   --glow-soft: rgba(255, 255, 255, 0.12);
   animation: presence-soft-glow 3s ease-in-out infinite;
   transform: none;
 }
 
-.presence-badge-glow {
-  --glow-color: rgba(56, 189, 248, 0.4);
-  --glow-soft: rgba(56, 189, 248, 0.16);
-}
-
-.presence-badge-pulse {
-  --glow-color: rgba(244, 63, 94, 0.4);
-  --glow-soft: rgba(244, 63, 94, 0.16);
-}
-
-.presence-badge-rainbow {
-  --glow-color: rgba(255, 255, 255, 0.3);
-  --glow-soft: rgba(255, 255, 255, 0.14);
-}
-
-.presence-badge-orbit {
-  --glow-color: rgba(129, 140, 248, 0.4);
-  --glow-soft: rgba(129, 140, 248, 0.16);
-}
-
-.presence-badge-wave {
-  background-color: rgba(15, 23, 42, 0.06);
-  background-image: linear-gradient(90deg, rgba(248, 113, 113, 0.8) 0%, rgba(251, 191, 36, 0.76) 18%, rgba(74, 222, 128, 0.72) 36%, rgba(56, 189, 248, 0.76) 54%, rgba(129, 140, 248, 0.8) 72%, rgba(217, 70, 239, 0.8) 100%);
-  background-size: 220% 100%;
-  background-repeat: no-repeat;
-  border-color: rgba(255, 255, 255, 0.18);
-  --glow-color: rgba(125, 211, 252, 0.4);
-  --glow-soft: rgba(125, 211, 252, 0.14);
-}
-
-.presence-badge-aurora {
-  background-color: rgba(15, 23, 42, 0.06);
-  background-image: radial-gradient(circle at 20% 20%, rgba(56, 189, 248, 0.32), transparent 28%), radial-gradient(circle at 80% 30%, rgba(129, 140, 248, 0.26), transparent 24%), radial-gradient(circle at 50% 80%, rgba(244, 114, 182, 0.24), transparent 26%);
-  background-size: 220% 220%;
-  background-repeat: no-repeat;
-  border-color: rgba(255, 255, 255, 0.2);
-  --glow-color: rgba(45, 212, 191, 0.4);
-  --glow-soft: rgba(45, 212, 191, 0.14);
-}
-
-.presence-badge-spectrum {
-  background-color: rgba(15, 23, 42, 0.06);
-  background-image: linear-gradient(110deg, rgba(255, 59, 48, 0.78) 0%, rgba(255, 149, 0, 0.72) 16%, rgba(255, 204, 0, 0.74) 32%, rgba(52, 199, 89, 0.74) 48%, rgba(0, 199, 190, 0.72) 64%, rgba(0, 122, 255, 0.74) 80%, rgba(175, 82, 222, 0.78) 100%);
-  background-size: 240% 240%;
-  background-repeat: no-repeat;
-  border-color: rgba(255, 255, 255, 0.2);
-  --glow-color: rgba(255, 255, 255, 0.3);
-  --glow-soft: rgba(255, 255, 255, 0.14);
-}
-
-.presence-badge-neon {
-  background-color: rgba(2, 6, 23, 0.06);
-  background-image: linear-gradient(90deg, rgba(34, 211, 238, 0.12), rgba(217, 70, 239, 0.14), rgba(250, 204, 21, 0.12));
-  border-color: rgba(255, 255, 255, 0.2);
-  --glow-color: rgba(34, 211, 238, 0.4);
-  --glow-soft: rgba(217, 70, 239, 0.14);
-}
-
-.presence-badge-haze {
-  background-color: rgba(15, 23, 42, 0.05);
-  background-image: linear-gradient(90deg, rgba(255, 255, 255, 0.22), rgba(125, 211, 252, 0.16), rgba(192, 132, 252, 0.14), rgba(255, 255, 255, 0.22));
-  background-size: 180% 100%;
-  background-repeat: no-repeat;
-  border-color: rgba(255, 255, 255, 0.16);
-  --glow-color: rgba(125, 211, 252, 0.32);
-  --glow-soft: rgba(192, 132, 252, 0.12);
-}
-
-.presence-badge-prism {
-  background-color: rgba(15, 23, 42, 0.05);
-  background-image: linear-gradient(110deg, rgba(248, 113, 113, 0.22) 0%, rgba(251, 191, 36, 0.2) 22%, rgba(45, 212, 191, 0.2) 44%, rgba(125, 211, 252, 0.2) 66%, rgba(192, 132, 252, 0.22) 100%);
-  background-size: 220% 220%;
-  background-repeat: no-repeat;
-  border-color: rgba(255, 255, 255, 0.16);
-  --glow-color: rgba(255, 255, 255, 0.3);
-  --glow-soft: rgba(255, 255, 255, 0.12);
-}
-
-.presence-badge-loopwave {
-  position: relative;
-  overflow: visible;
-  isolation: isolate;
-  border: 1px solid transparent;
-  background-color: rgba(15, 23, 42, 0.05);
-  --glow-color: rgba(56, 189, 248, 0.4);
-  --glow-soft: rgba(125, 211, 252, 0.14);
-}
-
-.presence-badge-loopwave::before {
-  content: '';
-  position: absolute;
-  inset: -1px;
-  border-radius: inherit;
-  padding: 1.5px;
-  background: conic-gradient(from 0deg, rgba(255, 255, 255, 0.92), rgba(56, 189, 248, 0.95), rgba(236, 72, 153, 0.95), rgba(250, 204, 21, 0.95), rgba(74, 222, 128, 0.95), rgba(255, 255, 255, 0.92));
-  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  animation: presence-soft-loopwave 3.2s ease-in-out infinite;
-  pointer-events: none;
-}
-
-.presence-badge-flores {
-  position: relative;
-  isolation: isolate;
-  overflow: hidden;
-  border-color: rgba(255, 255, 255, 0.42);
-  background-image:
-    linear-gradient(rgba(8, 12, 20, 0.62), rgba(8, 12, 20, 0.5)),
-    url('/animations/flores.gif');
-  background-position: center, center;
-  background-size: 100% 100%, cover;
-  background-repeat: no-repeat;
-  --glow-color: rgba(244, 191, 220, 0.58);
-  --glow-soft: rgba(244, 191, 220, 0.2);
-}
-
-.presence-badge-otono {
-  position: relative;
-  isolation: isolate;
-  overflow: hidden;
-  border-color: rgba(255, 255, 255, 0.42);
-  background-image:
-    linear-gradient(rgba(8, 12, 20, 0.62), rgba(8, 12, 20, 0.5)),
-    url('/animations/autumn-anime.gif');
-  background-position: center, center;
-  background-size: 100% 100%, cover;
-  background-repeat: no-repeat;
-  --glow-color: rgba(251, 146, 60, 0.58);
-  --glow-soft: rgba(251, 146, 60, 0.2);
-}
-
-.presence-badge-flores > * {
+.presence-badge-gif > * {
   position: relative;
   z-index: 1;
 }
 
-.presence-badge-otono > * {
-  position: relative;
-  z-index: 1;
+.presence-badge-autumn {
+  --presence-gif-image: url('/animations/autumn.gif');
+  --glow-color: rgba(251, 146, 60, 0.4);
+}
+
+.presence-badge-magic-tree {
+  --presence-gif-image: url('/animations/magic-tree.gif');
+  --glow-color: rgba(147, 197, 253, 0.4);
+}
+
+.presence-badge-piekary {
+  --presence-gif-image: url('/animations/piekary.gif');
+  --glow-color: rgba(74, 222, 128, 0.4);
+}
+
+.presence-badge-sakura {
+  --presence-gif-image: url('/animations/sakura.gif');
+  --glow-color: rgba(244, 114, 182, 0.4);
+}
+
+.presence-badge-clannad {
+  --presence-gif-image: url('/animations/clannad.gif');
+  --glow-color: rgba(250, 204, 21, 0.4);
 }
 
 /*

@@ -755,25 +755,17 @@ export function getRoleColorClasses(role: UserRole, fullName?: string | null) {
   }
 }
 
-export type PresenceStyleKey = 'none' | 'glow' | 'pulse' | 'rainbow' | 'orbit' | 'wave' | 'aurora' | 'spectrum' | 'neon' | 'haze' | 'prism' | 'loopwave' | 'flores' | 'otono'
+export type PresenceStyleKey = 'none' | 'autumn' | 'magic-tree' | 'piekary' | 'sakura' | 'clannad'
 
 export function normalizePresenceStyle(style: unknown): PresenceStyleKey {
   const normalized = typeof style === 'string' ? style.trim().toLowerCase() : 'none'
 
   switch (normalized) {
-    case 'glow':
-    case 'pulse':
-    case 'rainbow':
-    case 'orbit':
-    case 'wave':
-    case 'aurora':
-    case 'spectrum':
-    case 'neon':
-    case 'haze':
-    case 'prism':
-    case 'loopwave':
-    case 'flores':
-    case 'otono':
+    case 'autumn':
+    case 'magic-tree':
+    case 'piekary':
+    case 'sakura':
+    case 'clannad':
       return normalized
     default:
       return 'none'
@@ -782,32 +774,16 @@ export function normalizePresenceStyle(style: unknown): PresenceStyleKey {
 
 export function getPresenceStyleLabel(style: unknown): string {
   switch (normalizePresenceStyle(style)) {
-    case 'glow':
-      return 'Brillo'
-    case 'pulse':
-      return 'Pulso'
-    case 'rainbow':
-      return 'Arcoíris'
-    case 'orbit':
-      return 'Orbital'
-    case 'wave':
-      return 'Ola'
-    case 'aurora':
-      return 'Aurora'
-    case 'spectrum':
-      return 'Espectro'
-    case 'neon':
-      return 'Neón'
-    case 'haze':
-      return 'Haze'
-    case 'prism':
-      return 'Prisma'
-    case 'loopwave':
-      return 'Ola de borde'
-    case 'flores':
-      return 'Flores (GIF)'
-    case 'otono':
+    case 'autumn':
       return 'Otoño (GIF)'
+    case 'magic-tree':
+      return 'Árbol mágico (GIF)'
+    case 'piekary':
+      return 'Piekary Śląskie (GIF)'
+    case 'sakura':
+      return 'Sakura (GIF)'
+    case 'clannad':
+      return 'Clannad (GIF)'
     case 'none':
     default:
       return 'Sin animación'
@@ -816,32 +792,12 @@ export function getPresenceStyleLabel(style: unknown): string {
 
 export function getPresenceStyleClasses(style: unknown): string {
   switch (normalizePresenceStyle(style)) {
-    case 'glow':
-      return 'presence-badge-glow'
-    case 'pulse':
-      return 'presence-badge-pulse'
-    case 'rainbow':
-      return 'presence-badge-rainbow'
-    case 'orbit':
-      return 'presence-badge-orbit'
-    case 'wave':
-      return 'presence-badge-wave'
-    case 'aurora':
-      return 'presence-badge-aurora'
-    case 'spectrum':
-      return 'presence-badge-spectrum'
-    case 'neon':
-      return 'presence-badge-neon'
-    case 'haze':
-      return 'presence-badge-haze'
-    case 'prism':
-      return 'presence-badge-prism'
-    case 'loopwave':
-      return 'presence-badge-loopwave'
-    case 'flores':
-      return 'presence-badge-flores'
-    case 'otono':
-      return 'presence-badge-otono'
+    case 'autumn':
+    case 'magic-tree':
+    case 'piekary':
+    case 'sakura':
+    case 'clannad':
+      return `presence-badge-gif presence-badge-${normalizePresenceStyle(style)}`
     case 'none':
     default:
       return 'presence-badge-none'

@@ -43,19 +43,11 @@ const ALL_PERMISSION_KEYS = getAllPermissionKeys()
 
 const presenceStyleOptions = [
   { value: 'none', label: 'Sin animación' },
-  { value: 'glow', label: 'Brillo' },
-  { value: 'pulse', label: 'Pulso' },
-  { value: 'rainbow', label: 'Arcoíris' },
-  { value: 'orbit', label: 'Orbital' },
-  { value: 'wave', label: 'Ola' },
-  { value: 'aurora', label: 'Aurora' },
-  { value: 'spectrum', label: 'Espectro' },
-  { value: 'neon', label: 'Neón' },
-  { value: 'haze', label: 'Haze' },
-  { value: 'prism', label: 'Prisma' },
-  { value: 'loopwave', label: 'Ola de borde' },
-  { value: 'flores', label: 'Flores (GIF)' },
-  { value: 'otono', label: 'Otoño (GIF)' },
+  { value: 'autumn', label: 'Otoño (GIF)' },
+  { value: 'magic-tree', label: 'Árbol mágico (GIF)' },
+  { value: 'piekary', label: 'Piekary Śląskie (GIF)' },
+  { value: 'sakura', label: 'Sakura (GIF)' },
+  { value: 'clannad', label: 'Clannad (GIF)' },
 ]
 
 function getInitials(name: string, email: string): string {
