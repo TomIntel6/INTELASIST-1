@@ -47,11 +47,8 @@ export interface LocalSession {
   user: LocalUser
   token?: string
 }
-// El TTL debe ser MAYOR que el heartbeat para que un usuario no "expire" entre un
-// latido y el siguiente. Al espaciar el heartbeat a 300s, el TTL sube a 420s (7 min),
-// coherente con el cutoff del job de limpieza del servidor (api.js startCleanupTask).
-const PRESENCE_TTL_MS = 1000 * 420
-const PRESENCE_SYNC_INTERVAL_MS = 1000 * 300
+const PRESENCE_TTL_MS = 1000 * 60
+const PRESENCE_SYNC_INTERVAL_MS = 1000 * 20
 const getDefaultApiBase = () => {
   if (import.meta.env.VITE_API_BASE_URL) return import.meta.env.VITE_API_BASE_URL
   return 'https://intelasist.onrender.com'
@@ -1036,6 +1033,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       })
 
+      evtSource.addEventListener('presence-updated', (ev: MessageEvent) => {
+        try {
+          const payload = typeof ev.data === 'string' ? JSON.parse(ev.data) : ev.data
+          window.dispatchEvent(new CustomEvent('presence-updated', { detail: payload }))
+        } catch {
+          console.warn('Se recibió un evento de presencia inválido.')
+        }
+      })
+
       // Fallback: mensajes genéricos
       evtSource.addEventListener('message', (ev: MessageEvent) => {
         try {
@@ -1072,15 +1078,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     const syncPresence = () => {
-      if (document.visibilityState !== 'visible') {
-        return
-      }
-
       upsertOnlineUser(user)
     }
 
     const startPresenceSync = () => {
-      if (presenceIntervalRef.current !== null || document.visibilityState !== 'visible') {
+      if (presenceIntervalRef.current !== null) {
         return
       }
 
@@ -1097,9 +1099,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         syncPresence()
-        startPresenceSync()
-      } else {
-        stopPresenceSync()
       }
     }
 

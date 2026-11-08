@@ -23,7 +23,11 @@ import type { AvatarData } from '@/lib/avatar'
 import { LayoutDashboard, FileText, LogOut, HeartPulse, House, Users } from 'lucide-react'
 import { PERMISSIONS } from '@/lib/permissions'
 
-const ONLINE_USER_FETCH_INTERVAL_MS = 10 * 60 * 1000
+const ONLINE_USER_FETCH_INTERVAL_MS = 30 * 1000
+
+function isUserRole(role: unknown): role is 'Agente' | 'Admin' | 'Support' | 'Gerente' {
+  return role === 'Agente' || role === 'Admin' || role === 'Support' || role === 'Gerente'
+}
 
 function areOnlineUsersEqual(a: Array<ReturnType<typeof getOnlineUsers>[number]>, b: Array<ReturnType<typeof getOnlineUsers>[number]>) {
   if (a.length !== b.length) {
@@ -81,6 +85,8 @@ export default function AppSidebar() {
   const lastServerUsersRef = React.useRef<ReturnType<typeof getOnlineUsers> | null>(null)
   const remoteIntervalRef = React.useRef<number | null>(null)
   const isMountedRef = React.useRef(true)
+  const serverFetchInFlightRef = React.useRef(false)
+  const presenceRevisionRef = React.useRef(0)
 
   React.useLayoutEffect(() => {
     let frameId = 0
@@ -139,12 +145,19 @@ export default function AppSidebar() {
   }, [])
 
   const refreshOnlineUsersFromServer = React.useCallback(async () => {
-    if (document.visibilityState !== 'visible') {
+    if (document.visibilityState !== 'visible' || serverFetchInFlightRef.current) {
       return
     }
 
+    serverFetchInFlightRef.current = true
+    const requestRevision = presenceRevisionRef.current
+
     try {
       const serverUsers = await fetchOnlineUsersFromServer()
+      if (requestRevision !== presenceRevisionRef.current) {
+        return
+      }
+
       const previousServerUsers = lastServerUsersRef.current ?? []
 
       if (!areOnlineUsersEqual(previousServerUsers, serverUsers)) {
@@ -155,6 +168,8 @@ export default function AppSidebar() {
       }
     } catch {
       // Si falla, mantenemos la lista local.
+    } finally {
+      serverFetchInFlightRef.current = false
     }
   }, [])
 
@@ -197,6 +212,75 @@ export default function AppSidebar() {
       void refreshOnlineUsersFromServer()
     }
 
+    const handleRemotePresence = (event: Event) => {
+      if (!(event instanceof CustomEvent)) {
+        return
+      }
+
+      const payload = event.detail as {
+        action?: string
+        userId?: string
+        user?: {
+          userId?: string
+          email?: string
+          fullName?: string
+          role?: unknown
+          roles?: unknown
+          lastSeen?: number
+        }
+      }
+      presenceRevisionRef.current += 1
+
+      if (payload.action === 'offline') {
+        const userId = payload.userId || payload.user?.userId
+        if (typeof userId === 'string') {
+          setOnlineUsers(previous => previous.filter(onlineUser => onlineUser.userId !== userId))
+        }
+        return
+      }
+
+      const remoteUser = payload.user
+      if (
+        payload.action !== 'online' ||
+        typeof remoteUser?.userId !== 'string' ||
+        remoteUser.userId.startsWith('local-created-') ||
+        typeof remoteUser.email !== 'string' ||
+        typeof remoteUser.fullName !== 'string' ||
+        typeof remoteUser.lastSeen !== 'number'
+      ) {
+        return
+      }
+
+      const role = isUserRole(remoteUser.role) ? remoteUser.role : 'Agente'
+      const roles = Array.isArray(remoteUser.roles)
+        ? remoteUser.roles.filter(isUserRole)
+        : [role]
+      const normalizedEmail = remoteUser.email.trim().toLowerCase()
+      if (!normalizedEmail) {
+        return
+      }
+
+      const nextUser = {
+        userId: remoteUser.userId,
+        email: normalizedEmail,
+        fullName: remoteUser.fullName,
+        role,
+        roles: roles.length > 0 ? roles : [role],
+        lastSeen: remoteUser.lastSeen,
+      }
+
+      setOnlineUsers(previous => {
+        const updated = [
+          ...previous.filter(onlineUser =>
+            onlineUser.userId !== nextUser.userId &&
+            onlineUser.email.trim().toLowerCase() !== normalizedEmail
+          ),
+          nextUser,
+        ].sort((a, b) => b.lastSeen - a.lastSeen)
+        return areOnlineUsersEqual(previous, updated) ? previous : updated
+      })
+    }
+
     const handlePresenceStyleChanged = () => {
       void refreshPresenceStyles()
       refreshOnlineUsers()
@@ -236,6 +320,7 @@ export default function AppSidebar() {
 
     window.addEventListener('storage', handleStorage)
     window.addEventListener(PRESENCE_SYNC_STORAGE_KEY, handlePresenceSync)
+    window.addEventListener('presence-updated', handleRemotePresence)
     window.addEventListener(USERS_SYNC_STORAGE_KEY, handleUsersSync)
     window.addEventListener('presence-style-changed', handlePresenceStyleChanged)
     window.addEventListener('visibilitychange', handleVisibilityChange)
@@ -245,6 +330,7 @@ export default function AppSidebar() {
       stopRemoteSync()
       window.removeEventListener('storage', handleStorage)
       window.removeEventListener(PRESENCE_SYNC_STORAGE_KEY, handlePresenceSync)
+      window.removeEventListener('presence-updated', handleRemotePresence)
       window.removeEventListener(USERS_SYNC_STORAGE_KEY, handleUsersSync)
       window.removeEventListener('presence-style-changed', handlePresenceStyleChanged)
       window.removeEventListener('visibilitychange', handleVisibilityChange)

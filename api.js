@@ -29,6 +29,17 @@ const ROLE_OPTIONS = ['Agente', 'Admin', 'Support', 'Gerente']
 const SALT_ROUNDS = 10
 const SUPPORT_LOCKED_EMAIL = 'jrodriguez@intelasist.com'
 
+function broadcastSseEvent(eventName, payload) {
+  const message = `event: ${eventName}\ndata: ${JSON.stringify(payload)}\n\n`
+  for (const client of sseClients) {
+    try {
+      client.write(message)
+    } catch {
+      sseClients.delete(client)
+    }
+  }
+}
+
 function isSupportLockedEmail(email) {
   return typeof email === 'string' && email.trim().toLowerCase() === SUPPORT_LOCKED_EMAIL
 }
@@ -1623,15 +1634,21 @@ app.get('/events', (req, res) => {
   res.set({
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-cache',
+    'X-Accel-Buffering': 'no',
     Connection: 'keep-alive',
   })
+  res.flushHeaders()
 
   // Enviar un comentario inicial para mantener la conexión
   res.write(': connected\n\n')
 
   sseClients.add(res)
+  const keepAlive = setInterval(() => {
+    res.write(': keep-alive\n\n')
+  }, 20000)
 
   req.on('close', () => {
+    clearInterval(keepAlive)
     sseClients.delete(res)
   })
 })
@@ -3022,6 +3039,19 @@ app.post('/online-users', async (req, res) => {
       [userId, email, fullName, role, serverTimestamp]
     )
 
+    broadcastSseEvent('presence-updated', {
+      type: 'presence-updated',
+      action: 'online',
+      user: {
+        userId,
+        email,
+        fullName,
+        role,
+        roles: Array.isArray(req.body.roles) ? req.body.roles : [role],
+        lastSeen: serverTimestamp,
+      },
+    })
+
     res.json({ ok: true, lastSeen: serverTimestamp })
   } catch (err) {
     console.error(err)
@@ -3049,6 +3079,11 @@ app.post('/online-users/offline', async (req, res) => {
     }
 
     await pool.query('DELETE FROM online_presence WHERE user_id = $1', [userId])
+    broadcastSseEvent('presence-updated', {
+      type: 'presence-updated',
+      action: 'offline',
+      userId,
+    })
     res.json({ ok: true })
   } catch (err) {
     console.error(err)
@@ -3059,6 +3094,11 @@ app.post('/online-users/offline', async (req, res) => {
 app.delete('/online-users/:userId', async (req, res) => {
   try {
     await pool.query('DELETE FROM online_presence WHERE user_id = $1', [req.params.userId])
+    broadcastSseEvent('presence-updated', {
+      type: 'presence-updated',
+      action: 'offline',
+      userId: req.params.userId,
+    })
     res.json({ ok: true })
   } catch (err) {
     console.error(err)
@@ -4543,9 +4583,7 @@ app.use((req, res) => {
 })
 
 async function startCleanupTask() {
-  // Limpia usuarios con presencia expirada. El cutoff debe ser MAYOR que el heartbeat
-  // del frontend (PRESENCE_SYNC_INTERVAL_MS = 300s) para no marcar offline a usuarios
-  // activos entre latidos. Usamos rowCount (sin RETURNING) para reducir egress.
+  // Limpieza de respaldo; la lista en vivo usa un cutoff de 45s y heartbeats de 20s.
   setInterval(async () => {
     try {
       const cutoff = Date.now() - 1000 * 420 // 7 min > heartbeat de 5 min
