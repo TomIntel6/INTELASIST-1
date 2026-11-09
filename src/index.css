@@ -757,6 +757,11 @@
   --glow-color: rgba(74, 222, 128, 0.4);
 }
 
+.presence-badge-anime-nuevo {
+  --presence-gif-image: url('/animations/anime-nuevo.gif');
+  --glow-color: rgba(96, 165, 250, 0.4);
+}
+
 /*
   ============================================================
   SISTEMA DE MARCA "IA" — utilidades reutilizables

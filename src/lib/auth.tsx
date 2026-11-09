@@ -756,7 +756,7 @@ export function getRoleColorClasses(role: UserRole, fullName?: string | null) {
   }
 }
 
-export type PresenceStyleKey = 'none' | 'autumn' | 'magic-tree' | 'piekary' | 'sakura' | 'clannad' | 'anime-raining' | 'banner-discord' | 'card' | 'sakura-anime' | 'yhhh'
+export type PresenceStyleKey = 'none' | 'autumn' | 'magic-tree' | 'piekary' | 'sakura' | 'clannad' | 'anime-raining' | 'banner-discord' | 'card' | 'sakura-anime' | 'yhhh' | 'anime-nuevo'
 
 export function normalizePresenceStyle(style: unknown): PresenceStyleKey {
   const normalized = typeof style === 'string' ? style.trim().toLowerCase() : 'none'
@@ -772,6 +772,7 @@ export function normalizePresenceStyle(style: unknown): PresenceStyleKey {
     case 'card':
     case 'sakura-anime':
     case 'yhhh':
+    case 'anime-nuevo':
       return normalized
     default:
       return 'none'
@@ -800,6 +801,8 @@ export function getPresenceStyleLabel(style: unknown): string {
       return 'Sakura anime (GIF)'
     case 'yhhh':
       return 'Yhhh (GIF)'
+    case 'anime-nuevo':
+      return 'Anime nuevo (GIF)'
     case 'none':
     default:
       return 'Sin animación'
@@ -818,6 +821,7 @@ export function getPresenceStyleClasses(style: unknown): string {
     case 'card':
     case 'sakura-anime':
     case 'yhhh':
+    case 'anime-nuevo':
       return `presence-badge-gif presence-badge-${normalizePresenceStyle(style)}`
     case 'none':
     default:

@@ -57,6 +57,7 @@ const presenceStyleOptions = [
   { value: 'card', label: 'Card (GIF)' },
   { value: 'sakura-anime', label: 'Sakura anime (GIF)' },
   { value: 'yhhh', label: 'Yhhh (GIF)' },
+  { value: 'anime-nuevo', label: 'Anime nuevo (GIF)' },
 ]
 
 function getInitials(name: string, email: string): string {
