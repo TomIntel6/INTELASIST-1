@@ -440,11 +440,11 @@ export default function PermissionsManagement() {
                                           />
                                           <span className="absolute -bottom-0.5 -right-0.5 inline-flex size-2 rounded-full border border-slate-950 bg-emerald-500" />
                                         </div>
-                                        <span className="truncate text-[10px] font-medium text-white">
+                                        <span className="presence-badge-label truncate text-[10px] font-semibold text-white">
                                           {u.fullName || u.email || 'Usuario'}
                                         </span>
                                       </div>
-                                      <span className="shrink-0 rounded-sm bg-black/30 px-1 text-[9px] font-semibold text-white">
+                                      <span className="presence-badge-label shrink-0 rounded-sm bg-black/30 px-1 text-[9px] font-semibold text-white">
                                         {u.role || 'Agente'}
                                       </span>
                                     </div>

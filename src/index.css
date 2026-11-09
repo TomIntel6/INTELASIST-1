@@ -694,6 +694,19 @@
   z-index: 1;
 }
 
+.presence-badge-gif .presence-badge-label {
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 3px;
+  background-color: rgba(0, 0, 0, 0.78);
+  background-image: none !important;
+  background-clip: border-box !important;
+  -webkit-background-clip: border-box !important;
+  color: #fff !important;
+  -webkit-text-fill-color: #fff !important;
+  text-shadow: 0 1px 2px #000, 0 0 5px #000;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+}
+
 .presence-badge-autumn {
   --presence-gif-image: url('/animations/autumn.gif');
   --glow-color: rgba(251, 146, 60, 0.4);
