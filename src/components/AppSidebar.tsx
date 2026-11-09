@@ -485,7 +485,7 @@ export default function AppSidebar() {
                           <span className="absolute -bottom-0.5 -right-0.5 inline-flex h-2 w-2 rounded-full border-1 border-sidebar bg-emerald-500" />
                         </div>
                         <div className="min-w-0">
-                          <p className={`presence-badge-label truncate text-[10px] font-semibold text-white ${getNameColorClasses(user.fullName)}`}>{user.fullName || 'Usuario'}</p>
+                          <p className="presence-badge-label presence-name-label support-animated role-badge-contrast truncate text-[10px] font-semibold">{user.fullName || 'Usuario'}</p>
                         </div>
                       </div>
 

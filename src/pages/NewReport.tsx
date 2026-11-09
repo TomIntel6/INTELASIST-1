@@ -519,6 +519,12 @@ const [form, setForm] = React.useState<NewReportForm>({
       }
     }
 
+    if ([form.brand, form.model, form.color].some(value => !/\p{L}/u.test(value))) {
+      setError('La marca, el modelo y el color deben incluir al menos una letra.')
+      setSaving(false)
+      return
+    }
+
     if (isDocumentReport && form.document_type === 'Otro' && !form.document_other.trim()) {
       setError('Por favor especifica el documento.')
       setSaving(false)
@@ -861,15 +867,15 @@ const [form, setForm] = React.useState<NewReportForm>({
           </CardHeader>
           <CardContent className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
             <div className="space-y-1.5">
-              <Label htmlFor="brand">Marca <span className="text-destructive">*</span></Label>
+              <Label htmlFor="brand">Marca</Label>
               <Input id="brand" required value={form.brand} onChange={e => set('brand', e.target.value)} placeholder="Toyota" className="bg-muted/50 border-border/70" />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="model">Modelo <span className="text-destructive">*</span></Label>
+              <Label htmlFor="model">Modelo</Label>
               <Input id="model" required value={form.model} onChange={e => set('model', e.target.value)} placeholder="Corolla" className="bg-muted/50 border-border/70" />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="color">Color <span className="text-destructive">*</span></Label>
+              <Label htmlFor="color">Color</Label>
               <Input id="color" required value={form.color} onChange={e => set('color', e.target.value)} placeholder="Blanco" className="bg-muted/50 border-border/70" />
             </div>
             <div className="space-y-1.5 col-span-2 lg:col-span-2">
