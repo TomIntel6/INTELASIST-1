@@ -485,7 +485,7 @@ export default function AppSidebar() {
                           <span className="absolute -bottom-0.5 -right-0.5 inline-flex h-2 w-2 rounded-full border-1 border-sidebar bg-emerald-500" />
                         </div>
                         <div className="min-w-0">
-                          <p className="presence-badge-label presence-name-label support-animated role-badge-contrast truncate text-[10px] font-semibold">{user.fullName || 'Usuario'}</p>
+                          <p className="presence-badge-label connected-user-label connected-user-name truncate text-[10px] font-semibold">{user.fullName || 'Usuario'}</p>
                         </div>
                       </div>
 
@@ -494,7 +494,7 @@ export default function AppSidebar() {
                           <Badge
                             key={role}
                             title={`Rol: ${role.toUpperCase()}`}
-                            className={`presence-badge-label connected-role-badge rounded-sm bg-black/20 px-1 py-0 h-[13px] flex items-center whitespace-nowrap ${getRoleColorClasses(role, user.fullName)}`}
+                            className={`presence-badge-label connected-user-label connected-role-badge rounded-sm bg-black/20 px-1 py-0 h-[13px] flex items-center whitespace-nowrap ${getRoleColorClasses(role, user.fullName)}`}
                           >
                             {role.toUpperCase()}
                           </Badge>
