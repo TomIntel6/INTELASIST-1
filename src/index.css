@@ -778,6 +778,11 @@
   --glow-color: rgba(96, 165, 250, 0.4);
 }
 
+.presence-badge-satoru {
+  --presence-gif-image: url('/animations/satoru.gif');
+  --glow-color: rgba(96, 165, 250, 0.4);
+}
+
 /*
   ============================================================
   SISTEMA DE MARCA "IA" — utilidades reutilizables
