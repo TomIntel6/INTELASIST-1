@@ -5,11 +5,74 @@ import type { UserPermission, PermissionKey, ModuleKey } from '@/lib/permissions
 import { PERMISSIONS, DEFAULT_MODULE_ACCESS, DEFAULT_ROLE_PERMISSIONS, getAllPermissionKeys, getModuleKeyForPermission } from '@/lib/permissions'
 
 const API_BASE = getDefaultApiBase()
+const PERMISSION_CACHE_KEY = 'intelasist-permissions-cache:'
+
+interface PermissionSnapshot {
+  permissions: UserPermission
+  modules: Record<ModuleKey, boolean>
+}
+
+function normalizeModules(rawModules: unknown): Record<ModuleKey, boolean> {
+  const normalized: Record<ModuleKey, boolean> = { ...DEFAULT_MODULE_ACCESS }
+  if (!rawModules || typeof rawModules !== 'object') return normalized
+
+  Object.entries(rawModules).forEach(([key, value]) => {
+    if (key in normalized) {
+      normalized[key as ModuleKey] = Boolean(value)
+    }
+  })
+
+  return normalized
+}
+
+function readPermissionCache(userId: string): PermissionSnapshot | null {
+  try {
+    const raw = window.sessionStorage.getItem(`${PERMISSION_CACHE_KEY}${userId}`)
+    if (!raw) return null
+
+    const cached = JSON.parse(raw) as Partial<PermissionSnapshot>
+    const cachedPermissions = cached.permissions
+    if (
+      cachedPermissions?.userId !== userId ||
+      !cachedPermissions.permissions ||
+      typeof cachedPermissions.permissions !== 'object'
+    ) {
+      return null
+    }
+
+    const permissionMap = Object.fromEntries(
+      getAllPermissionKeys().map(permission => [
+        permission,
+        cachedPermissions.permissions[permission] === true,
+      ])
+    ) as Record<PermissionKey, boolean>
+
+    return {
+      permissions: {
+        ...cachedPermissions,
+        permissions: permissionMap,
+      },
+      modules: normalizeModules(cached.modules),
+    }
+  } catch (error) {
+    console.warn('No se pudo leer la caché de permisos:', error)
+    return null
+  }
+}
+
+function savePermissionCache(userId: string, snapshot: PermissionSnapshot) {
+  try {
+    window.sessionStorage.setItem(`${PERMISSION_CACHE_KEY}${userId}`, JSON.stringify(snapshot))
+  } catch (error) {
+    console.warn('No se pudo guardar la caché de permisos:', error)
+  }
+}
 
 interface PermissionsContextValue {
   permissions: UserPermission | null
   modules: Record<ModuleKey, boolean>
   loading: boolean
+  loadError: string | null
   hasPermission: (permission: PermissionKey) => boolean
   hasAnyPermission: (permissions: PermissionKey[]) => boolean
   hasAllPermissions: (permissions: PermissionKey[]) => boolean
@@ -25,84 +88,77 @@ export function PermissionProvider({ children }: { children: React.ReactNode }) 
   const [permissions, setPermissions] = React.useState<UserPermission | null>(null)
   const [modules, setModules] = React.useState<Record<ModuleKey, boolean>>(() => ({ ...DEFAULT_MODULE_ACCESS }))
   const [loading, setLoading] = React.useState(true)
-
-  const normalizeModules = React.useCallback((rawModules: Record<string, any> | undefined) => {
-    const normalized: Record<ModuleKey, boolean> = { ...DEFAULT_MODULE_ACCESS }
-
-    if (rawModules && typeof rawModules === 'object') {
-      Object.entries(rawModules).forEach(([key, value]) => {
-        if (key in normalized) {
-          normalized[key as ModuleKey] = Boolean(value)
-        }
-      })
-    }
-
-    return normalized
-  }, [])
+  const [loadErrorState, setLoadErrorState] = React.useState<{ userId: string; message: string } | null>(null)
+  const permissionRequestIdRef = React.useRef(0)
+  const cachedSnapshot = React.useMemo(
+    () => user?.id ? readPermissionCache(user.id) : null,
+    [user?.id]
+  )
+  const activePermissions = permissions?.userId === user?.id
+    ? permissions
+    : cachedSnapshot?.permissions ?? null
+  const activeModules = permissions?.userId === user?.id
+    ? modules
+    : cachedSnapshot?.modules ?? DEFAULT_MODULE_ACCESS
+  const loadError = loadErrorState && loadErrorState.userId === user?.id ? loadErrorState.message : null
+  const hasPermissionSnapshot = Boolean(activePermissions && user?.id === activePermissions.userId)
 
   const loadPermissions = React.useCallback(async () => {
+    const requestId = ++permissionRequestIdRef.current
+
     if (!user?.id) {
       setPermissions(null)
       setModules({ ...DEFAULT_MODULE_ACCESS })
+      setLoadErrorState(null)
       setLoading(false)
       return
     }
 
     try {
       setLoading(true)
+      setLoadErrorState(null)
 
-      // Fetch user permissions from backend API
       const response = await fetch(`${API_BASE}/api/users/${user.id}/permissions`)
       if (!response.ok) throw new Error('Failed to fetch permissions')
 
       const data = await response.json()
+      if (requestId !== permissionRequestIdRef.current) return
 
-      const modulesMap = normalizeModules(data.modules)
-
-      if (Object.keys(data.permissions || {}).length === 0) {
-        // Create default permissions based on user role
-        const userRole = (user.user_metadata?.role as string) || 'Agente'
-        const defaultPerms = DEFAULT_ROLE_PERMISSIONS[userRole] || DEFAULT_ROLE_PERMISSIONS.Agente
-
-        const permissionMap: Record<string, boolean> = {}
-        getAllPermissionKeys().forEach((perm) => {
-          permissionMap[perm] = defaultPerms.includes(perm)
-        })
-
-        setPermissions({
+      const hasStoredPermissions = Object.keys(data.permissions || {}).length > 0
+      const userRole = (user.user_metadata?.role as string) || 'Agente'
+      const defaultPerms = DEFAULT_ROLE_PERMISSIONS[userRole] || DEFAULT_ROLE_PERMISSIONS.Agente
+      const permissionMap = Object.fromEntries(
+        getAllPermissionKeys().map(permission => [
+          permission,
+          hasStoredPermissions ? data.permissions[permission] === true : defaultPerms.includes(permission),
+        ])
+      ) as Record<PermissionKey, boolean>
+      const snapshot: PermissionSnapshot = {
+        permissions: {
           id: data.permissionId || '',
           userId: user.id,
-          permissions: permissionMap as Record<PermissionKey, boolean>,
+          permissions: permissionMap,
           createdAt: data.createdAt || new Date().toISOString(),
           updatedAt: data.updatedAt || new Date().toISOString(),
-        })
-      } else {
-        // Use permissions from API
-        const permissionMap: Record<string, boolean> = {}
-
-        // Initialize all permissions to false
-        getAllPermissionKeys().forEach((perm) => {
-          permissionMap[perm] = false
-        })
-
-        // Set permissions from API response
-        Object.assign(permissionMap, data.permissions)
-
-        setPermissions({
-          id: data.permissionId || '',
-          userId: user.id,
-          permissions: permissionMap as Record<PermissionKey, boolean>,
-          createdAt: data.createdAt || new Date().toISOString(),
-          updatedAt: data.updatedAt || new Date().toISOString(),
-        })
+        },
+        modules: normalizeModules(data.modules),
       }
 
-      setModules(modulesMap)
+      setPermissions(snapshot.permissions)
+      setModules(snapshot.modules)
+      savePermissionCache(user.id, snapshot)
     } catch (error) {
       console.error('Error loading permissions:', error)
-      setPermissions(null)
+      if (requestId === permissionRequestIdRef.current) {
+        setLoadErrorState({
+          userId: user.id,
+          message: error instanceof Error ? error.message : 'No se pudieron cargar los permisos.',
+        })
+      }
     } finally {
-      setLoading(false)
+      if (requestId === permissionRequestIdRef.current) {
+        setLoading(false)
+      }
     }
   }, [user?.id, user?.user_metadata?.role])
 
@@ -142,9 +198,9 @@ export function PermissionProvider({ children }: { children: React.ReactNode }) 
 
   const hasModuleAccess = React.useCallback(
     (module: ModuleKey): boolean => {
-      return modules[module] ?? DEFAULT_MODULE_ACCESS[module] ?? false
+      return activeModules[module] ?? DEFAULT_MODULE_ACCESS[module] ?? false
     },
-    [modules]
+    [activeModules]
   )
 
   const hasPermission = React.useCallback(
@@ -154,10 +210,10 @@ export function PermissionProvider({ children }: { children: React.ReactNode }) 
         return false
       }
 
-      if (!permissions) return false
-      return permissions.permissions[permission] ?? false
+      if (!activePermissions) return false
+      return activePermissions.permissions[permission] ?? false
     },
-    [hasModuleAccess, permissions, user?.user_metadata?.role]
+    [activePermissions, hasModuleAccess]
   )
 
   const hasAnyPermission = React.useCallback(
@@ -181,9 +237,10 @@ export function PermissionProvider({ children }: { children: React.ReactNode }) 
   const isSupport = hasAnyRole(user, ['Support']) || String(user?.email).toLowerCase() === 'mbarria@intelasist.com'
 
   const value: PermissionsContextValue = {
-    permissions,
-    modules,
-    loading,
+    permissions: activePermissions,
+    modules: activeModules,
+    loading: loading && !hasPermissionSnapshot,
+    loadError,
     hasPermission,
     hasAnyPermission,
     hasAllPermissions,

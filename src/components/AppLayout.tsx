@@ -20,7 +20,7 @@ import FailedAttemptsAlert from '@/components/FailedAttemptsAlert'
 
 export default function AppLayout() {
   const { user, updateCurrentUserProfile, updateCurrentUserAvatar } = useAuth()
-  const { hasPermission } = usePermissions()
+  const { hasPermission, permissions, loadError: permissionsError, refreshPermissions } = usePermissions()
   const location = useLocation()
   const [notificationsOpen, setNotificationsOpen] = React.useState(false)
   const [profileOpen, setProfileOpen] = React.useState(false)
@@ -463,6 +463,24 @@ export default function AppLayout() {
           onScroll={handleWorkspaceScroll}
           className="app-workspace min-h-0 min-w-0 flex-1 overflow-auto"
         >
+          {permissionsError ? (
+            <div
+              role="alert"
+              className="mx-auto mt-4 flex max-w-7xl flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-foreground"
+            >
+              <div className="flex items-start gap-2">
+                <AlertCircle className="mt-0.5 size-4 shrink-0 text-amber-600" />
+                <p>
+                  {permissions
+                    ? 'No se pudieron actualizar los permisos. Se conserva la validación disponible.'
+                    : 'No se pudieron cargar los permisos. Las acciones restringidas estarán deshabilitadas hasta reintentarlo.'}
+                </p>
+              </div>
+              <Button variant="outline" size="sm" onClick={() => void refreshPermissions()}>
+                Reintentar permisos
+              </Button>
+            </div>
+          ) : null}
           <div key={location.pathname} className="app-route-content">
             <Outlet />
           </div>

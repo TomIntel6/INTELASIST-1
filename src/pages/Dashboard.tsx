@@ -469,13 +469,15 @@ export default function Dashboard() {
                   Exportar
                 </Button>
               )}
-              <Button
-                onClick={() => navigate('/informes/nuevo')}
-                className="gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-4 py-2 text-sm font-semibold text-white shadow-[0_16px_42px_-20px_rgba(99,102,241,0.95)] transition-all hover:-translate-y-0.5 hover:shadow-[0_20px_48px_-20px_rgba(99,102,241,0.95)]"
-              >
-                <FilePlus className="size-4" />
-                Nuevo Informe
-              </Button>
+              {hasPermission(PERMISSIONS.REPORTS.CREATE) && (
+                <Button
+                  onClick={() => navigate('/informes/nuevo')}
+                  className="gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-4 py-2 text-sm font-semibold text-white shadow-[0_16px_42px_-20px_rgba(99,102,241,0.95)] transition-all hover:-translate-y-0.5 hover:shadow-[0_20px_48px_-20px_rgba(99,102,241,0.95)]"
+                >
+                  <FilePlus className="size-4" />
+                  Nuevo Informe
+                </Button>
+              )}
             </div>
           </div>
 

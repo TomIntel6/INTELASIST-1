@@ -19,6 +19,8 @@ import { Button } from '@/components/ui/button'
 
 function ProtectedContent() {
   const { user, loading, requiresPasswordChange } = useAuth()
+  const { hasModuleAccess, hasPermission } = usePermissions()
+  const userRoles = React.useMemo(() => getUserRoles(user), [user])
 
   if (loading) {
     return (
@@ -36,8 +38,6 @@ function ProtectedContent() {
     return <Navigate to="/login" replace />
   }
 
-  const { hasModuleAccess, hasPermission } = usePermissions()
-  const userRoles = React.useMemo(() => getUserRoles(user), [user])
   const canAccessReports = hasModuleAccess('reports')
   // Ver usuarios: por acceso al módulo (como antes) o por el permiso granular view_users.
   const canAccessUsers = hasModuleAccess('users') || hasPermission(PERMISSIONS.USERS.VIEW)
