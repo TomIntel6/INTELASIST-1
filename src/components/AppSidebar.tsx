@@ -398,15 +398,14 @@ export default function AppSidebar() {
           onClick={() => navigate('/dashboard')}
           className="group flex items-center gap-2.5 rounded-2xl px-2 py-1.5 text-left transition-all duration-200 hover:bg-white/5"
         >
-          <div className="sidebar-brand-mark rounded-2xl p-1 transition-all duration-200 group-hover:scale-105 group-hover:shadow-[0_0_30px_rgba(34,211,238,0.65)]">
-            <img src="/intelasist.png" alt="INTELASIST" className="h-11 w-11 shrink-0 object-contain" />
-          </div>
+          <img
+            src="/intelasist-sidebar.svg"
+            alt="INTELASIST IA"
+            className="sidebar-brand-logo h-11 w-11 shrink-0 object-contain transition-transform duration-200 group-hover:scale-105"
+          />
           <div className="leading-tight group-data-[collapsible=icon]:hidden">
-            <span className="block text-sm font-bold tracking-tight text-white">
+            <span className="sidebar-brand-name block text-sm font-bold tracking-[0.12em] text-sky-100">
               INTELASIST
-            </span>
-            <span className="block text-[10px] font-medium italic tracking-[0.18em] text-slate-400">
-              100% panameña
             </span>
           </div>
         </button>

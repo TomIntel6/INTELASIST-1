@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 507 359" role="img" aria-labelledby="title">
+  <title id="title">INTELASIST IA</title>
+  <defs>
+    <linearGradient id="i-face" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#06275f"/>
+      <stop offset=".72" stop-color="#0b4eae"/>
+      <stop offset="1" stop-color="#031b49"/>
+    </linearGradient>
+    <linearGradient id="a-face" x1="0" y1="0" x2=".8" y2="1">
+      <stop offset="0" stop-color="#61d6ff"/>
+      <stop offset=".28" stop-color="#168ff0"/>
+      <stop offset=".72" stop-color="#0872d8"/>
+      <stop offset="1" stop-color="#0750ad"/>
+    </linearGradient>
+    <linearGradient id="edge" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#d8f8ff"/>
+      <stop offset=".35" stop-color="#55ccff"/>
+      <stop offset="1" stop-color="#0754bc"/>
+    </linearGradient>
+    <filter id="neon" x="-.3" y="-.3" width="1.6" height="1.6" color-interpolation-filters="sRGB">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="7" result="blur"/>
+      <feFlood flood-color="#168bff" flood-opacity=".48" result="glow"/>
+      <feComposite in="glow" in2="blur" operator="in" result="soft-glow"/>
+      <feMerge>
+        <feMergeNode in="soft-glow"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <path fill="#061a42" d="M0 0h507v359H0z"/>
+  <g filter="url(#neon)" stroke-linejoin="round">
+    <path d="m55 31 76-5 10 10v309H50V37z" fill="#03143b" stroke="#0751a9" stroke-width="5" transform="translate(7 5)"/>
+    <path d="M55 27h71l8 9v309H51V33z" fill="url(#i-face)" stroke="url(#edge)" stroke-width="4"/>
+    <path d="m222 27 104-2 7 9 119 311h-91l-22-81H227l-21 81h-91z" fill="#031640" stroke="#063b84" stroke-width="5" transform="translate(8 6)"/>
+    <path fill="url(#a-face)" fill-rule="evenodd" stroke="url(#edge)" stroke-width="4" d="m220 26 104-1 7 9 116 307h-91l-22-81H228l-22 81h-91zm27 197h67l-33-107z"/>
+    <path d="m226 35-99 296m197-294 111 293" fill="none" stroke="#bcefff" stroke-opacity=".62" stroke-width="3"/>
+    <path d="M57 34h66" fill="none" stroke="#e0f9ff" stroke-opacity=".8" stroke-width="3"/>
+  </g>
+</svg>

@@ -812,12 +812,16 @@
       inset 0 0 0 1px color-mix(in srgb, #fff 22%, transparent);
   }
 
-  .sidebar-brand-mark {
-    background: #f8fafc;
-    box-shadow:
-      0 0 0 1px rgba(255,255,255,0.35),
-      0 0 20px rgba(51,128,245,0.34),
-      0 16px 34px -14px rgba(0,0,0,0.85);
+  .sidebar-brand-logo {
+    filter:
+      drop-shadow(0 0 5px rgba(37, 132, 255, 0.4))
+      drop-shadow(0 0 12px rgba(37, 132, 255, 0.22));
+  }
+
+  .sidebar-brand-name {
+    text-shadow:
+      0 0 8px rgba(56, 144, 255, 0.5),
+      0 0 18px rgba(37, 132, 255, 0.2);
   }
 
   /* Superficie de cristal (glassmorphism) refinada */
