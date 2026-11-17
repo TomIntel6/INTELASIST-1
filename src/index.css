@@ -814,14 +814,8 @@
 
   .sidebar-brand-logo {
     filter:
-      drop-shadow(0 0 5px rgba(37, 132, 255, 0.4))
-      drop-shadow(0 0 12px rgba(37, 132, 255, 0.22));
-  }
-
-  .sidebar-brand-name {
-    text-shadow:
-      0 0 8px rgba(56, 144, 255, 0.5),
-      0 0 18px rgba(37, 132, 255, 0.2);
+      drop-shadow(0 0 5px rgba(37, 132, 255, 0.55))
+      drop-shadow(0 0 14px rgba(37, 132, 255, 0.32));
   }
 
   /* Superficie de cristal (glassmorphism) refinada */

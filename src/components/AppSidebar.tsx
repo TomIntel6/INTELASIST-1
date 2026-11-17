@@ -401,10 +401,10 @@ export default function AppSidebar() {
           <img
             src="/intelasist-sidebar.svg"
             alt="INTELASIST IA"
-            className="sidebar-brand-logo h-11 w-11 shrink-0 object-contain transition-transform duration-200 group-hover:scale-105"
+            className="sidebar-brand-logo h-11 w-[4.25rem] shrink-0 object-contain transition-transform duration-200 group-hover:scale-105 group-data-[collapsible=icon]:w-11"
           />
           <div className="leading-tight group-data-[collapsible=icon]:hidden">
-            <span className="sidebar-brand-name block text-sm font-bold tracking-[0.12em] text-sky-100">
+            <span className="block text-sm font-bold tracking-[0.12em] text-sky-100">
               INTELASIST
             </span>
           </div>
