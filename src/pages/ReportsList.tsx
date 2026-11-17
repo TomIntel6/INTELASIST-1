@@ -459,8 +459,14 @@ export default function ReportsList() {
         throw new Error('No se pudo cargar toda la información del informe.')
       }
 
-      await downloadReportPdf(fullReport)
-      toast.success('Informe descargado en PDF.')
+      const pdfResult = await downloadReportPdf(fullReport)
+      if (pdfResult.unavailableEvidence > 0) {
+        toast.warning('PDF descargado con evidencias pendientes', {
+          description: `No se pudieron incrustar ${pdfResult.unavailableEvidence} imagen(es); sus enlaces siguen disponibles.`,
+        })
+      } else {
+        toast.success('Informe descargado en PDF.')
+      }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'No se pudo descargar el informe en PDF.')
     } finally {
