@@ -140,7 +140,6 @@ export async function downloadReportPdf(report: Report) {
     pdf.setFontSize(7)
     pdf.setTextColor(203, 213, 225)
     pdf.text('GESTIÓN DE ASISTENCIAS', margin + 20, 18)
-    pdf.text(`Ref. ${report.id}`, pageWidth - margin, 11, { align: 'right' })
     pdf.text(`PDF generado: ${generatedAtText}`, pageWidth - margin, 17, { align: 'right' })
     pdf.text(`${RESPONSIBLE_ROLE}: ${RESPONSIBLE_PERSON}`, pageWidth - margin, 23, { align: 'right' })
     y = 39
