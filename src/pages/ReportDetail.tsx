@@ -23,7 +23,9 @@ import type { PermissionKey } from '@/lib/permissions'
 import { AuditService } from '@/lib/audit-service'
 import { PERMISSIONS } from '@/lib/permissions'
 import { cn } from '@/lib/utils'
-import { ArrowLeft, Send, User, Calendar, Car, FileText, Wrench, Image as ImageIcon, ZoomIn, Copy, History, Pencil } from 'lucide-react'
+import { downloadReportPdf } from '@/lib/report-pdf'
+import { toast } from 'sonner'
+import { ArrowLeft, Send, User, Calendar, Car, FileText, Wrench, Image as ImageIcon, ZoomIn, Copy, History, Pencil, Download } from 'lucide-react'
 
 const STATUS_BADGE: Record<string, string> = {
   'Caso Finalizado': 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
@@ -141,6 +143,7 @@ export default function ReportDetail() {
   const [showImageModal, setShowImageModal] = React.useState(false)
   const [modalImageUrl, setModalImageUrl] = React.useState<string | null>(null)
   const [copySuccess, setCopySuccess] = React.useState<string | null>(null)
+  const [downloadingPdf, setDownloadingPdf] = React.useState(false)
 
   const fetchData = React.useCallback(async () => {
     if (!id) return
@@ -299,6 +302,20 @@ export default function ReportDetail() {
     }
   }
 
+  const handleDownloadPdf = async () => {
+    if (!report) return
+
+    setDownloadingPdf(true)
+    try {
+      await downloadReportPdf({ ...report, report_updates: updates })
+      toast.success('Informe descargado en PDF.')
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'No se pudo descargar el informe en PDF.')
+    } finally {
+      setDownloadingPdf(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex h-full items-center justify-center p-8">
@@ -391,6 +408,10 @@ export default function ReportDetail() {
           </div>
 
           <div className="flex shrink-0 items-center gap-2">
+            <Button variant="outline" size="sm" onClick={handleDownloadPdf} disabled={downloadingPdf} className="gap-2">
+              {downloadingPdf ? <Spinner className="size-4" /> : <Download className="size-4" />}
+              Descargar PDF
+            </Button>
             {canEditReports ? (
               <Button variant="outline" size="sm" onClick={() => navigate(`/informes/${id}/editar`)} className="gap-2">
                 <Pencil className="size-4" />

@@ -32,6 +32,7 @@ import {
   MONTHS,
   type Report,
   type ReportCategoryStats,
+  loadReportWithUpdates,
   loadReportsForMonth,
   loadReportsPage,
   fetchReportCategoryStats,
@@ -47,6 +48,8 @@ import { usePermissions } from '@/lib/permissions-context'
 import type { PermissionKey } from '@/lib/permissions'
 import { TrashService } from '@/lib/trash-service'
 import { PERMISSIONS } from '@/lib/permissions'
+import { downloadReportPdf } from '@/lib/report-pdf'
+import { toast } from 'sonner'
 import { FilePlus, Download, Search, Eye, Trash2, Shield, AlertCircle, Clock, CheckCircle2, Zap, XCircle, FileText, Pencil, ChevronLeft, ChevronRight } from 'lucide-react'
 import * as XLSX from 'xlsx'
 
@@ -139,14 +142,25 @@ interface RowActionProps {
   canEdit: boolean
   canDelete: boolean
   isDeleting: boolean
+  isDownloading: boolean
   onView: (id: string) => void
   onEdit: (id: string) => void
   onDelete: (id: string) => void
+  onDownload: (id: string) => void
 }
 
-const ReportRowActions = React.memo(function ReportRowActions({ report, canView, canEdit, canDelete, isDeleting, onView, onEdit, onDelete }: RowActionProps) {
+const ReportRowActions = React.memo(function ReportRowActions({ report, canView, canEdit, canDelete, isDeleting, isDownloading, onView, onEdit, onDelete, onDownload }: RowActionProps) {
   return (
     <>
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        onClick={e => { e.stopPropagation(); onDownload(report.id) }}
+        disabled={!canView || isDownloading}
+        title={!canView ? 'No tienes permiso para descargar informes' : 'Descargar informe en PDF'}
+      >
+        {isDownloading ? <Spinner className="size-4" /> : <Download className="size-4" />}
+      </Button>
       <Button
         variant="ghost"
         size="icon-sm"
@@ -292,6 +306,7 @@ export default function ReportsList() {
   const [reloadKey, setReloadKey] = React.useState(0)
 
   const [deletingReportId, setDeletingReportId] = React.useState<string | null>(null)
+  const [downloadingReportId, setDownloadingReportId] = React.useState<string | null>(null)
   const [deleteError, setDeleteError] = React.useState<string | null>(null)
   const [showExportModal, setShowExportModal] = React.useState(false)
   const [exportMode, setExportMode] = React.useState<'full' | 'range' | null>(null)
@@ -434,6 +449,25 @@ export default function ReportsList() {
     if (canViewReports) navigate(`/informes/${id}`)
   }, [canViewReports, navigate])
 
+  const handleDownloadReport = React.useCallback(async (reportId: string) => {
+    if (!canViewReports || downloadingReportId) return
+
+    setDownloadingReportId(reportId)
+    try {
+      const fullReport = await loadReportWithUpdates(reportId)
+      if (!fullReport) {
+        throw new Error('No se pudo cargar toda la información del informe.')
+      }
+
+      await downloadReportPdf(fullReport)
+      toast.success('Informe descargado en PDF.')
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'No se pudo descargar el informe en PDF.')
+    } finally {
+      setDownloadingReportId(null)
+    }
+  }, [canViewReports, downloadingReportId])
+
   const handleEdit = React.useCallback((id: string) => {
     navigate(`/informes/${id}/editar`)
   }, [navigate])
@@ -567,9 +601,11 @@ export default function ReportsList() {
     canEdit: canEditReportsPermission,
     canDelete: canDeleteReportsPermission,
     isDeleting: deletingReportId === report.id,
+    isDownloading: downloadingReportId === report.id,
     onView: handleView,
     onEdit: handleEdit,
     onDelete: handleDeleteReport,
+    onDownload: handleDownloadReport,
   })
 
   return (
@@ -722,15 +758,15 @@ export default function ReportsList() {
               <div className="hidden lg:block">
                 <Table className="reports-table w-full table-fixed text-[13px]">
                   <colgroup>
-                    <col className="w-[17%]" /> {/* Asegurado */}
-                    <col className="w-[9%]" />  {/* Placa */}
-                    <col className="w-[12%]" /> {/* Servicio */}
-                    <col className="w-[10%]" /> {/* Cobertura */}
-                    <col className="w-[13%]" /> {/* Vehículo */}
-                    <col className="w-[11%]" /> {/* Estado */}
-                    <col className="w-[11%]" /> {/* Creado por */}
-                    <col className="w-[9%]" />  {/* Fecha */}
-                    <col className="w-[8%]" />  {/* Acciones */}
+                    <col className="w-[16%]" /> {/* Asegurado */}
+                    <col className="w-[8%]" />   {/* Placa */}
+                    <col className="w-[11%]" />  {/* Servicio */}
+                    <col className="w-[9%]" />   {/* Cobertura */}
+                    <col className="w-[11%]" />  {/* Vehículo */}
+                    <col className="w-[10%]" />  {/* Estado */}
+                    <col className="w-[10%]" />  {/* Creado por */}
+                    <col className="w-[12%]" />  {/* Fecha */}
+                    <col className="w-[13%]" />  {/* Acciones */}
                   </colgroup>
                   <TableHeader>
                     <TableRow className="bg-muted/40 hover:bg-muted/40">
