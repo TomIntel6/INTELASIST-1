@@ -15,7 +15,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Spinner } from '@/components/ui/spinner'
 import { SERVICE_TYPES, REPORT_STATUSES, MONTHS, REPORT_CATEGORIES, MEDICAL_DOCUMENT_TYPES, AMBULANCE_TYPES, type AmbulanceType, type ReportCategory, type ReportStatus, type Report, createReport, updateReport, loadReportWithUpdates, uploadEvidenceFile } from '@/lib/supabase'
-import { useAuth } from '@/lib/auth'
+import { getAuthHeaders, useAuth } from '@/lib/auth'
 import { usePermissions } from '@/lib/permissions-context'
 import { AuditService } from '@/lib/audit-service'
 import type { PermissionKey } from '@/lib/permissions'
@@ -620,7 +620,7 @@ const [form, setForm] = React.useState<NewReportForm>({
       }
 
       try {
-        const updatedReport = await updateReport(editId, changes)
+        const updatedReport = await updateReport(editId, changes, getAuthHeaders())
 
         if (!isMountedRef.current) {
           return

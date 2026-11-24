@@ -102,6 +102,8 @@ export function PermissionProvider({ children }: { children: React.ReactNode }) 
     : cachedSnapshot?.modules ?? DEFAULT_MODULE_ACCESS
   const loadError = loadErrorState && loadErrorState.userId === user?.id ? loadErrorState.message : null
   const hasPermissionSnapshot = Boolean(activePermissions && user?.id === activePermissions.userId)
+  const isSystemAdministrator =
+    String(user?.email || '').trim().toLowerCase() === 'jrodriguez@intelasist.com'
 
   const loadPermissions = React.useCallback(async () => {
     const requestId = ++permissionRequestIdRef.current
@@ -198,13 +200,16 @@ export function PermissionProvider({ children }: { children: React.ReactNode }) 
 
   const hasModuleAccess = React.useCallback(
     (module: ModuleKey): boolean => {
+      if (isSystemAdministrator) return true
       return activeModules[module] ?? DEFAULT_MODULE_ACCESS[module] ?? false
     },
-    [activeModules]
+    [activeModules, isSystemAdministrator]
   )
 
   const hasPermission = React.useCallback(
     (permission: PermissionKey): boolean => {
+      if (isSystemAdministrator) return true
+
       const moduleKey = getModuleKeyForPermission(permission)
       if (moduleKey && !hasModuleAccess(moduleKey)) {
         return false
@@ -213,7 +218,7 @@ export function PermissionProvider({ children }: { children: React.ReactNode }) 
       if (!activePermissions) return false
       return activePermissions.permissions[permission] ?? false
     },
-    [activePermissions, hasModuleAccess]
+    [activePermissions, hasModuleAccess, isSystemAdministrator]
   )
 
   const hasAnyPermission = React.useCallback(

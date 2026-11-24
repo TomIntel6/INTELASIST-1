@@ -549,6 +549,11 @@ async function resolveRequesterRoles(req) {
 }
 
 async function requesterHasPermission(req, permissionKey) {
+  const requesterEmail = req.authMethod === 'jwt'
+    ? String(req.user?.email || '').trim().toLowerCase()
+    : ''
+  if (requesterEmail === SUPPORT_LOCKED_EMAIL) return true
+
   const userId = String(req.user?.id || '').trim()
   if (!userId) return false
 
@@ -2498,6 +2503,11 @@ app.get('/reports/:id', async (req, res) => {
 
 app.patch('/reports/:id/metadata', async (req, res) => {
   try {
+    if (req.authMethod !== 'jwt') {
+      res.status(401).json({ error: 'Inicia sesión nuevamente para editar los datos de creación.' })
+      return
+    }
+
     const roles = await resolveRequesterRoles(req)
     if (!roles.some(role => ['Admin', 'Support'].includes(role))) {
       res.status(403).json({ error: 'Solo Support o Admin pueden editar los datos de creación del informe.' })
@@ -2826,6 +2836,17 @@ app.post('/reports/bulk', async (req, res) => {
 
 app.patch('/reports/:id', async (req, res) => {
   try {
+    if (req.authMethod !== 'jwt') {
+      res.status(401).json({ error: 'Inicia sesión nuevamente para editar informes.' })
+      return
+    }
+
+    const canManageReports = await requesterHasPermission(req, 'manage_permissions')
+    if (!canManageReports) {
+      res.status(403).json({ error: 'No tienes permisos para editar informes.' })
+      return
+    }
+
     const changes = req.body || {}
     const entries = Object.entries(changes)
 
@@ -2834,14 +2855,21 @@ app.patch('/reports/:id', async (req, res) => {
       return
     }
 
+    const allowedFields = new Set([
+      'report_category', 'document_type', 'document_other', 'ambulance_type', 'paramedic_name',
+      'month', 'year', 'insured_name', 'plate', 'policy', 'service_type', 'coverage',
+      'brand', 'model', 'color', 'year_vehicle', 'status', 'observation_comment',
+      'evidence_url', 'evidence_filename', 'evidence_path', 'evidence_urls',
+    ])
+    if (entries.some(([key]) => !allowedFields.has(key))) {
+      res.status(400).json({ error: 'El informe contiene campos que no se pueden editar desde este formulario.' })
+      return
+    }
+
     const setClauses = []
     const values = []
 
     for (const [key, value] of entries) {
-      if (key === 'id' || key === 'created_at' || key === 'report_updates') {
-        continue
-      }
-
       values.push(key === 'evidence_urls' && value !== null ? JSON.stringify(value) : value)
       setClauses.push(`${key} = $${values.length}`)
     }

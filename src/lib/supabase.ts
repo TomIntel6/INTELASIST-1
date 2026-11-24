@@ -658,9 +658,14 @@ export async function deleteReport(id: string): Promise<void> {
   clearReportsListCache()
 }
 
-export async function updateReport(id: string, changes: Partial<Report>): Promise<Report> {
+export async function updateReport(
+  id: string,
+  changes: Partial<Report>,
+  headers: Record<string, string> = {}
+): Promise<Report> {
   const payload = await requestJson<{ report: unknown }>('/reports/' + encodeURIComponent(id), {
     method: 'PATCH',
+    headers,
     body: JSON.stringify(changes),
   })
 
