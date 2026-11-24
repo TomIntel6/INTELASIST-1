@@ -677,7 +677,7 @@ export async function updateReport(
 
 export async function updateReportMetadata(
   id: string,
-  changes: Pick<Partial<Report>, 'created_by_name' | 'created_at'>,
+  changes: Pick<Partial<Report>, 'created_by_name' | 'created_by_email' | 'created_at'>,
   headers: Record<string, string>
 ): Promise<Report> {
   const payload = await requestJson<{ report: unknown }>('/reports/' + encodeURIComponent(id) + '/metadata', {

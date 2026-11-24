@@ -2516,10 +2516,10 @@ app.patch('/reports/:id/metadata', async (req, res) => {
 
     const changes = req.body || {}
     const entries = Object.entries(changes)
-    const allowedFields = new Set(['created_by_name', 'created_at'])
+    const allowedFields = new Set(['created_by_name', 'created_by_email', 'created_at'])
 
     if (entries.length === 0 || entries.some(([key]) => !allowedFields.has(key))) {
-      res.status(400).json({ error: 'Solo se permite actualizar el agente y la fecha de creación.' })
+      res.status(400).json({ error: 'Solo se permite actualizar el nombre, correo y fecha de creación.' })
       return
     }
 
@@ -2533,6 +2533,13 @@ app.patch('/reports/:id/metadata', async (req, res) => {
           return
         }
         values.push(value.trim())
+      } else if (key === 'created_by_email') {
+        const email = typeof value === 'string' ? value.trim() : ''
+        if (email.length > 254 || (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))) {
+          res.status(400).json({ error: 'El correo del agente no es válido.' })
+          return
+        }
+        values.push(email)
       } else {
         if (typeof value !== 'string' || Number.isNaN(Date.parse(value))) {
           res.status(400).json({ error: 'La fecha y hora de creación no son válidas.' })

@@ -150,6 +150,7 @@ export default function ReportDetail() {
   const [metadataDate, setMetadataDate] = React.useState('')
   const [metadataTime, setMetadataTime] = React.useState('')
   const [metadataCreator, setMetadataCreator] = React.useState('')
+  const [metadataCreatorEmail, setMetadataCreatorEmail] = React.useState('')
   const canEditReportMetadata = hasAnyRole(user, ['Support', 'Admin'])
 
   const startEditingMetadata = () => {
@@ -170,12 +171,14 @@ export default function ReportDetail() {
     setMetadataDate(localDate)
     setMetadataTime(localTime)
     setMetadataCreator(report.created_by_name || '')
+    setMetadataCreatorEmail(report.created_by_email || '')
     setEditingMetadata(true)
   }
 
   const handleSaveMetadata = async () => {
     if (!id || !report) return
     const creator = metadataCreator.trim()
+    const creatorEmail = metadataCreatorEmail.trim()
     const createdAt = new Date(`${metadataDate}T${metadataTime}`)
 
     if (!creator) {
@@ -186,11 +189,16 @@ export default function ReportDetail() {
       toast.error('Indica una fecha y hora válidas.')
       return
     }
+    if (creatorEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(creatorEmail)) {
+      toast.error('Escribe un correo electrónico válido.')
+      return
+    }
 
     setSavingMetadata(true)
     try {
       const updatedReport = await updateReportMetadata(id, {
         created_by_name: creator,
+        created_by_email: creatorEmail,
         created_at: createdAt.toISOString(),
       }, getAuthHeaders())
       setReport(updatedReport)
@@ -198,9 +206,11 @@ export default function ReportDetail() {
       toast.success('Se actualizaron los datos de creación del informe.')
       void AuditService.logReportUpdated(id, {
         created_by_name: report.created_by_name,
+        created_by_email: report.created_by_email,
         created_at: report.created_at,
       }, {
         created_by_name: updatedReport.created_by_name,
+        created_by_email: updatedReport.created_by_email,
         created_at: updatedReport.created_at,
       })
     } catch (err) {
@@ -631,6 +641,16 @@ export default function ReportDetail() {
                       value={metadataCreator}
                       onChange={event => setMetadataCreator(event.target.value)}
                       maxLength={120}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="metadataCreatorEmail">Correo del agente</Label>
+                    <Input
+                      id="metadataCreatorEmail"
+                      type="email"
+                      value={metadataCreatorEmail}
+                      onChange={event => setMetadataCreatorEmail(event.target.value)}
+                      maxLength={254}
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-3">
