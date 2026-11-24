@@ -2496,6 +2496,64 @@ app.get('/reports/:id', async (req, res) => {
   }
 })
 
+app.patch('/reports/:id/metadata', async (req, res) => {
+  try {
+    const roles = await resolveRequesterRoles(req)
+    if (!roles.some(role => ['Admin', 'Support'].includes(role))) {
+      res.status(403).json({ error: 'Solo Support o Admin pueden editar los datos de creación del informe.' })
+      return
+    }
+
+    const changes = req.body || {}
+    const entries = Object.entries(changes)
+    const allowedFields = new Set(['created_by_name', 'created_at'])
+
+    if (entries.length === 0 || entries.some(([key]) => !allowedFields.has(key))) {
+      res.status(400).json({ error: 'Solo se permite actualizar el agente y la fecha de creación.' })
+      return
+    }
+
+    const setClauses = []
+    const values = []
+
+    for (const [key, value] of entries) {
+      if (key === 'created_by_name') {
+        if (typeof value !== 'string' || !value.trim() || value.trim().length > 120) {
+          res.status(400).json({ error: 'El nombre del agente es obligatorio y no puede superar 120 caracteres.' })
+          return
+        }
+        values.push(value.trim())
+      } else {
+        if (typeof value !== 'string' || Number.isNaN(Date.parse(value))) {
+          res.status(400).json({ error: 'La fecha y hora de creación no son válidas.' })
+          return
+        }
+        values.push(value)
+      }
+      setClauses.push(`${key} = $${values.length}`)
+    }
+
+    values.push(new Date().toISOString())
+    setClauses.push(`updated_at = $${values.length}`)
+    values.push(req.params.id)
+
+    const result = await pool.query(
+      `UPDATE reports SET ${setClauses.join(', ')} WHERE id = $${values.length} RETURNING id`,
+      values
+    )
+    if (result.rowCount === 0) {
+      res.status(404).json({ error: 'Informe no encontrado.' })
+      return
+    }
+
+    const report = await loadSingleReportWithUpdates(req.params.id)
+    res.json({ report })
+  } catch (error) {
+    console.error('Error al actualizar los metadatos del informe:', error)
+    res.status(500).json({ error: 'Error al actualizar los datos de creación del informe.' })
+  }
+})
+
 function getCurrentSpanishMonth() {
   const months = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
   return months[new Date().getMonth()]

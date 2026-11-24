@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Spinner } from '@/components/ui/spinner'
+import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -16,8 +17,8 @@ import {
 } from '@/components/ui/select'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
-import { REPORT_STATUSES, type Report, type ReportStatus, type ReportUpdate, loadReportWithUpdates, addReportUpdate } from '@/lib/supabase'
-import { useAuth } from '@/lib/auth'
+import { REPORT_STATUSES, type Report, type ReportStatus, type ReportUpdate, loadReportWithUpdates, addReportUpdate, updateReportMetadata } from '@/lib/supabase'
+import { getAuthHeaders, hasAnyRole, useAuth } from '@/lib/auth'
 import { usePermissions } from '@/lib/permissions-context'
 import type { PermissionKey } from '@/lib/permissions'
 import { AuditService } from '@/lib/audit-service'
@@ -144,6 +145,70 @@ export default function ReportDetail() {
   const [modalImageUrl, setModalImageUrl] = React.useState<string | null>(null)
   const [copySuccess, setCopySuccess] = React.useState<string | null>(null)
   const [downloadingPdf, setDownloadingPdf] = React.useState(false)
+  const [editingMetadata, setEditingMetadata] = React.useState(false)
+  const [savingMetadata, setSavingMetadata] = React.useState(false)
+  const [metadataDate, setMetadataDate] = React.useState('')
+  const [metadataTime, setMetadataTime] = React.useState('')
+  const [metadataCreator, setMetadataCreator] = React.useState('')
+  const canEditReportMetadata = hasAnyRole(user, ['Support', 'Admin'])
+
+  const startEditingMetadata = () => {
+    if (!report) return
+    const createdAt = new Date(report.created_at)
+    if (Number.isNaN(createdAt.getTime())) {
+      toast.error('La fecha actual del informe no es válida.')
+      return
+    }
+
+    const localDate = [
+      createdAt.getFullYear(),
+      String(createdAt.getMonth() + 1).padStart(2, '0'),
+      String(createdAt.getDate()).padStart(2, '0'),
+    ].join('-')
+    const localTime = `${String(createdAt.getHours()).padStart(2, '0')}:${String(createdAt.getMinutes()).padStart(2, '0')}`
+
+    setMetadataDate(localDate)
+    setMetadataTime(localTime)
+    setMetadataCreator(report.created_by_name || '')
+    setEditingMetadata(true)
+  }
+
+  const handleSaveMetadata = async () => {
+    if (!id || !report) return
+    const creator = metadataCreator.trim()
+    const createdAt = new Date(`${metadataDate}T${metadataTime}`)
+
+    if (!creator) {
+      toast.error('Escribe el nombre del agente que creó el informe.')
+      return
+    }
+    if (!metadataDate || !metadataTime || Number.isNaN(createdAt.getTime())) {
+      toast.error('Indica una fecha y hora válidas.')
+      return
+    }
+
+    setSavingMetadata(true)
+    try {
+      const updatedReport = await updateReportMetadata(id, {
+        created_by_name: creator,
+        created_at: createdAt.toISOString(),
+      }, getAuthHeaders())
+      setReport(updatedReport)
+      setEditingMetadata(false)
+      toast.success('Se actualizaron los datos de creación del informe.')
+      void AuditService.logReportUpdated(id, {
+        created_by_name: report.created_by_name,
+        created_at: report.created_at,
+      }, {
+        created_by_name: updatedReport.created_by_name,
+        created_at: updatedReport.created_at,
+      })
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'No se pudieron actualizar los datos de creación.')
+    } finally {
+      setSavingMetadata(false)
+    }
+  }
 
   const fetchData = React.useCallback(async () => {
     if (!id) return
@@ -529,8 +594,14 @@ export default function ReportDetail() {
 
         <div className="space-y-3">
           <Card className="rounded-lg border-border/70 shadow-none">
-            <CardHeader className="px-4 py-3">
+            <CardHeader className="flex-row items-center justify-between gap-3 px-4 py-3">
               <CardTitle className="text-base font-semibold">Detalles</CardTitle>
+              {canEditReportMetadata && !editingMetadata ? (
+                <Button variant="outline" size="sm" onClick={startEditingMetadata} className="gap-2">
+                  <Pencil className="size-3.5" />
+                  Editar creación
+                </Button>
+              ) : null}
             </CardHeader>
             <CardContent className="space-y-3 px-4 pb-4 pt-0 text-sm">
               <div className="space-y-0.5 border-b border-border/60 pb-2">
@@ -550,6 +621,38 @@ export default function ReportDetail() {
                 <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Fecha</p>
                 <p className="text-sm font-medium text-foreground">{formatDateTimeWithMeridiem(report.created_at)}</p>
               </div>
+
+              {editingMetadata ? (
+                <div className="space-y-3 border-t border-border/60 pt-3">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="metadataCreator">Agente que creó el informe</Label>
+                    <Input
+                      id="metadataCreator"
+                      value={metadataCreator}
+                      onChange={event => setMetadataCreator(event.target.value)}
+                      maxLength={120}
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="metadataDate">Fecha de creación</Label>
+                      <Input id="metadataDate" type="date" value={metadataDate} onChange={event => setMetadataDate(event.target.value)} />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="metadataTime">Hora de creación</Label>
+                      <Input id="metadataTime" type="time" value={metadataTime} onChange={event => setMetadataTime(event.target.value)} />
+                    </div>
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    <Button variant="outline" size="sm" onClick={() => setEditingMetadata(false)} disabled={savingMetadata}>
+                      Cancelar
+                    </Button>
+                    <Button size="sm" onClick={handleSaveMetadata} disabled={savingMetadata}>
+                      {savingMetadata ? <Spinner className="size-4" /> : 'Guardar'}
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
             </CardContent>
           </Card>
 

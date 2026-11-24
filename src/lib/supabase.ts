@@ -258,11 +258,11 @@ async function requestJson<T>(path: string, init?: RequestInit, source = 'supaba
       startedAt: Math.round(startedAt),
     })
     const response = await fetch(`${API_BASE_URL}${path}`, {
+      ...init,
       headers: {
         'Content-Type': 'application/json',
         ...(init?.headers ?? {}),
       },
-      ...init,
     })
 
     const text = await response.text().catch(() => '')
@@ -661,6 +661,23 @@ export async function deleteReport(id: string): Promise<void> {
 export async function updateReport(id: string, changes: Partial<Report>): Promise<Report> {
   const payload = await requestJson<{ report: unknown }>('/reports/' + encodeURIComponent(id), {
     method: 'PATCH',
+    body: JSON.stringify(changes),
+  })
+
+  const updated = normalizeReport(payload.report as Record<string, unknown>)
+  reportsForMonthCache.clear()
+  clearReportsListCache()
+  return updated
+}
+
+export async function updateReportMetadata(
+  id: string,
+  changes: Pick<Partial<Report>, 'created_by_name' | 'created_at'>,
+  headers: Record<string, string>
+): Promise<Report> {
+  const payload = await requestJson<{ report: unknown }>('/reports/' + encodeURIComponent(id) + '/metadata', {
+    method: 'PATCH',
+    headers,
     body: JSON.stringify(changes),
   })
 
