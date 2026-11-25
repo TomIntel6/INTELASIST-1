@@ -1,23 +1,23 @@
 .glass-layout {
-  --background: #f4f7fc;
-  --foreground: #253247;
+  --background: #f7f8fa;
+  --foreground: #232936;
   --card: #ffffff;
-  --card-foreground: #253247;
+  --card-foreground: #232936;
   --popover: #ffffff;
-  --popover-foreground: #253247;
+  --popover-foreground: #232936;
   --primary: #1f63e6;
   --primary-foreground: #fff;
-  --secondary: #e5f5f4;
-  --secondary-foreground: #14534f;
-  --muted: #edf1f6;
-  --muted-foreground: #68758a;
-  --accent: #eaf3ff;
+  --secondary: #06c3b0;
+  --secondary-foreground: #00302e;
+  --muted: #eef0f4;
+  --muted-foreground: #6b748c;
+  --accent: #eef6ff;
   --accent-foreground: #1c3b7d;
-  --border: #dfe5ee;
+  --border: #e2e5ec;
   --input: #ffffff;
   --ring: #59a3ff;
   --sidebar: #eaf2fd;
-  --sidebar-foreground: #253247;
+  --sidebar-foreground: #232936;
   --sidebar-accent: #dceaff;
   --sidebar-accent-foreground: #173c79;
   --sidebar-border: rgba(75, 120, 184, .18);
@@ -27,8 +27,8 @@
   min-height: 100dvh;
   overflow: hidden;
   background:
-    radial-gradient(ellipse at 82% 0%, rgba(63,132,235,.11), transparent 34rem),
-    linear-gradient(145deg, #f8faff 0%, #edf2f9 100%);
+    radial-gradient(ellipse at 82% 0%, rgba(51,128,245,.045), transparent 34rem),
+    linear-gradient(145deg, #f7f8fa 0%, #f3f5f8 100%);
   color: var(--foreground);
 }
 
@@ -280,9 +280,9 @@
   -webkit-backdrop-filter: blur(18px) saturate(130%);
   backdrop-filter: blur(18px) saturate(130%);
   box-shadow: inset 0 1px rgba(255,255,255,.95), 0 14px 34px -28px rgba(44,68,101,.3) !important;
-  color: #253247;
+  color: #232936;
 }
-.app-greeting-name { color: #253247 !important; }
+.app-greeting-name { color: #232936 !important; }
 .app-greeting-date { color: #758198 !important; }
 .app-header-monogram { border: 1px solid rgba(65,111,179,.16); border-radius: 12px !important; }
 
@@ -290,11 +290,11 @@
   border-color: #e0e6ef;
   border-radius: 12px;
   background: rgba(255,255,255,.82);
-  color: #52647e;
+  color: #6b748c;
   transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease;
 }
 .app-header [data-slot="button"]:hover { border-color: #bed4f3; background: #edf5ff; color: #1f63b5; transform: none; }
-.app-header [data-slot="input"] { border-color: #dfe5ee; border-radius: 13px; background: #fff; color: #253247; }
+.app-header [data-slot="input"] { border-color: #e2e5ec; border-radius: 13px; background: #fff; color: #232936; }
 
 .app-workspace {
   min-height: 0;
@@ -303,15 +303,16 @@
   overflow-y: auto;
   overscroll-behavior: contain;
   margin: 12px 16px 16px;
-  border: 1px solid #e1e7f0;
+  border: 1px solid #e2e5ec;
   border-radius: 24px;
-  background:
-    radial-gradient(ellipse at 82% 0%, rgba(73,139,230,.055), transparent 34rem),
-    linear-gradient(rgba(94,132,180,.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(94,132,180,.025) 1px, transparent 1px),
-    linear-gradient(145deg, #f8faff, #f0f4fa);
-  background-size: auto, 30px 30px, 30px 30px, auto;
-  color: #253247;
+  background-color: #f7f8fa;
+  background-image:
+    radial-gradient(ellipse at 82% 0%, rgba(51,128,245,.045), transparent 34rem),
+    linear-gradient(rgba(35,41,54,.022) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(35,41,54,.022) 1px, transparent 1px);
+  background-position: center top, 0 0, 0 0;
+  background-size: auto, 28px 28px, 28px 28px;
+  color: #232936;
 }
 
 .app-workspace [data-slot="card"],
@@ -320,32 +321,32 @@
 .app-workspace .reports-hero,
 .app-workspace .reports-toolbar,
 .app-workspace .reports-table-card {
-  border-color: #e1e7ef !important;
+  border-color: #e2e5ec !important;
   border-radius: 20px;
   background: linear-gradient(145deg, rgba(255,255,255,.98), rgba(250,252,255,.96)) !important;
   box-shadow: inset 0 1px rgba(255,255,255,.98), 0 20px 46px -34px rgba(42,65,99,.3) !important;
-  color: #253247;
+  color: #232936;
 }
 .app-workspace [data-slot="card"] [data-slot="card-title"],
 .app-workspace h1,
 .app-workspace h2,
-.app-workspace h3 { color: #26364b; }
+.app-workspace h3 { color: #232936; }
 .app-workspace [data-slot="card-description"],
-.app-workspace .text-muted-foreground { color: #68758a; }
+.app-workspace .text-muted-foreground { color: #6b748c; }
 
 .app-workspace [data-slot="input"],
 .app-workspace [data-slot="textarea"],
 .app-workspace [data-slot="select-trigger"],
 .app-workspace input,
 .app-workspace textarea {
-  border-color: #dce3ed !important;
+  border-color: #e2e5ec !important;
   border-radius: 12px;
   background: #fff !important;
-  color: #253247 !important;
+  color: #232936 !important;
   box-shadow: inset 0 1px rgba(28,48,74,.025);
 }
 .app-workspace input::placeholder,
-.app-workspace textarea::placeholder { color: #8793a7 !important; }
+.app-workspace textarea::placeholder { color: #6b748c !important; }
 .app-workspace [data-slot="input"]:focus-visible,
 .app-workspace [data-slot="textarea"]:focus-visible,
 .app-workspace [data-slot="select-trigger"]:focus-visible {
@@ -354,17 +355,17 @@
 }
 .app-workspace [data-slot="button"] { transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease, box-shadow 140ms ease; }
 .app-workspace [data-slot="button"]:not(:disabled):hover { transform: none; }
-.app-workspace table thead th { background: #f1f5fa; color: #52647c; }
-.app-workspace table tbody tr { border-color: #e7ebf1; }
+.app-workspace table thead th { background: #eef0f4; color: #6b748c; }
+.app-workspace table tbody tr { border-color: #e2e5ec; }
 .app-workspace table tbody tr:hover { background: #f2f7ff; }
 .app-workspace .recharts-cartesian-axis-tick-value,
-.app-workspace .recharts-legend-item-text { fill: #68758a !important; color: #68758a !important; }
+.app-workspace .recharts-legend-item-text { fill: #6b748c !important; color: #6b748c !important; }
 .app-workspace .recharts-tooltip-wrapper > div {
-  border-color: #dce3ed !important;
+  border-color: #e2e5ec !important;
   background: #fff !important;
-  color: #253247 !important;
+  color: #232936 !important;
 }
-.app-workspace .recharts-tooltip-wrapper * { color: #253247 !important; }
+.app-workspace .recharts-tooltip-wrapper * { color: #232936 !important; }
 
 body:has(.glass-layout) [data-slot="dialog-content"],
 body:has(.glass-layout) [data-slot="sheet-content"],
@@ -373,10 +374,10 @@ body:has(.glass-layout) [data-slot="select-content"],
 body:has(.glass-layout) [data-slot="dropdown-menu-content"],
 body:has(.glass-layout) [data-slot="context-menu-content"],
 body:has(.glass-layout) [data-slot="command"] {
-  border-color: #dce3ed;
+  border-color: #e2e5ec;
   border-radius: 18px;
   background: #fff;
-  color: #253247;
+  color: #232936;
   box-shadow: 0 24px 64px -30px rgba(42,65,99,.3);
 }
 
