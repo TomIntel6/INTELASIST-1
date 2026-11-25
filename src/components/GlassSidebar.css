@@ -7,11 +7,12 @@
   --soft: cubic-bezier(.3, 1.12, .4, 1);
   --spring: cubic-bezier(.34, 1.45, .5, 1);
   --tab: cubic-bezier(.3, 1.22, .45, 1);
-  position: fixed;
-  z-index: 50;
-  left: 16px;
-  top: 16px;
-  bottom: 16px;
+  position: relative;
+  z-index: 20;
+  flex: none;
+  left: 0;
+  top: 0;
+  margin: 16px 0 16px 16px;
   width: 76px;
   height: calc(100dvh - 32px);
   border-radius: 38px;
@@ -291,10 +292,13 @@
 
 @media (max-width: 767px) {
   .gs {
-    left: 12px;
-    top: 12px;
-    bottom: 12px;
+    position: relative;
+    z-index: 20;
+    left: 0;
+    top: 0;
+    bottom: auto;
     height: calc(100dvh - 24px);
+    margin: 0;
   }
   .gs.is-open { width: min(304px, calc(100vw - 24px)); }
 }
@@ -305,55 +309,71 @@
 
 body {
   background:
-    radial-gradient(ellipse at 78% 8%, rgba(44, 103, 215, .16), transparent 32rem),
-    linear-gradient(180deg, #09111f 0%, #080d18 100%) !important;
+    radial-gradient(ellipse at 78% 8%, rgba(51,128,245,.07), transparent 32rem),
+    linear-gradient(180deg, #f7f8fa 0%, #f1f3f6 100%) !important;
   background-attachment: fixed !important;
-  color: #eaf0ff;
+  color: #232936;
+}
+
+.glass-layout {
+  align-items: stretch;
+  overflow: hidden;
+}
+
+.glass-layout > [data-slot="sidebar-inset"] {
+  min-width: 0;
+  margin-left: 0;
+  transition: margin-left .75s cubic-bezier(.3,1.12,.4,1);
 }
 
 .app-header {
-  color: #eaf0ff;
-  background: rgba(10, 17, 31, .82) !important;
-  -webkit-backdrop-filter: blur(18px) saturate(145%);
-  backdrop-filter: blur(18px) saturate(145%);
-  border-bottom: 1px solid rgba(255,255,255,.075) !important;
-  box-shadow: 0 12px 36px -28px rgba(0,0,0,.8) !important;
+  background: rgba(255,255,255,.94) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(145%);
+  backdrop-filter: blur(16px) saturate(145%);
+  border-bottom: 1px solid rgba(226,229,236,.9) !important;
+  box-shadow: 0 8px 24px -20px rgba(15,23,42,.32) !important;
+  color: #232936;
 }
 
-.app-greeting-name { color: #edf4ff !important; }
-.app-greeting-date { color: rgba(219,232,255,.58) !important; }
+.app-greeting-name { color: #232936 !important; }
+.app-greeting-date { color: #6b748c !important; }
 
 .app-workspace {
   background:
-    radial-gradient(ellipse at 82% 0%, rgba(51,128,245,.09), transparent 34rem),
-    linear-gradient(rgba(150,190,255,.018) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(150,190,255,.018) 1px, transparent 1px),
-    linear-gradient(145deg, #0a1120 0%, #080d18 100%) !important;
+    radial-gradient(ellipse at 82% 0%, rgba(51,128,245,.055), transparent 34rem),
+    linear-gradient(rgba(35,41,54,.018) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(35,41,54,.018) 1px, transparent 1px),
+    linear-gradient(180deg, #f7f8fa 0%, #f1f3f6 100%) !important;
   background-size: auto, 28px 28px, 28px 28px, auto !important;
   background-attachment: fixed !important;
-  color: #eaf0ff;
+  color: #232936;
 }
 
 .app-workspace [data-slot="card"],
 .app-workspace .floating-surface,
 .app-workspace [data-slot="dialog-content"],
 .app-workspace [data-slot="sheet-content"] {
-  background: rgba(15, 25, 43, .82) !important;
-  border-color: rgba(180,207,255,.11) !important;
-  -webkit-backdrop-filter: blur(16px) saturate(140%);
-  backdrop-filter: blur(16px) saturate(140%);
-  box-shadow: 0 24px 60px -38px rgba(0,0,0,.82), inset 0 1px rgba(255,255,255,.035) !important;
-  color: #edf4ff;
+  background: rgba(255,255,255,.96) !important;
+  border-color: rgba(226,229,236,.92) !important;
+  -webkit-backdrop-filter: blur(14px) saturate(125%);
+  backdrop-filter: blur(14px) saturate(140%);
+  box-shadow:
+    0 18px 44px -32px rgba(15,23,42,.18),
+    0 4px 12px -8px rgba(15,23,42,.08),
+    inset 0 1px rgba(255,255,255,.9) !important;
+  color: #232936;
 }
 
-@media (min-width: 768px) {
-  [data-slot="sidebar-inset"],
-  .app-header,
-  .app-workspace {
-    margin-left: 0;
-  }
-  .app-header,
-  .app-workspace {
-    width: calc(100% - 16px);
-  }
+.app-workspace [data-slot="input"],
+.app-workspace input,
+.app-workspace textarea,
+.app-workspace [data-slot="select-trigger"] {
+  background: rgba(255,255,255,.92) !important;
+  color: #232936 !important;
+  border-color: #e2e5ec !important;
+}
+
+.app-workspace input::placeholder,
+.app-workspace textarea::placeholder {
+  color: #8a93a4 !important;
 }

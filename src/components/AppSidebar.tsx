@@ -1,20 +1,6 @@
 import * as React from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarHeader,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-} from '@/components/ui/sidebar'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { getNameColorClasses, getOnlineUsers, getPresenceStyleClasses, getRoleColorClasses, getUserRole, getUserRoles, useAuth, PRESENCE_STORAGE_KEY, PRESENCE_SYNC_STORAGE_KEY, USERS_SYNC_STORAGE_KEY } from '@/lib/auth'
+import { getOnlineUsers, getPresenceStyleClasses, getUserRole, getUserRoles, useAuth, PRESENCE_STORAGE_KEY, PRESENCE_SYNC_STORAGE_KEY, USERS_SYNC_STORAGE_KEY } from '@/lib/auth'
 import { PermissionsManagementService } from '@/lib/permissions-management'
 import { usePermissions } from '@/lib/permissions-context'
 import { UserAvatar } from '@/components/UserAvatar'
@@ -111,8 +97,6 @@ export default function AppSidebar() {
   const { user, signOut } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
-  const navigationMenuRef = React.useRef<HTMLUListElement>(null)
-  const [activeIndicatorTop, setActiveIndicatorTop] = React.useState<number | null>(null)
   const [glassOpen, setGlassOpen] = React.useState(false)
   const [glassSearch, setGlassSearch] = React.useState('')
   const [glassTab, setGlassTab] = React.useState({ y: 0, h: 0, ready: false })
@@ -132,37 +116,6 @@ export default function AppSidebar() {
   const [presenceStyles, setPresenceStyles] = React.useState<Record<string, string>>({})
   const [avatarsByEmail, setAvatarsByEmail] = React.useState<Record<string, AvatarData | null>>({})
   const hasReceivedPresenceSnapshotRef = React.useRef(false)
-
-  React.useLayoutEffect(() => {
-    let frameId = 0
-
-    const updateActiveIndicator = () => {
-      const menu = navigationMenuRef.current
-      const activeItem = menu?.querySelector<HTMLElement>('[data-slot="sidebar-menu-button"][data-active="true"]')
-
-      if (!menu || !activeItem) {
-        setActiveIndicatorTop(null)
-        return
-      }
-
-      const menuBounds = menu.getBoundingClientRect()
-      const activeBounds = activeItem.getBoundingClientRect()
-      setActiveIndicatorTop(activeBounds.top - menuBounds.top + activeBounds.height / 2)
-    }
-
-    updateActiveIndicator()
-    frameId = window.requestAnimationFrame(updateActiveIndicator)
-
-    const resizeObserver = new ResizeObserver(updateActiveIndicator)
-    if (navigationMenuRef.current) {
-      resizeObserver.observe(navigationMenuRef.current)
-    }
-
-    return () => {
-      window.cancelAnimationFrame(frameId)
-      resizeObserver.disconnect()
-    }
-  }, [location.pathname, location.search, canViewReportsModule, canViewUsersModule])
 
   const refreshOnlineUsers = React.useCallback(() => {
     if (hasReceivedPresenceSnapshotRef.current) {

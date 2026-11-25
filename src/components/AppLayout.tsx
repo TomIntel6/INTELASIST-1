@@ -163,7 +163,7 @@ export default function AppLayout() {
   }
 
   return (
-    <SidebarProvider>
+    <SidebarProvider className="glass-layout">
       <AppSidebar />
       <SidebarInset>
         <header className="app-header sticky top-0 z-30 flex h-[72px] shrink-0 items-center gap-3 px-4 sm:px-6">
