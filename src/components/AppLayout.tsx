@@ -1,7 +1,7 @@
 import * as React from 'react'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { AlertCircle, Bell, CalendarDays, Clock3, Mail, Phone, Search, Settings, ShieldCheck, Sparkles } from 'lucide-react'
-import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar'
+import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -14,7 +14,6 @@ import { PERMISSIONS } from '@/lib/permissions'
 import { ProfileAvatarEditor } from '@/components/ProfileAvatarEditor'
 import { UserAvatar } from '@/components/UserAvatar'
 import GlassSidebar from './GlassSidebar'
-import { Separator } from '@/components/ui/separator'
 import UpdateNotice from '@/components/UpdateNotice'
 import FailedAttemptsAlert from '@/components/FailedAttemptsAlert'
 
@@ -168,8 +167,6 @@ export default function AppLayout() {
       <GlassSidebar />
       <SidebarInset>
         <header className="app-header sticky top-0 z-30 flex h-[72px] shrink-0 items-center gap-3 px-4 sm:px-6">
-          <SidebarTrigger className="-ml-1" />
-          <Separator orientation="vertical" className="h-5" />
           <div className="flex min-w-0 flex-1 items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <span className="app-header-monogram flex size-8 shrink-0 items-center justify-center rounded-lg text-xs font-bold tracking-tight">

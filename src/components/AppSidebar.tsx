@@ -1,20 +1,6 @@
 import * as React from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarHeader,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-} from '@/components/ui/sidebar'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { getNameColorClasses, getOnlineUsers, getPresenceStyleClasses, getRoleColorClasses, getUserRole, getUserRoles, useAuth, PRESENCE_STORAGE_KEY, PRESENCE_SYNC_STORAGE_KEY, USERS_SYNC_STORAGE_KEY } from '@/lib/auth'
+import { getOnlineUsers, getPresenceStyleClasses, getUserRole, getUserRoles, useAuth, PRESENCE_STORAGE_KEY, PRESENCE_SYNC_STORAGE_KEY, USERS_SYNC_STORAGE_KEY } from '@/lib/auth'
 import { PermissionsManagementService } from '@/lib/permissions-management'
 import { usePermissions } from '@/lib/permissions-context'
 import { UserAvatar } from '@/components/UserAvatar'
@@ -111,12 +97,11 @@ export default function AppSidebar() {
   const { user, signOut } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
-  const navigationMenuRef = React.useRef<HTMLUListElement>(null)
-  const [activeIndicatorTop, setActiveIndicatorTop] = React.useState<number | null>(null)
   const [glassOpen, setGlassOpen] = React.useState(false)
   const [glassTab, setGlassTab] = React.useState({ y: 0, h: 0, ready: false })
   const glassMainRef = React.useRef<HTMLDivElement>(null)
   const glassRailRef = React.useRef<HTMLElement>(null)
+  const glassDockFrameRef = React.useRef<number | null>(null)
   const glassItemRefs = React.useRef<Record<string, HTMLButtonElement | null>>({})
 
   const rawDisplayName = (user?.user_metadata?.full_name as string) ?? user?.email ?? 'Usuario'
@@ -131,37 +116,6 @@ export default function AppSidebar() {
   const [presenceStyles, setPresenceStyles] = React.useState<Record<string, string>>({})
   const [avatarsByEmail, setAvatarsByEmail] = React.useState<Record<string, AvatarData | null>>({})
   const hasReceivedPresenceSnapshotRef = React.useRef(false)
-
-  React.useLayoutEffect(() => {
-    let frameId = 0
-
-    const updateActiveIndicator = () => {
-      const menu = navigationMenuRef.current
-      const activeItem = menu?.querySelector<HTMLElement>('[data-slot="sidebar-menu-button"][data-active="true"]')
-
-      if (!menu || !activeItem) {
-        setActiveIndicatorTop(null)
-        return
-      }
-
-      const menuBounds = menu.getBoundingClientRect()
-      const activeBounds = activeItem.getBoundingClientRect()
-      setActiveIndicatorTop(activeBounds.top - menuBounds.top + activeBounds.height / 2)
-    }
-
-    updateActiveIndicator()
-    frameId = window.requestAnimationFrame(updateActiveIndicator)
-
-    const resizeObserver = new ResizeObserver(updateActiveIndicator)
-    if (navigationMenuRef.current) {
-      resizeObserver.observe(navigationMenuRef.current)
-    }
-
-    return () => {
-      window.cancelAnimationFrame(frameId)
-      resizeObserver.disconnect()
-    }
-  }, [location.pathname, location.search, canViewReportsModule, canViewUsersModule])
 
   const refreshOnlineUsers = React.useCallback(() => {
     if (hasReceivedPresenceSnapshotRef.current) {
@@ -406,6 +360,13 @@ export default function AppSidebar() {
       : location.pathname.startsWith(to)
   ) ?? visibleNavItems[0]
 
+  React.useEffect(() => () => {
+    if (glassDockFrameRef.current !== null) {
+      window.cancelAnimationFrame(glassDockFrameRef.current)
+      glassDockFrameRef.current = null
+    }
+  }, [])
+
   React.useLayoutEffect(() => {
     if (!glassOpen) return
 
@@ -428,15 +389,25 @@ export default function AppSidebar() {
   }, [glassOpen, activeNav])
 
   const handleGlassMouseMove = (event: React.MouseEvent<HTMLElement>) => {
-    glassRailRef.current?.querySelectorAll<HTMLElement>('[data-dock]').forEach(element => {
-      const bounds = element.getBoundingClientRect()
-      const distance = event.clientY - (bounds.top + bounds.height / 2)
-      const scale = 1 + 0.45 * Math.exp(-(distance * distance) / (2 * 42 * 42))
-      element.style.setProperty('--s', scale.toFixed(3))
+    if (glassDockFrameRef.current !== null) return
+
+    const clientY = event.clientY
+    glassDockFrameRef.current = window.requestAnimationFrame(() => {
+      glassDockFrameRef.current = null
+      glassRailRef.current?.querySelectorAll<HTMLElement>('[data-dock]').forEach(element => {
+        const bounds = element.getBoundingClientRect()
+        const distance = clientY - (bounds.top + bounds.height / 2)
+        const scale = 1 + 0.45 * Math.exp(-(distance * distance) / (2 * 42 * 42))
+        element.style.setProperty('--s', scale.toFixed(3))
+      })
     })
   }
 
   const handleGlassMouseLeave = () => {
+    if (glassDockFrameRef.current !== null) {
+      window.cancelAnimationFrame(glassDockFrameRef.current)
+      glassDockFrameRef.current = null
+    }
     glassRailRef.current?.querySelectorAll<HTMLElement>('[data-dock]').forEach(element => {
       element.style.setProperty('--s', '1')
     })
@@ -567,9 +538,9 @@ export default function AppSidebar() {
         </div>
 
         <div className="gs__spine">
-          <button className="gs-cta" onClick={() => setGlassOpen(false)} aria-label="Cerrar menú">
-            <FiChevronLeft />
-          </button>
+          <span className="gs-cta" aria-hidden="true">
+            <img src="/intelasist-sidebar.svg" alt="" />
+          </span>
           <span className="gs__label">{activeNav?.label}</span>
         </div>
       </div>

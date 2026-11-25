@@ -141,9 +141,9 @@ img.gs-orb--lg { width: 44px; height: 44px; object-fit: contain; transform: none
   width: 40px; height: 40px; border-radius: 14px; display: grid; place-items: center; color: #fff;
   background: linear-gradient(180deg, #4a86ff, #1c46c8);
   box-shadow: 0 8px 18px rgba(36, 86, 230, .45), inset 0 1px 0 rgba(255, 255, 255, .4);
-  transition: transform .3s var(--spring);
+  pointer-events: none;
 }
-.gs-cta:hover { transform: scale(1.08) rotate(-4deg); }
+.gs-cta img { width: 34px; height: 34px; object-fit: contain; }
 .gs__label {
   margin-top: auto; writing-mode: vertical-rl; transform: rotate(180deg);
   font-size: 10px; font-weight: 700; letter-spacing: .24em; text-transform: uppercase; color: #aab1c2;
