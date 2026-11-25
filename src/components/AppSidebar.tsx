@@ -102,6 +102,8 @@ export default function AppSidebar() {
   const [glassTab, setGlassTab] = React.useState({ y: 0, h: 0, ready: false })
   const glassMainRef = React.useRef<HTMLDivElement>(null)
   const glassRailRef = React.useRef<HTMLElement>(null)
+  const dockFrameRef = React.useRef<number | null>(null)
+  const dockYRef = React.useRef(0)
   const glassItemRefs = React.useRef<Record<string, HTMLButtonElement | null>>({})
 
   const rawDisplayName = (user?.user_metadata?.full_name as string) ?? user?.email ?? 'Usuario'
@@ -383,15 +385,32 @@ export default function AppSidebar() {
     return () => window.removeEventListener('keydown', closeOnEscape)
   }, [glassOpen])
 
+  React.useEffect(() => () => {
+    if (dockFrameRef.current !== null) {
+      window.cancelAnimationFrame(dockFrameRef.current)
+    }
+  }, [])
+
   const handleDockMove = (event: React.MouseEvent<HTMLElement>) => {
-    glassRailRef.current?.querySelectorAll<HTMLElement>('[data-dock]').forEach(element => {
-      const rect = element.getBoundingClientRect()
-      const distance = event.clientY - (rect.top + rect.height / 2)
-      element.style.setProperty('--s', (1 + 0.45 * Math.exp(-(distance * distance) / (2 * 42 * 42))).toFixed(3))
+    dockYRef.current = event.clientY
+    if (dockFrameRef.current !== null) return
+
+    dockFrameRef.current = window.requestAnimationFrame(() => {
+      dockFrameRef.current = null
+      glassRailRef.current?.querySelectorAll<HTMLElement>('[data-dock]').forEach(element => {
+        const rect = element.getBoundingClientRect()
+        const distance = dockYRef.current - (rect.top + rect.height / 2)
+        const scale = 1 + 0.45 * Math.exp(-(distance * distance) / (2 * 42 * 42))
+        element.style.setProperty('--s', scale.toFixed(3))
+      })
     })
   }
 
   const handleDockLeave = () => {
+    if (dockFrameRef.current !== null) {
+      window.cancelAnimationFrame(dockFrameRef.current)
+      dockFrameRef.current = null
+    }
     glassRailRef.current?.querySelectorAll<HTMLElement>('[data-dock]').forEach(element => {
       element.style.setProperty('--s', '1')
     })
@@ -414,7 +433,7 @@ export default function AppSidebar() {
         aria-hidden={glassOpen}
       >
         <button data-dock className="gs-brand" onClick={() => setGlassOpen(true)} aria-label="Abrir menú">
-          <img src="/intelasist-sidebar.svg" alt="INTELASIST IA" />
+          <span aria-hidden="true">IA</span>
         </button>
         {visibleNavItems.map(({ to, label, icon: Icon }) => (
           <button
