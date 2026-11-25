@@ -13,7 +13,7 @@ import { normalizeAvatar } from '@/lib/avatar'
 import { PERMISSIONS } from '@/lib/permissions'
 import { ProfileAvatarEditor } from '@/components/ProfileAvatarEditor'
 import { UserAvatar } from '@/components/UserAvatar'
-import AppSidebar from './AppSidebar'
+import GlassSidebar from './GlassSidebar'
 import { Separator } from '@/components/ui/separator'
 import UpdateNotice from '@/components/UpdateNotice'
 import FailedAttemptsAlert from '@/components/FailedAttemptsAlert'
@@ -165,7 +165,7 @@ export default function AppLayout() {
 
   return (
     <SidebarProvider>
-      <AppSidebar />
+      <GlassSidebar />
       <SidebarInset>
         <header className="app-header sticky top-0 z-30 flex h-[72px] shrink-0 items-center gap-3 px-4 sm:px-6">
           <SidebarTrigger className="-ml-1" />

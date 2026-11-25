@@ -20,7 +20,8 @@ import { usePermissions } from '@/lib/permissions-context'
 import { UserAvatar } from '@/components/UserAvatar'
 import { normalizeAvatar } from '@/lib/avatar'
 import type { AvatarData } from '@/lib/avatar'
-import { LayoutDashboard, FileText, LogOut, HeartPulse, House, Users } from 'lucide-react'
+import { FiGrid, FiFileText, FiLogOut, FiHeart, FiHome, FiUsers, FiChevronLeft } from 'react-icons/fi'
+import './GlassSidebar.css'
 import { PERMISSIONS } from '@/lib/permissions'
 
 function isUserRole(role: unknown): role is 'Agente' | 'Admin' | 'Support' | 'Gerente' {
@@ -98,11 +99,11 @@ function areOnlineUsersEqual(a: Array<ReturnType<typeof getOnlineUsers>[number]>
 }
 
 const navItems = [
-  { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/informes', label: 'Informes', icon: FileText },
-  { to: '/servicios-medicos', label: 'Servicios Médicos', icon: HeartPulse },
-  { to: '/asistencia-hogar', label: 'Asistencia en el Hogar', icon: House },
-  { to: '/usuarios', label: 'Usuarios', icon: Users },
+  { to: '/dashboard', label: 'Dashboard', icon: FiGrid },
+  { to: '/informes', label: 'Informes', icon: FiFileText },
+  { to: '/servicios-medicos', label: 'Servicios Médicos', icon: FiHeart },
+  { to: '/asistencia-hogar', label: 'Asistencia en el Hogar', icon: FiHome },
+  { to: '/usuarios', label: 'Usuarios', icon: FiUsers },
 ]
 
 export default function AppSidebar() {
@@ -112,6 +113,11 @@ export default function AppSidebar() {
   const location = useLocation()
   const navigationMenuRef = React.useRef<HTMLUListElement>(null)
   const [activeIndicatorTop, setActiveIndicatorTop] = React.useState<number | null>(null)
+  const [glassOpen, setGlassOpen] = React.useState(false)
+  const [glassTab, setGlassTab] = React.useState({ y: 0, h: 0, ready: false })
+  const glassMainRef = React.useRef<HTMLDivElement>(null)
+  const glassRailRef = React.useRef<HTMLElement>(null)
+  const glassItemRefs = React.useRef<Record<string, HTMLButtonElement | null>>({})
 
   const rawDisplayName = (user?.user_metadata?.full_name as string) ?? user?.email ?? 'Usuario'
   const displayName = rawDisplayName
@@ -387,169 +393,186 @@ export default function AppSidebar() {
     return Array.from(mergedByEmail.values())
   }, [onlineUsers, user, presenceStyles, avatarsByEmail, avatarData])
 
+  const visibleNavItems = React.useMemo(() => navItems.filter(({ to }) => {
+    if ((to === '/informes' || to === '/servicios-medicos' || to === '/asistencia-hogar') && !canViewReportsModule) {
+      return false
+    }
+    return !(to === '/usuarios' && !canViewUsersModule)
+  }), [canViewReportsModule, canViewUsersModule])
+
+  const activeNav = visibleNavItems.find(({ to }) =>
+    to === '/informes'
+      ? location.pathname === '/informes' || location.pathname.startsWith('/informes/')
+      : location.pathname.startsWith(to)
+  ) ?? visibleNavItems[0]
+
+  React.useLayoutEffect(() => {
+    if (!glassOpen) return
+
+    const measureTab = () => {
+      const element = activeNav ? glassItemRefs.current[activeNav.to] : null
+      const main = glassMainRef.current
+      if (!element || !main) return
+      const itemBounds = element.getBoundingClientRect()
+      const mainBounds = main.getBoundingClientRect()
+      setGlassTab({
+        y: itemBounds.top - mainBounds.top - 4,
+        h: itemBounds.height + 8,
+        ready: true,
+      })
+    }
+
+    measureTab()
+    window.addEventListener('resize', measureTab)
+    return () => window.removeEventListener('resize', measureTab)
+  }, [glassOpen, activeNav])
+
+  const handleGlassMouseMove = (event: React.MouseEvent<HTMLElement>) => {
+    glassRailRef.current?.querySelectorAll<HTMLElement>('[data-dock]').forEach(element => {
+      const bounds = element.getBoundingClientRect()
+      const distance = event.clientY - (bounds.top + bounds.height / 2)
+      const scale = 1 + 0.45 * Math.exp(-(distance * distance) / (2 * 42 * 42))
+      element.style.setProperty('--s', scale.toFixed(3))
+    })
+  }
+
+  const handleGlassMouseLeave = () => {
+    glassRailRef.current?.querySelectorAll<HTMLElement>('[data-dock]').forEach(element => {
+      element.style.setProperty('--s', '1')
+    })
+  }
+
   return (
-    <Sidebar
-      collapsible="icon"
-      className="border-r border-sidebar-border bg-sidebar shadow-[0_0_0_1px_rgba(15,23,42,0.05),16px_0_60px_-30px_rgba(0,0,0,0.55)]"
-    >
-      <SidebarHeader className="px-4 py-5">
-        <button
-          type="button"
-          onClick={() => navigate('/dashboard')}
-          className="group flex items-center gap-2.5 rounded-2xl px-2 py-1.5 text-left transition-all duration-200 hover:bg-white/5"
-        >
-          <img
-            src="/intelasist-sidebar.svg"
-            alt="INTELASIST IA"
-            className="sidebar-brand-logo h-11 w-[4.25rem] shrink-0 object-contain transition-transform duration-200 group-hover:scale-105 group-data-[collapsible=icon]:w-11"
-          />
-          <div className="leading-tight group-data-[collapsible=icon]:hidden">
-            <span className="block text-sm font-bold tracking-[0.12em] text-sky-100">
-              INTELASIST
-            </span>
-          </div>
+    <aside className={`gs ${glassOpen ? 'is-open' : ''}`} aria-label="Menú principal">
+      <nav
+        className="gs__rail"
+        ref={glassRailRef}
+        onMouseMove={handleGlassMouseMove}
+        onMouseLeave={handleGlassMouseLeave}
+        aria-hidden={glassOpen}
+      >
+        <button data-dock className="gs-brand" onClick={() => setGlassOpen(true)} aria-label="Abrir menú">
+          <img src="/intelasist-sidebar.svg" alt="INTELASIST IA" />
         </button>
-      </SidebarHeader>
+        {visibleNavItems.map(({ to, label, icon: Icon }) => {
+          const isActive = activeNav?.to === to
+          return (
+            <button
+              key={to}
+              data-dock
+              className={`gs-orb ${isActive ? 'is-active' : ''}`}
+              onClick={() => navigate(to)}
+              aria-label={label}
+              title={label}
+            >
+              <Icon />
+            </button>
+          )
+        })}
+        <span className="gs__grow" />
+        <button data-dock className="gs-avatar" onClick={signOut} aria-label="Cerrar sesión" title="Cerrar sesión">
+          <UserAvatar
+            avatar={avatarData}
+            name={displayName}
+            fallbackImageUrl={avatarUrl}
+            size={38}
+          />
+        </button>
+      </nav>
 
-      <div className="relative mx-3 my-1">
-        <div className="h-px bg-gradient-to-r from-transparent via-border to-transparent" />
-      </div>
+      <div className="gs__panel" aria-hidden={!glassOpen}>
+        <div className="gs__main" ref={glassMainRef}>
+          <span
+            className="gs__tab"
+            style={{
+              transform: `translateY(${glassTab.y}px)`,
+              height: glassTab.h,
+              opacity: glassTab.ready ? 1 : 0,
+            }}
+          />
 
-      <SidebarContent className="py-2">
-        <SidebarGroup>
-          <SidebarGroupLabel className="px-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground/80">
-            Principal
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu ref={navigationMenuRef} className="relative">
-              {navItems.map(({ to, label, icon: Icon }) => {
-                if ((to === '/informes' || to === '/servicios-medicos' || to === '/asistencia-hogar') && !canViewReportsModule) {
-                  return null
-                }
-                if (to === '/usuarios' && !canViewUsersModule) {
-                  return null
-                }
-                return (
-                  <SidebarMenuItem key={to}>
-                    <SidebarMenuButton
-                      isActive={to === '/informes'
-                        ? location.pathname === '/informes'
-                        : location.pathname.startsWith(to)}
-                      tooltip={label}
-                      onClick={() => navigate(to)}
-                      className="group relative rounded-md px-2.5 py-2.5 text-sm font-medium transition-all duration-200 hover:bg-white/5 hover:text-white data-[active=true]:bg-[#1f63e6]/20 data-[active=true]:text-white data-[active=true]:shadow-none"
-                    >
-                      <Icon className="size-4 shrink-0 transition-transform duration-200 group-hover:scale-105" />
-                      <span>{label}</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                )
-              })}
-              <SidebarMenuItem aria-hidden="true" className="pointer-events-none absolute inset-0 z-10">
-                <span
-                  className="sidebar-nav-indicator"
-                  style={{
-                    top: activeIndicatorTop ?? 0,
-                    opacity: activeIndicatorTop === null ? 0 : 1,
-                  }}
-                />
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        <SidebarGroup className="mt-3 px-2 group-data-[collapsible=icon]:hidden">
-          <div className="rounded-lg border border-white/15 bg-white/[0.08] p-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_8px_20px_-16px_rgba(0,0,0,0.9)] backdrop-blur-sm">
-            <div className="mb-1.5">
-              <p className="text-[9px] font-semibold uppercase tracking-wide text-sidebar-foreground/60">
-                Conectados
-              </p>
-            </div>
-            {visibleUsers.length === 0 ? (
-              <p className="text-[10px] text-sidebar-foreground/70">Sin usuarios</p>
-            ) : (
-              <div className="space-y-1">
-                {visibleUsers.map(user => {
-                  return (
-                    <div key={user.email} className={`flex items-center justify-between gap-1.5 rounded-md border border-white/10 bg-white/[0.07] px-1.5 py-1 shadow-[0_4px_12px_-12px_rgba(15,23,42,0.25)] transition-all duration-300 hover:border-white/20 hover:bg-white/[0.12] ${getPresenceStyleClasses(user.presenceStyle)}`}>
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <div className="relative shrink-0">
-                          <UserAvatar
-                            avatar={user.avatar}
-                            name={user.fullName || user.email || 'U'}
-                            size={24}
-                            characterWithBackground={false}
-                            className="border border-white/70 bg-white shadow-sm"
-                          />
-                          <span className="absolute -bottom-0.5 -right-0.5 inline-flex h-2 w-2 rounded-full border-1 border-sidebar bg-emerald-500" />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="presence-badge-label connected-user-label connected-user-name truncate text-[10px] font-semibold">{user.fullName || 'Usuario'}</p>
-                        </div>
-                      </div>
-
-                      <div className="flex flex-wrap gap-0.5 justify-end">
-                        {(user.roles ?? []).map(role => (
-                          <Badge
-                            key={role}
-                            title={`Rol: ${role.toUpperCase()}`}
-                            className={`presence-badge-label connected-user-label connected-role-badge rounded-sm bg-black/20 px-1 py-0 h-[13px] flex items-center whitespace-nowrap ${getRoleColorClasses(role, user.fullName)}`}
-                          >
-                            {role.toUpperCase()}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  )
-                })}
+          <div className="gs__inner">
+            <header className="gs-reveal gs-head" style={{ '--i': 0 } as React.CSSProperties}>
+              <img
+                className="gs-orb--lg"
+                src="/intelasist-sidebar.svg"
+                alt="INTELASIST IA"
+              />
+              <div className="gs-head__txt">
+                <b>INTELASIST</b>
+                <small>{displayName}</small>
               </div>
-            )}
-          </div>
-        </SidebarGroup>
-      </SidebarContent>
+              <button className="gs-round" onClick={() => setGlassOpen(false)} aria-label="Cerrar menú">
+                <FiChevronLeft />
+              </button>
+            </header>
 
-      <SidebarFooter className="pb-4">
-        <div className="relative mx-3 mb-2">
-          <div className="h-px bg-gradient-to-r from-transparent via-border to-transparent" />
-        </div>
-        <div className="flex items-center gap-3 px-2 py-1 group-data-[collapsible=icon]:justify-center">
-          <div
-            title="Perfil del usuario"
-            className="shrink-0 rounded-full outline-none"
-          >
-            <UserAvatar
-              avatar={avatarData}
-              name={displayName}
-              fallbackImageUrl={avatarUrl}
-              size={36}
-              className="border border-white/40 shadow-sm"
-            />
-          </div>
-          <div className="flex flex-col min-w-0 flex-1 group-data-[collapsible=icon]:hidden">
-            <span className={`block px-2 py-1 text-xs font-medium text-sidebar-foreground truncate ${getNameColorClasses(displayName)}`}>
-              {displayName}
-            </span>
-            <span className="px-2 text-xs text-sidebar-foreground/85 truncate">{user?.email}</span>
-            <div className="flex flex-wrap gap-1 px-2 mt-1">
-              {userRoles.map(role => (
-                <Badge key={role} className={`text-[12px] font-semibold px-1.5 py-0.5 ${getRoleColorClasses(role, displayName)} transition-all duration-150`}>
-                  {role.toUpperCase()}
-                </Badge>
+            <ul className="gs__nav">
+              {visibleNavItems.map(({ to, label, icon: Icon }, index) => (
+                <li key={to} className="gs-reveal" style={{ '--i': index + 1 } as React.CSSProperties}>
+                  <button
+                    ref={element => { glassItemRefs.current[to] = element }}
+                    onClick={() => navigate(to)}
+                    className={`gs-item ${activeNav?.to === to ? 'is-active' : ''}`}
+                  >
+                    <Icon />
+                    <span>{label}</span>
+                  </button>
+                </li>
               ))}
+            </ul>
+
+            <div className="gs-reveal gs-connected" style={{ '--i': visibleNavItems.length + 1 } as React.CSSProperties}>
+              <p className="gs-connected__title">Conectados</p>
+              {visibleUsers.length === 0 ? (
+                <p className="gs-connected__item">Sin usuarios</p>
+              ) : (
+                <div className="gs-connected__list">
+                  {visibleUsers.map(connectedUser => (
+                    <div
+                      key={connectedUser.email}
+                      className={`gs-connected__item ${getPresenceStyleClasses(connectedUser.presenceStyle)}`}
+                    >
+                      <UserAvatar
+                        avatar={connectedUser.avatar}
+                        name={connectedUser.fullName || connectedUser.email || 'U'}
+                        size={24}
+                        characterWithBackground={false}
+                      />
+                      <span>{connectedUser.fullName || 'Usuario'}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="gs-reveal gs-user" style={{ '--i': visibleNavItems.length + 2 } as React.CSSProperties}>
+              <span className="gs-avatar">
+                <UserAvatar
+                  avatar={avatarData}
+                  name={displayName}
+                  fallbackImageUrl={avatarUrl}
+                  size={38}
+                />
+              </span>
+              <div>
+                <b>{displayName}</b>
+                <small>{user?.email}</small>
+              </div>
+              <button className="gs-logout" onClick={signOut} aria-label="Cerrar sesión" title="Cerrar sesión">
+                <FiLogOut />
+              </button>
             </div>
           </div>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            onClick={signOut}
-            className="shrink-0 rounded-xl text-muted-foreground transition-all duration-150 hover:bg-destructive/10 hover:text-destructive hover:shadow-[0_0_18px_rgba(244,63,94,0.18)] group-data-[collapsible=icon]:hidden"
-            title="Cerrar sesión"
-          >
-            <LogOut className="size-4" />
-          </Button>
         </div>
 
-      </SidebarFooter>
-    </Sidebar>
+        <div className="gs__spine">
+          <button className="gs-cta" onClick={() => setGlassOpen(false)} aria-label="Cerrar menú">
+            <FiChevronLeft />
+          </button>
+          <span className="gs__label">{activeNav?.label}</span>
+        </div>
+      </div>
+    </aside>
   )
 }
