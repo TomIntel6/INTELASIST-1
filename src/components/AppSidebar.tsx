@@ -97,8 +97,7 @@ export default function AppSidebar() {
   const { user, signOut } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
-  const [glassOpen, setGlassOpen] = React.useState(false)
-  const [glassSearch, setGlassSearch] = React.useState('')
+  const [glassOpen, setGlassOpen] = React.useState(true)
   const [glassTab, setGlassTab] = React.useState({ y: 0, h: 0, ready: false })
   const glassMainRef = React.useRef<HTMLDivElement>(null)
   const glassRailRef = React.useRef<HTMLElement>(null)
@@ -416,23 +415,17 @@ export default function AppSidebar() {
     })
   }
 
-  const submitSearch = (event: React.FormEvent) => {
-    event.preventDefault()
-    const query = glassSearch.trim()
-    setGlassOpen(false)
-    navigate(query ? `/informes?search=${encodeURIComponent(query)}` : '/informes')
-  }
-
   return (
-    <aside className={`gs ${glassOpen ? 'is-open' : ''}`} aria-label="Menú principal">
+    <aside className={`gs ${glassOpen ? 'is-open' : ''}`} aria-label="Menú principal" aria-expanded={glassOpen}>
       <nav
         className="gs__rail"
         ref={glassRailRef}
         onMouseMove={handleDockMove}
         onMouseLeave={handleDockLeave}
         aria-hidden={glassOpen}
+        inert={glassOpen}
       >
-        <button data-dock className="gs-brand" onClick={() => setGlassOpen(true)} aria-label="Abrir menú">
+        <button data-dock className="gs-brand" onClick={() => setGlassOpen(true)} aria-label="Expandir menú">
           <span aria-hidden="true">IA</span>
         </button>
         {visibleNavItems.map(({ to, label, icon: Icon }) => (
@@ -453,7 +446,7 @@ export default function AppSidebar() {
         </button>
       </nav>
 
-      <div className="gs__panel" aria-hidden={!glassOpen}>
+      <div className="gs__panel" aria-hidden={!glassOpen} inert={!glassOpen}>
         <div className="gs__main" ref={glassMainRef}>
           <span
             className="gs__tab"
@@ -470,27 +463,14 @@ export default function AppSidebar() {
                 <b>INTELASIST</b>
                 <small>{displayName}</small>
               </div>
-              <button className="gs-round" onClick={() => setGlassOpen(false)} aria-label="Cerrar menú">
+              <button className="gs-round" onClick={() => setGlassOpen(false)} aria-label="Minimizar menú">
                 <ChevronLeft />
               </button>
             </header>
 
-            {canViewReportsModule ? (
-              <form className="gs-reveal gs-search" style={{ '--i': 1 } as React.CSSProperties} onSubmit={submitSearch}>
-                <FileText />
-                <input
-                  value={glassSearch}
-                  onChange={event => setGlassSearch(event.target.value)}
-                  placeholder="Buscar informes…"
-                  aria-label="Buscar informes"
-                />
-                <kbd>↵</kbd>
-              </form>
-            ) : null}
-
             <ul className="gs__nav">
               {visibleNavItems.map(({ to, label, icon: Icon }, index) => (
-                <li key={to} className="gs-reveal" style={{ '--i': index + 2 } as React.CSSProperties}>
+                <li key={to} className="gs-reveal" style={{ '--i': index + 1 } as React.CSSProperties}>
                   <button
                     ref={element => { glassItemRefs.current[to] = element }}
                     onClick={() => navigate(to)}
@@ -503,7 +483,7 @@ export default function AppSidebar() {
               ))}
             </ul>
 
-            <div className="gs-reveal gs-connected" style={{ '--i': visibleNavItems.length + 3 } as React.CSSProperties}>
+            <div className="gs-reveal gs-connected" style={{ '--i': visibleNavItems.length + 2 } as React.CSSProperties}>
               <p className="gs-connected__title">Conectados</p>
               {visibleUsers.length === 0 ? (
                 <p className="gs-connected__empty">Sin usuarios</p>
@@ -528,7 +508,7 @@ export default function AppSidebar() {
               )}
             </div>
 
-            <div className="gs-reveal gs-user" style={{ '--i': visibleNavItems.length + 4 } as React.CSSProperties}>
+            <div className="gs-reveal gs-user" style={{ '--i': visibleNavItems.length + 3 } as React.CSSProperties}>
               <span className="gs-avatar">
                 <UserAvatar avatar={avatarData} name={displayName} fallbackImageUrl={avatarUrl} size={38} />
               </span>
