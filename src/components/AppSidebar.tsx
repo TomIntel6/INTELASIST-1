@@ -400,7 +400,7 @@ function AppSidebar() {
       glassRailRef.current?.querySelectorAll<HTMLElement>('[data-dock]').forEach(element => {
         const rect = element.getBoundingClientRect()
         const distance = dockYRef.current - (rect.top + rect.height / 2)
-        const scale = 1 + 0.45 * Math.exp(-(distance * distance) / (2 * 42 * 42))
+        const scale = 1 + 0.18 * Math.exp(-(distance * distance) / (2 * 34 * 34))
         element.style.setProperty('--s', scale.toFixed(3))
       })
     })

@@ -412,9 +412,16 @@ body:has(.glass-layout) [data-slot="command"] {
   }
 }
 
-/* A. Cambio de ancho instantáneo: 1 reflow en vez de ~15.
-      El panel sigue haciendo fade (120 ms), que es barato. */
-.gs { transition: none; }
+/* A. Transición fluida de apertura/cierre */
+.gs {
+  transition: width 200ms var(--soft), flex-basis 200ms var(--soft), border-radius 200ms ease;
+}
+
+/* Aísla el contenido para que el reflow de cada frame no se propague a tablas y gráficos */
+.app-workspace { contain: layout paint style; }
+.app-header { contain: layout paint style; }
+.app-workspace > * { min-width: 0; }
+.glass-layout > [data-slot="sidebar-inset"] { will-change: width; }
 
 /* B. Detrás del header no hay contenido scrolleando, el blur no aporta */
 .app-header { -webkit-backdrop-filter: none; backdrop-filter: none; }
@@ -456,3 +463,28 @@ body:has(.glass-layout) [data-slot="command"] {
 /* E. Lista de conectados sin barra de scroll */
 .gs-connected__list { scrollbar-width: none; }
 .gs-connected__list::-webkit-scrollbar { display: none; }
+
+.gs {
+  background:
+    radial-gradient(120% 38% at 30% 0%, rgba(255,255,255,.95), transparent 70%),
+    linear-gradient(180deg, #e3eefc 0%, #d4e5fa 50%, #c6dcf6 100%);
+  border: 1px solid rgba(255,255,255,.95);
+  box-shadow: inset 0 1px #fff, 0 24px 60px -36px rgba(40,84,143,.35);
+}
+.gs-item {
+  background: rgba(255,255,255,.6);
+  border-color: rgba(255,255,255,.9);
+  color: #1c3b6b;
+}
+.gs-item:hover:not(.is-active) { background: rgba(255,255,255,.9); }
+.gs-item.is-active { color: #1f63e6; box-shadow: 0 6px 16px -10px rgba(31,99,230,.5); }
+.gs-connected__item { background: rgba(255,255,255,.65); border-color: rgba(255,255,255,.9); }
+.gs-avatar::after { border-color: #d4e5fa; }
+.gs-round { background: rgba(255,255,255,.8); }
+.gs__spine { background: #fff; box-shadow: 0 10px 30px -12px rgba(40,84,143,.25); }
+.gs-brand, .gs-orb { background: radial-gradient(circle at 30% 20%, #fff, #e6f0fd 70%); }
+
+.gs__rail { gap: 14px; padding: 18px 0; }
+.gs-brand,
+.gs-orb { width: 40px; height: 40px; }
+.gs-orb svg { width: 16px; height: 16px; }
