@@ -498,8 +498,8 @@ body:has(.glass-layout) [data-slot="command"] {
 
 .gs__spine { margin: 7px 8px 7px 0; }
 
-.gs-item { justify-content: center; }
-.gs-item span { flex: 0 1 auto; }
+.gs-item { justify-content: flex-start; padding-left: 18px; }
+.gs-item span { flex: 1; text-align: left; }
 .gs__nav { margin-top: 20px; }
 
 .gs-connected__list { max-height: 307px; }
@@ -525,3 +525,9 @@ body:has(.glass-layout) [data-slot="command"] {
 .gs-user { border-top-color: rgba(255,255,255,.22); }
 .gs-user b { color: #f2f7ff; }
 .gs-user small { color: rgba(235,244,255,.76); }
+
+@media (max-width: 390px) {
+  .gs-item { gap: 8px; padding-left: 12px; }
+}
+
+.gs { text-transform: uppercase; }
