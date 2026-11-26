@@ -464,26 +464,6 @@ body:has(.glass-layout) [data-slot="command"] {
 .gs-connected__list { scrollbar-width: none; }
 .gs-connected__list::-webkit-scrollbar { display: none; }
 
-.gs {
-  background:
-    radial-gradient(120% 38% at 30% 0%, rgba(255,255,255,.95), transparent 70%),
-    linear-gradient(180deg, #e3eefc 0%, #d4e5fa 50%, #c6dcf6 100%);
-  border: 1px solid rgba(255,255,255,.95);
-  box-shadow: inset 0 1px #fff, 0 24px 60px -36px rgba(40,84,143,.35);
-}
-.gs-item {
-  background: rgba(255,255,255,.6);
-  border-color: rgba(255,255,255,.9);
-  color: #1c3b6b;
-}
-.gs-item:hover:not(.is-active) { background: rgba(255,255,255,.9); }
-.gs-item.is-active { color: #1f63e6; box-shadow: 0 6px 16px -10px rgba(31,99,230,.5); }
-.gs-connected__item { background: rgba(255,255,255,.65); border-color: rgba(255,255,255,.9); }
-.gs-avatar::after { border-color: #d4e5fa; }
-.gs-round { background: rgba(255,255,255,.8); }
-.gs__spine { background: #fff; box-shadow: 0 10px 30px -12px rgba(40,84,143,.25); }
-.gs-brand, .gs-orb { background: radial-gradient(circle at 30% 20%, #fff, #e6f0fd 70%); }
-
 .gs__rail { gap: 14px; padding: 18px 0; }
 .gs-brand,
 .gs-orb { width: 40px; height: 40px; }
@@ -517,3 +497,31 @@ body:has(.glass-layout) [data-slot="command"] {
 .gs-item.is-active::after { display: none; }
 
 .gs__spine { margin: 7px 8px 7px 0; }
+
+.gs-item { justify-content: center; }
+.gs-item span { flex: 0 1 auto; }
+.gs__nav { margin-top: 20px; }
+
+.gs-connected__list { max-height: 307px; }
+
+@keyframes gs-connected-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.45); opacity: .7; }
+}
+
+.gs-connected__item i { animation: gs-connected-pulse 1.8s ease-in-out infinite; }
+
+.gs {
+  color: #eef5ff;
+  background:
+    radial-gradient(120% 38% at 30% 0%, rgba(255,255,255,.28), transparent 70%),
+    linear-gradient(180deg, rgba(39,94,164,.94) 0%, rgba(29,73,137,.96) 50%, rgba(20,54,108,.98) 100%);
+  border-color: rgba(255,255,255,.42);
+  box-shadow: inset 0 1px rgba(255,255,255,.32), 0 24px 64px -38px rgba(19,47,85,.62);
+}
+.gs-head__txt small { color: rgba(235,244,255,.82); }
+.gs-connected__title,
+.gs-connected__empty { color: rgba(235,244,255,.82); }
+.gs-user { border-top-color: rgba(255,255,255,.22); }
+.gs-user b { color: #f2f7ff; }
+.gs-user small { color: rgba(235,244,255,.76); }
