@@ -1,14 +1,27 @@
 import * as React from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { getOnlineUsers, getPresenceStyleClasses, getUserRole, getUserRoles, useAuth, PRESENCE_STORAGE_KEY, PRESENCE_SYNC_STORAGE_KEY, USERS_SYNC_STORAGE_KEY } from '@/lib/auth'
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+} from '@/components/ui/sidebar'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { getNameColorClasses, getOnlineUsers, getPresenceStyleClasses, getRoleColorClasses, getUserRole, getUserRoles, useAuth, PRESENCE_STORAGE_KEY, PRESENCE_SYNC_STORAGE_KEY, USERS_SYNC_STORAGE_KEY } from '@/lib/auth'
 import { PermissionsManagementService } from '@/lib/permissions-management'
 import { usePermissions } from '@/lib/permissions-context'
 import { UserAvatar } from '@/components/UserAvatar'
 import { normalizeAvatar } from '@/lib/avatar'
 import type { AvatarData } from '@/lib/avatar'
-import { LayoutDashboard, FileText, LogOut, HeartPulse, House, Users, ChevronLeft } from 'lucide-react'
+import { LayoutDashboard, FileText, LogOut, HeartPulse, House, Users } from 'lucide-react'
 import { PERMISSIONS } from '@/lib/permissions'
-import './GlassSidebar.css'
 
 function isUserRole(role: unknown): role is 'Agente' | 'Admin' | 'Support' | 'Gerente' {
   return role === 'Agente' || role === 'Admin' || role === 'Support' || role === 'Gerente'
@@ -92,15 +105,13 @@ const navItems = [
   { to: '/usuarios', label: 'Usuarios', icon: Users },
 ]
 
-function AppSidebar() {
+export default function AppSidebar() {
   const { hasModuleAccess, hasPermission } = usePermissions()
   const { user, signOut } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
-  const [glassOpen, setGlassOpen] = React.useState(true)
-  const glassRailRef = React.useRef<HTMLElement>(null)
-  const dockFrameRef = React.useRef<number | null>(null)
-  const dockYRef = React.useRef(0)
+  const navigationMenuRef = React.useRef<HTMLUListElement>(null)
+  const [activeIndicatorTop, setActiveIndicatorTop] = React.useState<number | null>(null)
 
   const rawDisplayName = (user?.user_metadata?.full_name as string) ?? user?.email ?? 'Usuario'
   const displayName = rawDisplayName
@@ -114,6 +125,37 @@ function AppSidebar() {
   const [presenceStyles, setPresenceStyles] = React.useState<Record<string, string>>({})
   const [avatarsByEmail, setAvatarsByEmail] = React.useState<Record<string, AvatarData | null>>({})
   const hasReceivedPresenceSnapshotRef = React.useRef(false)
+
+  React.useLayoutEffect(() => {
+    let frameId = 0
+
+    const updateActiveIndicator = () => {
+      const menu = navigationMenuRef.current
+      const activeItem = menu?.querySelector<HTMLElement>('[data-slot="sidebar-menu-button"][data-active="true"]')
+
+      if (!menu || !activeItem) {
+        setActiveIndicatorTop(null)
+        return
+      }
+
+      const menuBounds = menu.getBoundingClientRect()
+      const activeBounds = activeItem.getBoundingClientRect()
+      setActiveIndicatorTop(activeBounds.top - menuBounds.top + activeBounds.height / 2)
+    }
+
+    updateActiveIndicator()
+    frameId = window.requestAnimationFrame(updateActiveIndicator)
+
+    const resizeObserver = new ResizeObserver(updateActiveIndicator)
+    if (navigationMenuRef.current) {
+      resizeObserver.observe(navigationMenuRef.current)
+    }
+
+    return () => {
+      window.cancelAnimationFrame(frameId)
+      resizeObserver.disconnect()
+    }
+  }, [location.pathname, location.search, canViewReportsModule, canViewUsersModule])
 
   const refreshOnlineUsers = React.useCallback(() => {
     if (hasReceivedPresenceSnapshotRef.current) {
@@ -345,196 +387,169 @@ function AppSidebar() {
     return Array.from(mergedByEmail.values())
   }, [onlineUsers, user, presenceStyles, avatarsByEmail, avatarData])
 
-  const visibleNavItems = navItems.filter(({ to }) => {
-    if ((to === '/informes' || to === '/servicios-medicos' || to === '/asistencia-hogar') && !canViewReportsModule) return false
-    if (to === '/usuarios' && !canViewUsersModule) return false
-    return true
-  })
-
-  const activeNav = visibleNavItems.find(({ to }) =>
-    to === '/informes'
-      ? location.pathname === '/informes' || location.pathname.startsWith('/informes/')
-      : location.pathname.startsWith(to)
-  ) ?? visibleNavItems[0]
-
-  const [pendingTo, setPendingTo] = React.useState<string | null>(null)
-
-  React.useEffect(() => {
-    setPendingTo(null)
-  }, [location.pathname])
-
-  const currentNav =
-    (pendingTo && visibleNavItems.find(({ to }) =>
-      to === '/informes'
-        ? pendingTo === to || pendingTo.startsWith(`${to}/`)
-        : pendingTo.startsWith(to)
-    )) || activeNav
-
-  const go = React.useCallback((to: string) => {
-    if (to === location.pathname) return
-    setPendingTo(to)
-    React.startTransition(() => navigate(to))
-  }, [navigate, location.pathname])
-
-  React.useEffect(() => {
-    if (!glassOpen) return
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setGlassOpen(false)
-    }
-    window.addEventListener('keydown', closeOnEscape)
-    return () => window.removeEventListener('keydown', closeOnEscape)
-  }, [glassOpen])
-
-  React.useEffect(() => () => {
-    if (dockFrameRef.current !== null) {
-      window.cancelAnimationFrame(dockFrameRef.current)
-    }
-  }, [])
-
-  const handleDockMove = (event: React.MouseEvent<HTMLElement>) => {
-    dockYRef.current = event.clientY
-    if (dockFrameRef.current !== null) return
-
-    dockFrameRef.current = window.requestAnimationFrame(() => {
-      dockFrameRef.current = null
-      glassRailRef.current?.querySelectorAll<HTMLElement>('[data-dock]').forEach(element => {
-        const rect = element.getBoundingClientRect()
-        const distance = dockYRef.current - (rect.top + rect.height / 2)
-        const scale = 1 + 0.18 * Math.exp(-(distance * distance) / (2 * 34 * 34))
-        element.style.setProperty('--s', scale.toFixed(3))
-      })
-    })
-  }
-
-  const handleDockLeave = () => {
-    if (dockFrameRef.current !== null) {
-      window.cancelAnimationFrame(dockFrameRef.current)
-      dockFrameRef.current = null
-    }
-    glassRailRef.current?.querySelectorAll<HTMLElement>('[data-dock]').forEach(element => {
-      element.style.setProperty('--s', '1')
-    })
-  }
-
   return (
-    <aside className={`gs ${glassOpen ? 'is-open' : ''}`} aria-label="Menú principal" aria-expanded={glassOpen}>
-      <nav
-        className="gs__rail"
-        ref={glassRailRef}
-        onMouseMove={handleDockMove}
-        onMouseLeave={handleDockLeave}
-        aria-hidden={glassOpen}
-        inert={glassOpen}
-      >
-        <button data-dock className="gs-brand" onClick={() => setGlassOpen(true)} aria-label="Expandir menú">
-          <span aria-hidden="true">IA</span>
+    <Sidebar
+      collapsible="icon"
+      className="border-r border-sidebar-border bg-sidebar shadow-[0_0_0_1px_rgba(15,23,42,0.05),16px_0_60px_-30px_rgba(0,0,0,0.55)]"
+    >
+      <SidebarHeader className="px-4 py-5">
+        <button
+          type="button"
+          onClick={() => navigate('/dashboard')}
+          className="group flex items-center gap-2.5 rounded-2xl px-2 py-1.5 text-left transition-all duration-200 hover:bg-white/5"
+        >
+          <img
+            src="/intelasist-sidebar.svg"
+            alt="INTELASIST IA"
+            className="sidebar-brand-logo h-11 w-[4.25rem] shrink-0 object-contain transition-transform duration-200 group-hover:scale-105 group-data-[collapsible=icon]:w-11"
+          />
+          <div className="leading-tight group-data-[collapsible=icon]:hidden">
+            <span className="block text-sm font-bold tracking-[0.12em] text-sky-100">
+              INTELASIST
+            </span>
+          </div>
         </button>
-        {visibleNavItems.map(({ to, label, icon: Icon }) => (
-          <button
-            key={to}
-            data-dock
-            className={`gs-orb ${currentNav?.to === to ? 'is-active' : ''}`}
-            onClick={() => go(to)}
-            aria-label={label}
-            title={label}
-          >
-            <Icon />
-          </button>
-        ))}
-        <span className="gs__grow" />
-        <button data-dock className="gs-avatar" onClick={() => setGlassOpen(true)} aria-label="Abrir perfil">
-          <UserAvatar avatar={avatarData} name={displayName} fallbackImageUrl={avatarUrl} size={38} />
-        </button>
-      </nav>
+      </SidebarHeader>
 
-      <div className="gs__panel" aria-hidden={!glassOpen} inert={!glassOpen}>
-        <div className="gs__main">
-          <div className="gs__inner">
-            <header className="gs-reveal gs-head" style={{ '--i': 0 } as React.CSSProperties}>
-              <img className="gs-orb--lg" src="/intelasist-sidebar.svg" alt="INTELASIST IA" />
-              <div className="gs-head__txt">
-                <b>INTELASIST</b>
-                <small>{displayName}</small>
-              </div>
-              <button className="gs-round" onClick={() => setGlassOpen(false)} aria-label="Minimizar menú">
-                <ChevronLeft />
-              </button>
-            </header>
+      <div className="relative mx-3 my-1">
+        <div className="h-px bg-gradient-to-r from-transparent via-border to-transparent" />
+      </div>
 
-            <ul className="gs__nav">
-              {visibleNavItems.map(({ to, label, icon: Icon }, index) => (
-                <li key={to} className="gs-reveal" style={{ '--i': index + 1 } as React.CSSProperties}>
-                  <button
-                    onClick={() => go(to)}
-                    className={`gs-item ${currentNav?.to === to ? 'is-active' : ''}`}
-                  >
-                    <Icon />
-                    <span>{label}</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-
-            <div className="gs-reveal gs-connected" style={{ '--i': visibleNavItems.length + 2 } as React.CSSProperties}>
-              <p className="gs-connected__title">Conectados</p>
-              {visibleUsers.length === 0 ? (
-                <p className="gs-connected__empty">Sin usuarios</p>
-              ) : (
-                <div className="gs-connected__list">
-                  {visibleUsers.map(connectedUser => (
-                    <div
-                      key={connectedUser.email}
-                      className={`gs-connected__item ${getPresenceStyleClasses(connectedUser.presenceStyle)}`}
+      <SidebarContent className="py-2">
+        <SidebarGroup>
+          <SidebarGroupLabel className="px-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground/80">
+            Principal
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu ref={navigationMenuRef} className="relative">
+              {navItems.map(({ to, label, icon: Icon }) => {
+                if ((to === '/informes' || to === '/servicios-medicos' || to === '/asistencia-hogar') && !canViewReportsModule) {
+                  return null
+                }
+                if (to === '/usuarios' && !canViewUsersModule) {
+                  return null
+                }
+                return (
+                  <SidebarMenuItem key={to}>
+                    <SidebarMenuButton
+                      isActive={to === '/informes'
+                        ? location.pathname === '/informes'
+                        : location.pathname.startsWith(to)}
+                      tooltip={label}
+                      onClick={() => navigate(to)}
+                      className="group relative rounded-md px-2.5 py-2.5 text-sm font-medium transition-all duration-200 hover:bg-white/5 hover:text-white data-[active=true]:bg-[#1f63e6]/20 data-[active=true]:text-white data-[active=true]:shadow-none"
                     >
-                      <UserAvatar
-                        avatar={connectedUser.avatar}
-                        name={connectedUser.fullName || connectedUser.email || 'U'}
-                        size={24}
-                        characterWithBackground={false}
-                      />
-                      <span>{connectedUser.fullName || 'Usuario'}</span>
-                      <i />
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+                      <Icon className="size-4 shrink-0 transition-transform duration-200 group-hover:scale-105" />
+                      <span>{label}</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                )
+              })}
+              <SidebarMenuItem aria-hidden="true" className="pointer-events-none absolute inset-0 z-10">
+                <span
+                  className="sidebar-nav-indicator"
+                  style={{
+                    top: activeIndicatorTop ?? 0,
+                    opacity: activeIndicatorTop === null ? 0 : 1,
+                  }}
+                />
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
 
-            <div className="gs-reveal gs-user" style={{ '--i': visibleNavItems.length + 3 } as React.CSSProperties}>
-              <span className="gs-avatar">
-                <UserAvatar avatar={avatarData} name={displayName} fallbackImageUrl={avatarUrl} size={38} />
-              </span>
-              <div>
-                <b>{displayName}</b>
-                <small>{user?.email}</small>
+        <SidebarGroup className="mt-3 px-2 group-data-[collapsible=icon]:hidden">
+          <div className="rounded-lg border border-white/15 bg-white/[0.08] p-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_8px_20px_-16px_rgba(0,0,0,0.9)] backdrop-blur-sm">
+            <div className="mb-1.5">
+              <p className="text-[9px] font-semibold uppercase tracking-wide text-sidebar-foreground/60">
+                Conectados
+              </p>
+            </div>
+            {visibleUsers.length === 0 ? (
+              <p className="text-[10px] text-sidebar-foreground/70">Sin usuarios</p>
+            ) : (
+              <div className="space-y-1">
+                {visibleUsers.map(user => {
+                  return (
+                    <div key={user.email} className={`flex items-center justify-between gap-1.5 rounded-md border border-white/10 bg-white/[0.07] px-1.5 py-1 shadow-[0_4px_12px_-12px_rgba(15,23,42,0.25)] transition-all duration-300 hover:border-white/20 hover:bg-white/[0.12] ${getPresenceStyleClasses(user.presenceStyle)}`}>
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <div className="relative shrink-0">
+                          <UserAvatar
+                            avatar={user.avatar}
+                            name={user.fullName || user.email || 'U'}
+                            size={24}
+                            characterWithBackground={false}
+                            className="border border-white/70 bg-white shadow-sm"
+                          />
+                          <span className="absolute -bottom-0.5 -right-0.5 inline-flex h-2 w-2 rounded-full border-1 border-sidebar bg-emerald-500" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="presence-badge-label connected-user-label connected-user-name truncate text-[10px] font-semibold">{user.fullName || 'Usuario'}</p>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap gap-0.5 justify-end">
+                        {(user.roles ?? []).map(role => (
+                          <Badge
+                            key={role}
+                            title={`Rol: ${role.toUpperCase()}`}
+                            className={`presence-badge-label connected-user-label connected-role-badge rounded-sm bg-black/20 px-1 py-0 h-[13px] flex items-center whitespace-nowrap ${getRoleColorClasses(role, user.fullName)}`}
+                          >
+                            {role.toUpperCase()}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
-              <button className="gs-logout" onClick={signOut} aria-label="Cerrar sesión" title="Cerrar sesión">
-                <LogOut />
-              </button>
+            )}
+          </div>
+        </SidebarGroup>
+      </SidebarContent>
+
+      <SidebarFooter className="pb-4">
+        <div className="relative mx-3 mb-2">
+          <div className="h-px bg-gradient-to-r from-transparent via-border to-transparent" />
+        </div>
+        <div className="flex items-center gap-3 px-2 py-1 group-data-[collapsible=icon]:justify-center">
+          <div
+            title="Perfil del usuario"
+            className="shrink-0 rounded-full outline-none"
+          >
+            <UserAvatar
+              avatar={avatarData}
+              name={displayName}
+              fallbackImageUrl={avatarUrl}
+              size={36}
+              className="border border-white/40 shadow-sm"
+            />
+          </div>
+          <div className="flex flex-col min-w-0 flex-1 group-data-[collapsible=icon]:hidden">
+            <span className={`block px-2 py-1 text-xs font-medium text-sidebar-foreground truncate ${getNameColorClasses(displayName)}`}>
+              {displayName}
+            </span>
+            <span className="px-2 text-xs text-sidebar-foreground/85 truncate">{user?.email}</span>
+            <div className="flex flex-wrap gap-1 px-2 mt-1">
+              {userRoles.map(role => (
+                <Badge key={role} className={`text-[12px] font-semibold px-1.5 py-0.5 ${getRoleColorClasses(role, displayName)} transition-all duration-150`}>
+                  {role.toUpperCase()}
+                </Badge>
+              ))}
             </div>
           </div>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={signOut}
+            className="shrink-0 rounded-xl text-muted-foreground transition-all duration-150 hover:bg-destructive/10 hover:text-destructive hover:shadow-[0_0_18px_rgba(244,63,94,0.18)] group-data-[collapsible=icon]:hidden"
+            title="Cerrar sesión"
+          >
+            <LogOut className="size-4" />
+          </Button>
         </div>
 
-        <div className="gs__spine">
-          {canViewReportsModule ? (
-            <button
-              className="gs-cta"
-              onClick={() => go('/informes/nuevo')}
-              aria-label="Nuevo informe"
-              title="Nuevo informe"
-            >
-              <FileText />
-            </button>
-          ) : (
-            <button className="gs-cta" onClick={() => go('/dashboard')} aria-label="Dashboard" title="Dashboard">
-              <LayoutDashboard />
-            </button>
-          )}
-          <span className="gs__label">{currentNav?.label}</span>
-        </div>
-      </div>
-    </aside>
+      </SidebarFooter>
+    </Sidebar>
   )
 }
-
-export default React.memo(AppSidebar)
