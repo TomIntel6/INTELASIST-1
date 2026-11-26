@@ -70,7 +70,7 @@
   border-radius: 28px;
   overflow: hidden;
   isolation: isolate;
-  font-family: "Inter", system-ui, -apple-system, sans-serif;
+  font-family: "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
   color: #17365f;
   background:
     radial-gradient(120% 38% at 30% 0%, rgba(255,255,255,.78), transparent 70%),
@@ -488,3 +488,32 @@ body:has(.glass-layout) [data-slot="command"] {
 .gs-brand,
 .gs-orb { width: 40px; height: 40px; }
 .gs-orb svg { width: 16px; height: 16px; }
+
+.gs { font-family: "Plus Jakarta Sans", "Inter", system-ui, sans-serif; }
+
+.gs-item { font-size: 13.5px; font-weight: 600; letter-spacing: -.005em; }
+.gs-head__txt b { font-size: 15px; font-weight: 800; letter-spacing: .01em; }
+.gs-head__txt small,
+.gs-user small { font-weight: 500; }
+.gs-connected__title { font-weight: 700; letter-spacing: .16em; }
+.gs-connected__item > span { font-weight: 600; }
+
+.gs-item { gap: 10px; padding: 8px 14px 8px 16px; }
+.gs-item svg { width: 18px; height: 18px; stroke-width: 2; }
+
+.gs__inner { padding-right: 18px; }
+
+.gs-item.is-active {
+  width: 100%;
+  margin-right: 0;
+  padding-right: 14px;
+  border-radius: 14px;
+  background: #fff;
+  border-color: #fff;
+  color: var(--ink);
+  box-shadow: 0 8px 18px -10px rgba(31,99,230,.45);
+}
+.gs-item.is-active::before,
+.gs-item.is-active::after { display: none; }
+
+.gs__spine { margin: 7px 8px 7px 0; }
