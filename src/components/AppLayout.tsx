@@ -479,7 +479,9 @@ export default function AppLayout() {
             </div>
           ) : null}
           <div key={location.pathname} className="app-route-content">
-            <Outlet />
+            <React.Suspense fallback={<div className="p-6 text-sm text-muted-foreground">Cargando…</div>}>
+              <Outlet />
+            </React.Suspense>
           </div>
         </main>
       </SidebarInset>

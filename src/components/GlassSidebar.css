@@ -411,3 +411,48 @@ body:has(.glass-layout) [data-slot="command"] {
     transition-duration: .01ms !important;
   }
 }
+
+/* A. Cambio de ancho instantáneo: 1 reflow en vez de ~15.
+      El panel sigue haciendo fade (120 ms), que es barato. */
+.gs { transition: none; }
+
+/* B. Detrás del header no hay contenido scrolleando, el blur no aporta */
+.app-header { -webkit-backdrop-filter: none; backdrop-filter: none; }
+
+/* C. Ítems glass más limpios */
+.gs__nav { gap: 12px; }
+.gs-item { background: rgba(255,255,255,.34); box-shadow: none; }
+.gs-item:hover:not(.is-active) { background: rgba(255,255,255,.58); }
+
+/* D. Pestaña activa dibujada por el propio ítem (sin JS ni medición) */
+.gs__tab { display: none; }
+.gs-item.is-active {
+  color: var(--ink);
+  background: #fff;
+  border-color: #fff;
+  width: calc(100% + 12px);
+  margin-right: -12px;
+  padding-right: 26px;
+  border-radius: 14px 0 0 14px;
+  transition: none;
+}
+.gs-item.is-active::before,
+.gs-item.is-active::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  width: 12px;
+  height: 12px;
+}
+.gs-item.is-active::before {
+  bottom: 100%;
+  background: radial-gradient(circle at 0 0, transparent 11.5px, #fff 12px);
+}
+.gs-item.is-active::after {
+  top: 100%;
+  background: radial-gradient(circle at 0 100%, transparent 11.5px, #fff 12px);
+}
+
+/* E. Lista de conectados sin barra de scroll */
+.gs-connected__list { scrollbar-width: none; }
+.gs-connected__list::-webkit-scrollbar { display: none; }

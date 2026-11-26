@@ -92,18 +92,15 @@ const navItems = [
   { to: '/usuarios', label: 'Usuarios', icon: Users },
 ]
 
-export default function AppSidebar() {
+function AppSidebar() {
   const { hasModuleAccess, hasPermission } = usePermissions()
   const { user, signOut } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const [glassOpen, setGlassOpen] = React.useState(true)
-  const [glassTab, setGlassTab] = React.useState({ y: 0, h: 0, ready: false })
-  const glassMainRef = React.useRef<HTMLDivElement>(null)
   const glassRailRef = React.useRef<HTMLElement>(null)
   const dockFrameRef = React.useRef<number | null>(null)
   const dockYRef = React.useRef(0)
-  const glassItemRefs = React.useRef<Record<string, HTMLButtonElement | null>>({})
 
   const rawDisplayName = (user?.user_metadata?.full_name as string) ?? user?.email ?? 'Usuario'
   const displayName = rawDisplayName
@@ -360,20 +357,24 @@ export default function AppSidebar() {
       : location.pathname.startsWith(to)
   ) ?? visibleNavItems[0]
 
-  React.useLayoutEffect(() => {
-    if (!glassOpen) return
-    const measure = () => {
-      const item = activeNav ? glassItemRefs.current[activeNav.to] : null
-      const main = glassMainRef.current
-      if (!item || !main) return
-      const a = item.getBoundingClientRect()
-      const b = main.getBoundingClientRect()
-      setGlassTab({ y: a.top - b.top - 4, h: a.height + 8, ready: true })
-    }
-    measure()
-    window.addEventListener('resize', measure)
-    return () => window.removeEventListener('resize', measure)
-  }, [glassOpen, activeNav])
+  const [pendingTo, setPendingTo] = React.useState<string | null>(null)
+
+  React.useEffect(() => {
+    setPendingTo(null)
+  }, [location.pathname])
+
+  const currentNav =
+    (pendingTo && visibleNavItems.find(({ to }) =>
+      to === '/informes'
+        ? pendingTo === to || pendingTo.startsWith(`${to}/`)
+        : pendingTo.startsWith(to)
+    )) || activeNav
+
+  const go = React.useCallback((to: string) => {
+    if (to === location.pathname) return
+    setPendingTo(to)
+    React.startTransition(() => navigate(to))
+  }, [navigate, location.pathname])
 
   React.useEffect(() => {
     if (!glassOpen) return
@@ -432,8 +433,8 @@ export default function AppSidebar() {
           <button
             key={to}
             data-dock
-            className={`gs-orb ${activeNav?.to === to ? 'is-active' : ''}`}
-            onClick={() => navigate(to)}
+            className={`gs-orb ${currentNav?.to === to ? 'is-active' : ''}`}
+            onClick={() => go(to)}
             aria-label={label}
             title={label}
           >
@@ -447,15 +448,7 @@ export default function AppSidebar() {
       </nav>
 
       <div className="gs__panel" aria-hidden={!glassOpen} inert={!glassOpen}>
-        <div className="gs__main" ref={glassMainRef}>
-          <span
-            className="gs__tab"
-            style={{
-              transform: `translateY(${glassTab.y}px)`,
-              height: glassTab.h,
-              opacity: glassTab.ready ? 1 : 0,
-            }}
-          />
+        <div className="gs__main">
           <div className="gs__inner">
             <header className="gs-reveal gs-head" style={{ '--i': 0 } as React.CSSProperties}>
               <img className="gs-orb--lg" src="/intelasist-sidebar.svg" alt="INTELASIST IA" />
@@ -472,9 +465,8 @@ export default function AppSidebar() {
               {visibleNavItems.map(({ to, label, icon: Icon }, index) => (
                 <li key={to} className="gs-reveal" style={{ '--i': index + 1 } as React.CSSProperties}>
                   <button
-                    ref={element => { glassItemRefs.current[to] = element }}
-                    onClick={() => navigate(to)}
-                    className={`gs-item ${activeNav?.to === to ? 'is-active' : ''}`}
+                    onClick={() => go(to)}
+                    className={`gs-item ${currentNav?.to === to ? 'is-active' : ''}`}
                   >
                     <Icon />
                     <span>{label}</span>
@@ -527,20 +519,22 @@ export default function AppSidebar() {
           {canViewReportsModule ? (
             <button
               className="gs-cta"
-              onClick={() => navigate('/informes/nuevo')}
+              onClick={() => go('/informes/nuevo')}
               aria-label="Nuevo informe"
               title="Nuevo informe"
             >
               <FileText />
             </button>
           ) : (
-            <button className="gs-cta" onClick={() => navigate('/dashboard')} aria-label="Dashboard" title="Dashboard">
+            <button className="gs-cta" onClick={() => go('/dashboard')} aria-label="Dashboard" title="Dashboard">
               <LayoutDashboard />
             </button>
           )}
-          <span className="gs__label">{activeNav?.label}</span>
+          <span className="gs__label">{currentNav?.label}</span>
         </div>
       </div>
     </aside>
   )
 }
+
+export default React.memo(AppSidebar)

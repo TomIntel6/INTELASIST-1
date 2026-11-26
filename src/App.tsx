@@ -3,8 +3,8 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth, getUserRoles } from '@/lib/auth'
 import { PermissionProvider, usePermissions } from '@/lib/permissions-context'
 import { PERMISSIONS } from '@/lib/permissions'
+import AppLayout from '@/components/AppLayout'
 const Login = React.lazy(() => import('@/pages/Login'))
-const AppLayout = React.lazy(() => import('@/components/AppLayout'))
 const Dashboard = React.lazy(() => import('@/pages/Dashboard'))
 const ReportsList = React.lazy(() => import('@/pages/ReportsList'))
 const NewReport = React.lazy(() => import('@/pages/NewReport'))
@@ -156,7 +156,11 @@ function LoginRoute() {
     return <Navigate to="/dashboard" replace />
   }
 
-  return <Login />
+  return (
+    <React.Suspense fallback={pageFallback}>
+      <Login />
+    </React.Suspense>
+  )
 }
 
 const pageFallback = (
@@ -172,12 +176,10 @@ export default function App() {
       <BrowserRouter>
         <AuthProvider>
           <PermissionProvider>
-            <React.Suspense fallback={pageFallback}>
-              <Routes>
-                <Route path="/login" element={<LoginRoute />} />
-                <Route path="/*" element={<ProtectedContent />} />
-              </Routes>
-            </React.Suspense>
+            <Routes>
+              <Route path="/login" element={<LoginRoute />} />
+              <Route path="/*" element={<ProtectedContent />} />
+            </Routes>
           </PermissionProvider>
         </AuthProvider>
       </BrowserRouter>
