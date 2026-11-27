@@ -656,6 +656,13 @@ function serializeUpdateRow(row) {
     report_id: String(row.report_id || ''),
     status: String(row.status || 'Seguimiento de caso'),
     comment: String(row.comment || ''),
+    evidence_images: Array.isArray(row.evidence_images)
+      ? row.evidence_images.map((image) => ({
+          url: String(image?.url || ''),
+          filename: String(image?.filename || ''),
+          path: String(image?.path || ''),
+        })).filter((image) => image.url)
+      : [],
     added_by: row.added_by || null,
     added_by_name: String(row.added_by_name || ''),
     added_by_email: String(row.added_by_email || ''),
@@ -774,6 +781,10 @@ async function ensureReportUpdatesTable() {
       added_by_email TEXT NOT NULL DEFAULT '',
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
+  `)
+  await pool.query(`
+    ALTER TABLE report_updates
+    ADD COLUMN IF NOT EXISTS evidence_images JSONB NOT NULL DEFAULT '[]'::jsonb
   `)
 
   await pool.query(`
@@ -3169,10 +3180,30 @@ app.delete('/failed-report-attempts/:id', async (req, res) => {
 
 app.post('/reports/:id/updates', async (req, res) => {
   const reportId = req.params.id
-  console.log(`[POST] /reports/${reportId}/updates - inicio`, { payload: req.body })
+  console.log(`[POST] /reports/${reportId}/updates - inicio`)
 
   try {
     const payload = req.body || {}
+    const rawEvidenceImages = payload.evidence_images ?? []
+    if (
+      !Array.isArray(rawEvidenceImages) ||
+      rawEvidenceImages.some((image) =>
+        !image ||
+        typeof image.url !== 'string' ||
+        !image.url.trim() ||
+        typeof image.filename !== 'string' ||
+        typeof image.path !== 'string'
+      )
+    ) {
+      res.status(400).json({ error: 'Las imágenes adjuntas no tienen un formato válido.' })
+      return
+    }
+
+    const evidenceImages = rawEvidenceImages.map((image) => ({
+      url: image.url.trim(),
+      filename: image.filename.trim(),
+      path: image.path.trim(),
+    }))
     const updateId = getReportId()
     const createdAt = new Date().toISOString()
 
@@ -3193,6 +3224,7 @@ app.post('/reports/:id/updates', async (req, res) => {
       reportId,
       status: statusToInsert,
       comment: payload.comment || '',
+      evidenceImageCount: evidenceImages.length,
       added_by: payload.added_by || null,
       added_by_name: payload.added_by_name || '',
       added_by_email: payload.added_by_email || '',
@@ -3202,8 +3234,8 @@ app.post('/reports/:id/updates', async (req, res) => {
 
     await pool.query(`
       INSERT INTO report_updates (
-        id, report_id, status, comment, added_by, added_by_name, added_by_email, created_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        id, report_id, status, comment, added_by, added_by_name, added_by_email, created_at, evidence_images
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb)
     `, [
       updateId,
       reportId,
@@ -3213,6 +3245,7 @@ app.post('/reports/:id/updates', async (req, res) => {
       payload.added_by_name || '',
       payload.added_by_email || '',
       createdAt,
+      JSON.stringify(evidenceImages),
     ])
     console.log(`[POST] /reports/${reportId}/updates - insert completado`, { updateId })
 

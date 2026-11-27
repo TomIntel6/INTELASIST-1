@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/select'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
-import { REPORT_STATUSES, type Report, type ReportStatus, type ReportUpdate, loadReportWithUpdates, addReportUpdate, updateReportMetadata } from '@/lib/supabase'
+import { REPORT_STATUSES, type Report, type ReportStatus, type ReportUpdate, loadReportWithUpdates, addReportUpdate, updateReportMetadata, uploadEvidenceFile } from '@/lib/supabase'
 import { getAuthHeaders, hasAnyRole, useAuth } from '@/lib/auth'
 import { usePermissions } from '@/lib/permissions-context'
 import type { PermissionKey } from '@/lib/permissions'
@@ -26,7 +26,7 @@ import { PERMISSIONS } from '@/lib/permissions'
 import { cn } from '@/lib/utils'
 import { downloadReportPdf } from '@/lib/report-pdf'
 import { toast } from 'sonner'
-import { ArrowLeft, Send, User, Calendar, Car, FileText, Wrench, Image as ImageIcon, ZoomIn, Copy, History, Pencil, Download } from 'lucide-react'
+import { ArrowLeft, Send, User, Calendar, Car, FileText, Wrench, Image as ImageIcon, ZoomIn, Copy, History, Pencil, Download, Upload, X } from 'lucide-react'
 
 const STATUS_BADGE: Record<string, string> = {
   'Caso Finalizado': 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
@@ -122,6 +122,7 @@ export default function ReportDetail() {
   const { hasPermission } = usePermissions()
   const canViewReports = hasPermission(PERMISSIONS.REPORTS.VIEW as PermissionKey) || hasPermission(PERMISSIONS.REPORTS.VIEW_ALL as PermissionKey)
   const canAddUpdates = hasPermission(PERMISSIONS.UPDATES.ADD as PermissionKey)
+  const canUploadEvidence = hasPermission(PERMISSIONS.EVIDENCE.UPLOAD as PermissionKey)
   const canChangeReportStatus = hasPermission(PERMISSIONS.REPORTS.CHANGE_STATUS as PermissionKey)
   // La edición de informes ya creados requiere el permiso de gestión de permisos.
   const canEditReports = hasPermission(PERMISSIONS.SYSTEM.MANAGE_PERMISSIONS as PermissionKey)
@@ -136,11 +137,58 @@ export default function ReportDetail() {
   const [newStatus, setNewStatus] = React.useState<ReportStatus>('Seguimiento de caso')
   const [newComment, setNewComment] = React.useState('')
   const [submitting, setSubmitting] = React.useState(false)
+  const [newUpdateImages, setNewUpdateImages] = React.useState<Array<{ file: File; preview: string }>>([])
+  const updateImageInputRef = React.useRef<HTMLInputElement | null>(null)
+  const updateImagePreviewUrlsRef = React.useRef(new Set<string>())
 
   const handleNewStatusChange = (value: string) => {
     setNewStatus(value as ReportStatus)
   }
   const [submitError, setSubmitError] = React.useState<string | null>(null)
+  React.useEffect(() => () => {
+    updateImagePreviewUrlsRef.current.forEach(preview => URL.revokeObjectURL(preview))
+    updateImagePreviewUrlsRef.current.clear()
+  }, [])
+
+  const handleUpdateImagesChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const acceptedImages: Array<{ file: File; preview: string }> = []
+    const errors: string[] = []
+
+    for (const file of Array.from(event.currentTarget.files ?? [])) {
+      if (!file.type.startsWith('image/')) {
+        errors.push(`${file.name} no es una imagen válida.`)
+        continue
+      }
+
+      if (file.size > 5 * 1024 * 1024) {
+        errors.push(`${file.name} supera el límite de 5 MB.`)
+        continue
+      }
+
+      const preview = URL.createObjectURL(file)
+      updateImagePreviewUrlsRef.current.add(preview)
+      acceptedImages.push({ file, preview })
+    }
+
+    if (acceptedImages.length > 0) {
+      setNewUpdateImages(current => [...current, ...acceptedImages])
+    }
+    setSubmitError(errors.length > 0 ? errors.join(' ') : null)
+    event.currentTarget.value = ''
+  }
+
+  const removeNewUpdateImage = (preview: string) => {
+    URL.revokeObjectURL(preview)
+    updateImagePreviewUrlsRef.current.delete(preview)
+    setNewUpdateImages(current => current.filter(image => image.preview !== preview))
+  }
+
+  const clearNewUpdateImages = () => {
+    updateImagePreviewUrlsRef.current.forEach(preview => URL.revokeObjectURL(preview))
+    updateImagePreviewUrlsRef.current.clear()
+    setNewUpdateImages([])
+  }
+
   const [showImageModal, setShowImageModal] = React.useState(false)
   const [modalImageUrl, setModalImageUrl] = React.useState<string | null>(null)
   const [copySuccess, setCopySuccess] = React.useState<string | null>(null)
@@ -312,6 +360,11 @@ export default function ReportDetail() {
       return
     }
 
+    if (newUpdateImages.length > 0 && !canUploadEvidence) {
+      setSubmitError('No tienes permisos para adjuntar imágenes.')
+      return
+    }
+
     setSubmitting(true)
     setSubmitError(null)
 
@@ -320,39 +373,51 @@ export default function ReportDetail() {
     const statusToSend = isLocked ? report!.status : newStatus
 
     try {
+      const uploadedImages: Awaited<ReturnType<typeof uploadEvidenceFile>>[] = []
+      for (const image of newUpdateImages) {
+        uploadedImages.push(await uploadEvidenceFile(image.file))
+      }
+
       const createdUpdate = await addReportUpdate(id!, {
         status: statusToSend,
         comment: newComment,
+        evidence_images: uploadedImages,
         added_by: user?.id ?? null,
         added_by_name: displayName,
         added_by_email: user?.email ?? '',
       })
 
-      // Log audit event
-      if (statusToSend !== report?.status) {
-        await AuditService.logStatusChanged(
-          id!,
-          report?.status || 'unknown',
-          statusToSend
-        )
-      }
-      
-      await AuditService.logUpdateAdded(id!, createdUpdate.id, {
-        status: statusToSend,
-        comment: newComment,
-      })
-
       setNewComment('')
+      clearNewUpdateImages()
       await fetchData()
 
-      if (showAuditPanel) {
-        const { data: events } = await AuditService.fetchAuditLogs({
-          entityId: id,
-          module: 'REPORTS',
-          limit: 50,
-          offset: 0,
+      try {
+        if (statusToSend !== report?.status) {
+          await AuditService.logStatusChanged(
+            id!,
+            report?.status || 'unknown',
+            statusToSend
+          )
+        }
+
+        await AuditService.logUpdateAdded(id!, createdUpdate.id, {
+          status: statusToSend,
+          comment: newComment,
+          evidence_image_count: uploadedImages.length,
         })
-        setAuditEvents(events)
+
+        if (showAuditPanel) {
+          const { data: events } = await AuditService.fetchAuditLogs({
+            entityId: id,
+            module: 'REPORTS',
+            limit: 50,
+            offset: 0,
+          })
+          setAuditEvents(events)
+        }
+      } catch (auditError) {
+        console.error('Error registrando la auditoría de la actualización:', auditError)
+        toast.warning('La actualización se guardó, pero no se pudo registrar en el historial.')
       }
     } catch (error) {
       setSubmitError(error instanceof Error ? error.message : 'No se pudo agregar la actualización.')
@@ -706,6 +771,52 @@ export default function ReportDetail() {
                 />
               </div>
 
+              <div className="space-y-2">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="gap-2"
+                    disabled={!canAddUpdates || !canUploadEvidence || submitting}
+                    onClick={() => updateImageInputRef.current?.click()}
+                  >
+                    <Upload className="size-4" />
+                    Adjuntar imágenes
+                  </Button>
+                  <span className="text-xs text-muted-foreground">Imágenes de hasta 5 MB cada una</span>
+                </div>
+                <input
+                  ref={updateImageInputRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
+                  onChange={handleUpdateImagesChange}
+                />
+                {!canUploadEvidence ? (
+                  <p className="text-xs text-muted-foreground">No tienes permiso para adjuntar imágenes.</p>
+                ) : null}
+                {newUpdateImages.length > 0 ? (
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                    {newUpdateImages.map(({ file, preview }) => (
+                      <div key={preview} className="relative overflow-hidden rounded-md border border-border">
+                        <img src={preview} alt={file.name} className="h-24 w-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => removeNewUpdateImage(preview)}
+                          className="absolute right-1 top-1 rounded-full bg-background/90 p-1 text-foreground shadow"
+                          aria-label={`Quitar ${file.name}`}
+                        >
+                          <X className="size-3.5" />
+                        </button>
+                        <p className="truncate px-2 py-1 text-xs text-muted-foreground">{file.name}</p>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+
               {submitError ? (
                 <p className="text-sm text-destructive">{submitError}</p>
               ) : null}
@@ -801,6 +912,31 @@ export default function ReportDetail() {
                   <TimeAgo date={update.created_at} />
                 </div>
                 <p className="mt-1.5 whitespace-pre-line text-sm text-foreground">{update.comment}</p>
+                {update.evidence_images && update.evidence_images.length > 0 ? (
+                  <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
+                    {update.evidence_images.map((image, index) => (
+                      <button
+                        key={`${image.url}-${index}`}
+                        type="button"
+                        onClick={() => {
+                          setModalImageUrl(image.url)
+                          setShowImageModal(true)
+                        }}
+                        className="group relative overflow-hidden rounded-md border border-border text-left"
+                        aria-label={`Ver imagen adjunta ${index + 1}`}
+                      >
+                        <img
+                          src={image.url}
+                          alt={image.filename || `Imagen adjunta ${index + 1}`}
+                          className="h-28 w-full object-cover transition-transform duration-200 group-hover:scale-[1.02]"
+                        />
+                        <span className="block truncate px-2 py-1 text-xs text-muted-foreground">
+                          {image.filename || `Imagen ${index + 1}`}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
                 <p className="mt-2 text-xs text-muted-foreground">
                   {update.added_by_name || update.added_by_email || 'Usuario'}
                 </p>

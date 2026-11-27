@@ -470,7 +470,7 @@ export async function downloadReportPdf(report: Report) {
     y += cardHeight + 4
   }
 
-  const addUpdateCard = (update: NonNullable<Report['report_updates']>[number], index: number) => {
+  const addUpdateCard = async (update: NonNullable<Report['report_updates']>[number], index: number) => {
     const commentLines = pdf.splitTextToSize(printableValue(update.comment || 'Sin comentario.'), contentWidth - 10) as string[]
     const author = [update.added_by_name, update.added_by_email].filter(Boolean).join(' | ') || 'Usuario no especificado'
     pdf.setFont('helvetica', 'normal')
@@ -519,6 +519,14 @@ export async function downloadReportPdf(report: Report) {
 
       y += cardHeight + 4
       lineIndex += blockLines.length
+    }
+
+    const updateImages = update.evidence_images ?? []
+    if (updateImages.length > 0) {
+      addSectionHeading(`Evidencias de actualización ${index + 1}`)
+      for (const [imageIndex, image] of updateImages.entries()) {
+        await addEvidenceCard(image.filename || `Imagen ${imageIndex + 1}`, image.url)
+      }
     }
   }
 
@@ -600,7 +608,9 @@ export async function downloadReportPdf(report: Report) {
     drawFieldCard(margin, y, contentWidth, emptyUpdates, layout)
     y += layout.height + 3
   } else {
-    updates.forEach(addUpdateCard)
+    for (const [index, update] of updates.entries()) {
+      await addUpdateCard(update, index)
+    }
   }
 
   const pageCount = pdf.getNumberOfPages()

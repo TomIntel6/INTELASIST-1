@@ -121,6 +121,7 @@ export interface ReportUpdate {
   report_id: string
   status: ReportStatus
   comment: string
+  evidence_images?: EvidenceImage[]
   added_by: string | null
   added_by_name: string
   added_by_email: string
@@ -183,6 +184,18 @@ function normalizeUpdate(raw: Record<string, unknown>): ReportUpdate {
     report_id: String(raw.report_id ?? ''),
     status: normalizeReportStatus(raw.status),
     comment: String(raw.comment ?? ''),
+    evidence_images: Array.isArray(raw.evidence_images)
+      ? raw.evidence_images.map((item) => {
+          const image = item && typeof item === 'object' && !Array.isArray(item)
+            ? item as Record<string, unknown>
+            : {}
+          return {
+            url: String(image.url ?? ''),
+            filename: String(image.filename ?? ''),
+            path: String(image.path ?? ''),
+          }
+        }).filter((image) => image.url)
+      : [],
     added_by: raw.added_by === null || raw.added_by === undefined ? null : String(raw.added_by),
     added_by_name: String(raw.added_by_name ?? ''),
     added_by_email: String(raw.added_by_email ?? ''),
